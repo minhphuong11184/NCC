@@ -12,31 +12,8 @@ module.exports = {
             minUptime: 5 * 1000,
             maxRestarts: 5
         },
-        {
-            name: 'P.RENDER',
-            script: path.join(__dirname, './../RENDER/index.js'),
-            minUptime: 5 * 1000,
-            maxRestarts: 5
-        },
-        {
-            name: 'P.E-OFFICE',
-            script: path.join(__dirname, './../E-Office/index.js'),
-            minUptime: 5 * 1000,
-            maxRestarts: 5
-        },
-        {
-            name: 'P.FDB',
-            script: path.join(__dirname, './../FDB/index.js'),
-            minUptime: 5 * 1000,
-            maxRestarts: 5
-        },
-        {
-            name: 'P.HRM',
-            script: path.join(__dirname, './../HRM/index.js'),
-            minUptime: 5 * 1000,
-            maxRestarts: 5
-        },
-        //{
+      
+             //{
         //	name: 'P.HR',
         //	script: path.join(__dirname, './../HR/index.js'),
         //	minUptime: 5 * 1000,
@@ -56,10 +33,7 @@ module.exports = {
         // 	minUptime: 5 * 1000,
         // 	maxRestarts: 5
         // },
-        {
-            name: 'P.MOBILE',
-            script: path.join(__dirname, './../MOBILE/index.js'),
-        },
+      
         {
             name: 'P.WEB',
             script: path.join(__dirname, './../DESKTOP/index.js'),
@@ -67,8 +41,8 @@ module.exports = {
             maxRestarts: 5
         },
         {
-            name: 'P.NLG',
-            script: path.join(__dirname, './../NLG/index.js'),
+            name: 'P.GATEWAY',
+            script: path.join(__dirname, './../GATEWAY/index.js'),
             minUptime: 5 * 1000,
             maxRestarts: 5
         }
