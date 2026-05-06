@@ -1,0 +1,11 @@
+import ordersm from "./store-orders";
+import orderMetas from "./store-orderMetas";
+import requests from "./store-requests";
+import messages from "./store-messages";
+import calendarWork from "./store-calendarWork";
+import reportDashboard from "./store-reportDashboard";
+import document from "./store-document";
+import meeting from "./store-meeting";
+import formRegister from "./store-form";
+import roleDepartment from "./store-roleDepartment";
+export default { ordersm, orderMetas, requests, messages, calendarWork,reportDashboard,document, meeting, formRegister, roleDepartment };

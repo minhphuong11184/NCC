@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.helloworld";
+option java_outer_classname = "HelloWorldProto";
+option objc_class_prefix = "HLW";
+
+package protocol;
+
+service Item {
+    rpc getById(id) returns(item) {}
+    rpc getByIds(data) returns(data) {}
+}
+
+service Step {
+    rpc getById(id) returns(step) {}
+    rpc getByIds(data) returns(data) {}
+}
+
+service Department {
+    rpc getById(id) returns(department) {}
+    rpc getByIds(data) returns(data) {}
+}
+
+service Xuong {
+    rpc getById(id) returns(xuong) {}
+    rpc getByIds(data) returns(data) {}
+}
+
+service Factory {
+    rpc getById(id) returns(factory) {}
+    rpc getByIds(data) returns(data) {}
+}
+
+service Market {
+    rpc getById(id) returns(market) {}
+    rpc getByCode(code) returns(market){}
+    rpc getByIds(data) returns(data) {}
+    rpc getByCodes(data) returns(data){}
+}
+
+service Account {
+    rpc getById(id) returns(account) {}
+    rpc getByIds(data) returns(data) {}
+}
+
+service Vendor {
+    rpc getById(id) returns(vendor) {}
+    rpc getByIds(data) returns(data) {}
+}
+
+service Customer {
+    rpc getById(id) returns(customer) {}
+    rpc getByIds(data) returns(data) {}
+}
+
+
+message code {
+    string code = 1;
+}
+message id {
+    int32 id = 1;
+}
+
+message ids {
+    repeated int32 ids = 1;
+}
+
+message data {
+    string data = 1;
+}
+
+message item {
+    int32 id = 1;
+    string code = 2;
+    string name = 3;
+    int32 length = 4;
+    int32 width = 5;
+    int32 height = 6;
+    int32 typeId = 7;
+    string imageUrl = 8;
+}
+
+message items {
+    repeated int32 ids = 1;
+}
+
+
+message step {
+    int32 id = 1;
+    int32 departmentId = 2;
+    string code = 3;
+    string name = 4;
+}
+
+message department {
+    int32 id = 1;
+    string type = 2;
+    string type2 = 3;
+    string code = 4;
+    string name = 5;
+}
+
+message xuong {
+    int32 id = 1;
+    int32 factoryId = 2;
+    string code = 3;
+    string name = 4;
+}
+
+message factory {
+    int32 id = 1;
+    string code = 2;
+    string name = 3;
+}
+
+message market {
+    int32 id = 1;
+    int32 productId = 2;
+    string code = 3;
+    string name = 4;
+}
+
+message vendor {
+    int32 id =1;
+    string code = 2;
+    string name = 3;
+    int32 active = 4;
+}
+
+message account {
+    int32 id = 1;
+    string account = 2;
+    string password = 3;
+    string firstName = 4;
+    string lastName = 5;
+    string position = 6;
+    string phone = 7;
+    string email = 8;
+    string address = 9;
+    int32 active = 10;
+    int32 roleId = 11;
+}
+
+message customer {
+    int32 id = 1;
+    string code = 2;
+    string name = 3;
+    string description = 4;
+    string city = 5;
+    string address = 6;
+    string email = 7;
+    string phone = 8;
+    int32 active = 9;
+    string createBy = 10;
+    string createDate = 11;
+}

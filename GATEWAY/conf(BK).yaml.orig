@@ -1,0 +1,449 @@
+﻿--- # Article data
+title: "Cấu hình gateway"
+endPoint:
+  base:
+    - host: 127.0.0.1
+      port: 221
+      type: master
+    - host: 127.0.0.1
+      port: 321
+  prod:
+    - host: 127.0.0.1
+      port: 222
+      type: master
+    - host: 127.0.0.1
+      port: 322
+  fpm:
+    - host: 127.0.0.1
+      port: 223
+      type: master
+    - host: 127.0.0.1
+      port: 323
+  lgt:
+    - host: 127.0.0.1
+      port: 224
+      type: master
+    - host: 127.0.0.1
+      port: 324
+  pm2:
+    - host: 127.0.0.1
+      port: 225
+      type: master
+    - host: 127.0.0.1
+      port: 325
+  wood:
+    - host: 127.0.0.1
+      port: 226
+      type: master
+    - host: 127.0.0.1
+      port: 326
+  hr:
+    - host: 127.0.0.1
+      port: 227
+      type: master
+  render:
+    - host: 127.0.0.1
+      port: 229
+      type: master
+    - host: 127.0.0.1
+      port: 329
+  serve:
+    - host: 127.0.0.1
+      port: 231
+      type: master
+    - host: 127.0.0.1
+      port: 331
+  admin:
+    - host: 127.0.0.1
+      port: 3000
+      type: master
+    - host: 127.0.0.1
+      port: 3001
+  nlg:
+    - host: 127.0.0.1
+      port: 228
+      type: master
+  eoffice:
+    - host: 127.0.0.1
+      port: 1010
+      type: master
+  fdb:
+    - host: 127.0.0.1
+      port: 1020
+      type: master
+routers:
+  - path: /application
+    endPoint: base
+  - path: /proposal-forms
+    endPoint: base
+  - path: /cars
+    endPoint: base
+  - path: /roles
+    endPoint: base
+  - path: /signup
+    authencation: true
+    endPoint: base
+  - path: /accounts
+    endPoint: base
+  - path: /vendors
+    endPoint: base
+  - path: /role-values
+    endPoint: base
+  - path: /role-groups
+    endPoint: base
+  - path: /account-forms
+    endPoint: base
+  - path: /role-types
+    endPoint: base
+  - path: /modules
+    endPoint: base
+  - path: /menu
+    endPoint: base
+  - path: /category
+    endPoint: base
+  - path: /departments
+    endPoint: base
+  - path: /xuongs
+    endPoint: base
+  - path: /factorys
+    endPoint: base
+  - path: /products
+    endPoint: base
+  - path: /materials
+    endPoint: base
+  - path: /supplies
+    endPoint: base
+  - path: /woods
+    endPoint: base
+  - path: /item-types
+    endPoint: base
+  - path: /units
+    endPoint: base
+  - path: /chemistrys
+    endPoint: base
+  - path: /items
+    endPoint: base
+  - path: /markets
+    endPoint: base
+  - path: /materials-products
+    endPoint: base
+  - path: /product-furniture
+    endPoint: base
+  - path: /supplies-furnitures
+    endPoint: base
+  - path: /password
+    authencation: false
+    endPoint: base
+  - path: /login
+    authencation: false
+    endPoint: base
+  - path: /dates
+    endPoint: base
+  - path: /customers
+    endPoint: base
+  - path: /token
+    authencation: false
+    endPoint: base
+  - path: /package-type
+    endPoint: prod
+  - path: /work-resources
+    endPoint: prod
+  - path: /ranges
+    endPoint: prod
+  - path: /san-luong
+    endPoint: prod
+  - path: /parcels
+    endPoint: prod
+  - path: /plans
+    endPoint: prod
+  - method: get
+    path: /oscp
+    endPoint: render
+  - path: /oscp
+    endPoint: prod
+  - method: get
+    path: /boms/:productId
+    endPoint: render
+  - method: get
+    path: /boms
+    endPoint: render
+  - path: /boms
+    endPoint: prod
+  - path: /bom-supplies
+    endPoint: prod
+  - method: get
+    path: /routings
+    endPoint: render
+  - method: get
+    path: /routings/:itemId
+    endPoint: render
+  - path: /routings
+    endPoint: prod
+  - path: /routing-name
+    endPoint: prod
+  - method: get
+    path: /ballets/bao-cao-cho-say
+    endPoint: prod
+  - method: get
+    path: /ballets/:code
+    endPoint: render
+  - path: /ballets
+    endPoint: prod
+  - path: /packages
+    endPoint: prod
+  - path: /kilns
+    endPoint: prod
+  - path: /remedies
+    endPoint: prod
+  - path: /delivery-plan
+    endPoint: prod
+  - path: /slcn
+    endPoint: prod
+  - path: /wood-types
+    endPoint: prod
+  - method: get
+    path: /production-orders/:id/products
+    endPoint: render
+  - method: get
+    path: /production-order
+    endPoint: render
+  - path: /production-order
+    endPoint: prod
+  - method: get
+    path: /production-orders/:id
+    endPoint: render
+  - method: get
+    path: /production-orders
+    endPoint: render
+  - path: /production-orders
+    endPoint: prod
+  - path: /production-orders-type
+    endPoint: prod
+  - path: /production-orders-status
+    endPoint: prod
+  - path: /product-of-orders
+    endPoint: prod
+  - method: get
+    path: /bieu-mau-kiem-tra-do-am
+    endPoint: prod
+  - path: /bieu-mau-kiem-tra-do-am
+    endPoint: prod
+  - method: get
+    path: /bao-cao-khuyet-tat
+    endPoint: render
+  - path: /bao-cao-khuyet-tat
+    endPoint: prod
+  - method: get
+    path: /dinh-muc-ton
+    endPoint: render
+  - path: /dinh-muc-ton
+    endPoint: prod
+  - path: /parcel-woods
+    endPoint: prod
+  - path: /bien-ban
+    endPoint: prod
+  - path: /bao-cao-tinh-hinh-thuc-hien-excel
+    endPoint: prod
+  - path: /bao-cao-raw-data
+    endPoint: prod
+  - path: /bao-cao-qc
+    endPoint: prod
+  - path: /bao-cao-ton
+    endPoint: prod
+  - path: /bao-cao-me-say
+    endPoint: prod
+  - path: /bao-cao-phoi-theo-me-say
+    endPoint: prod
+  - path: /bao-cao-so-sanh-ty-le-dat-qc-va-lua-phoi
+    endPoint: prod
+  - method: get
+    path: /kiln-batch
+    endPoint: render
+  - path: /kiln-batch
+    endPoint: prod
+  - path: /ke-hoach-san-xuat
+    endPoint: prod
+  - path: /coc
+    endPoint: prod
+    authencation: false
+  - path: /machine
+    endPoint: prod
+  - path: /slcn
+    endPoint: prod
+  - method: get
+    path: /production-time
+    endPoint: render
+  - path: /production-time
+    endPoint: prod
+  - path: /reports
+    endPoint: render
+  - path: /pm2
+    endPoint: pm2
+  - path: /child-process
+    endPoint: pm2
+  - path: /npm
+    endPoint: pm2
+  - path: /git
+    endPoint: pm2
+  - method: "get"
+    path: /work-time
+    endPoint: "render"
+  - path: /work-time
+    endPoint: hr
+  - path: /wood-warehouse
+    endPoint: wood
+  - path: /wood-input-type
+    endPoint: wood
+  - path: /wood-type
+    endPoint: wood
+  - path: /wood-input
+    endPoint: wood
+  - path: /wood-inspection
+    endPoint: wood
+  - path: /wood-payment
+    endPoint: wood
+  - path: /wood-price
+    endPoint: wood
+  - path: /wood-dtype
+    endPoint: wood
+  - path: /wood-req-price
+    endPoint: wood
+  - path: /wood-region
+    endPoint: wood
+  - path: /wood-report
+    endPoint: wood
+  - path: /nlg-phieu-nhap-kho
+    endPoint: nlg
+  - path: /nlg-phieu-nhap-kho1
+    endPoint: nlg
+  - path: /nlg-phieu-nhap-kho2
+    endPoint: nlg
+  - path: /nlg-phieu-nhap-kho3
+    endPoint: nlg
+  - path: /nlg-phieu-nhap-kho4
+    endPoint: nlg
+  - path: /nlg-nha-
+  - path: /nlg-nha-cung-cap
+    endPoint: nlg
+  - path: /nlg-detail-nk
+    endPoint: nlg
+  - path: /nlg-ds-de-lai
+    endPoint: nlg
+  - path: /nlg-nhap-kho
+    endPoint: nlg
+  - path: /qui-cach
+    endPoint: nlg
+  - path: /type-ha-cap
+    endPoint: nlg
+  - path: /vung
+    endPoint: nlg
+  - path: /ma-kho
+    endPoint: nlg
+  - path: /vung-van-chuyen
+    endPoint: nlg
+  - path: /req-cost
+    endPoint: nlg
+  - path: /dinh-muc-kho
+    endPoint: nlg
+  - path: /ke-hoach-tuan
+    endPoint: nlg
+  - path: /bang-gia
+    endPoint: nlg
+  - path: /nha-cung-cap
+    endPoint: nlg
+  - path: /nha-cung-cap-thang
+    endPoint: nlg
+  - path: /nha-cung-cap-thang1
+    endPoint: nlg
+  - path: /nha-cung-cap-thang2
+    endPoint: nlg
+  - path: /khoi-luong-ncc-thang
+    endPoint: nlg
+  - path: /ma-kho
+    endPoint: nlg
+  - path: /chinh-pham
+    endPoint: nlg
+  - path: /ha-cap
+    endPoint: nlg
+  - path: /group-qui-cach
+    endPoint: nlg
+  - path: /reports-nlg
+    endPoint: nlg
+  - path: /plan-nlg
+    endPoint: nlg
+  - path: /plan-nlg1
+    endPoint: nlg
+  - path: /bien-ban-tinh-tien
+    endPoint: nlg
+  - path: /bien-ban-nghiem-thu
+    endPoint: nlg
+  - path: /bien-ban-tinh-tien1
+    endPoint: nlg
+  - path: /bien-ban-tinh-tien2
+    endPoint: nlg
+  - path: /nguyen-lieu-go
+    endPoint: nlg
+  - path: /ton-dau-ky
+    endPoint: prod
+  - path: /ton-dau-ky-chi-tiet
+    endPoint: prod
+  - path: /lich-su-cap-phoi
+    endPoint: prod
+  - path: /dinh-muc-phoi
+    endPoint: prod
+  - path: /khsx
+    endPoint: prod
+  - path: /cong-doan
+    endPoint: prod
+  - path: /requests
+    endPoint: eoffice
+  - path: /messages
+    endPoint: eoffice
+  - path: /orders
+    endPoint: eoffice
+  - path: /account-forms
+    endPoint: eoffice
+  - path: /userRegistration
+    endPoint: eoffice
+  - path: /order-metas
+    endPoint: eoffice
+  - path: /accountForm
+    endPoint: eoffice
+  - path: /departmentForm
+    endPoint: eoffice
+  - path: /departmentAll
+    endPoint: eoffice
+  - path: /account
+    endPoint: eoffice
+  - path: /formRequests
+    endPoint: eoffice
+  - path: /order-metas-search
+    endPoint: eoffice
+  - path: /requests-active
+    endPoint: eoffice
+  - path: /orders/confirmPriorityLevel
+    endPoint: eoffice
+  - path: /requests-isAuthority
+    endPoint: eoffice
+  - path: /orders/getAllOrders
+    endPoint: eoffice
+  - path: /permissionAuthorised/:id
+    endPoint: eoffice
+  - path: /requests-active/:id
+    endPoint: eoffice
+  - path: /orders/:id/activeSeen
+    endPoint: eoffice
+  - path: /orders/:id/activeSuccess
+    endPoint: eoffice
+  - path: /orders/getMaVT
+    endPoint: eoffice
+  - path: /notification
+    endPoint: eoffice
+  - path: /active-notificationMail
+    endPoint: eoffice
+  - path: /unActive-notificationMail
+    endPoint: eoffice
+  - path: /send-mail
+    endPoint: eoffice
+  - path: /dmvt/getMaVT
+    endPoint: fdb

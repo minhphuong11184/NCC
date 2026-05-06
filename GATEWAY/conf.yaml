@@ -1,0 +1,103 @@
+--- # TanTrao2026 - Gateway config
+title: "Cấu hình gateway TanTrao2026"
+endPoint:
+  base:
+    - host: 127.0.0.1
+      port: 221
+      type: master
+  prod:
+    - host: 127.0.0.1
+      port: 222
+      type: master
+  pm2:
+    - host: 127.0.0.1
+      port: 225
+      type: master
+  admin:
+    - host: 127.0.0.1
+      port: 3000
+      type: master
+
+routers:
+  # ===== Auth =====
+  - path: /login
+    authencation: false
+    endPoint: base
+  - path: /signup
+    authencation: true
+    endPoint: base
+  - path: /password
+    authencation: false
+    endPoint: base
+  - path: /password-update
+    authencation: false
+    endPoint: base
+  - path: /token
+    authencation: false
+    endPoint: base
+
+  # ===== Account / Role / Menu =====
+  - path: /accounts
+    endPoint: base
+  - path: /account
+    endPoint: base
+  - path: /roles
+    endPoint: base
+  - path: /role-values
+    endPoint: base
+  - path: /role-types
+    endPoint: base
+  - path: /role-groups
+    endPoint: base
+  - path: /modules
+    endPoint: base
+  - path: /menu
+    endPoint: base
+
+  # ===== Structure =====
+  - path: /departments
+    endPoint: base
+  - path: /department
+    endPoint: base
+  - path: /xuongs
+    endPoint: base
+  - path: /factorys
+    endPoint: base
+
+  # ===== PRODUCTION (nghiệp vụ sản xuất — bạn tự thêm path khi tạo API mới) =====
+  - path: /hello
+    endPoint: prod
+  - path: /packages
+    endPoint: prod
+  - path: /import-go-tron
+    endPoint: prod
+  - path: /phan-tich
+    endPoint: prod
+  - path: /import-kh
+    endPoint: prod
+  - path: /chia-xe
+    endPoint: prod
+  - path: /attendance
+    endPoint: prod
+  - path: /woodsland
+    endPoint: prod
+  - path: /ca-lam-viec
+    endPoint: prod
+  - path: /quan-ly-nguoi-dung
+    endPoint: prod
+  - path: /ghep-lo-go
+    endPoint: prod
+  - path: /xuong-xe
+    endPoint: prod
+  - path: /hop-dong
+    endPoint: prod
+
+  # ===== PM2 service manager =====
+  - path: /pm2
+    endPoint: pm2
+  - path: /child-process
+    endPoint: pm2
+  - path: /npm
+    endPoint: pm2
+  - path: /git
+    endPoint: pm2

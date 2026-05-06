@@ -1,0 +1,50 @@
+{
+  "name": "gateway",
+  "version": "1.0.0",
+  "description": "module production",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./index.js",
+    "dev": "nodemon --watch src ./index.js",
+    "debug": "node --nolazy --inspect-brk=9229 index.js"
+  },
+  "author": "Hoàng Văn Hiếu",
+  "license": "ISC",
+  "dependencies": {
+    "api-formatter": "^1.0.1",
+    "bcrypt": "^5.0.0",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^8.1.0",
+    "express": "^4.17.1",
+    "express-favicon": "^2.0.1",
+    "express-rate-limit": "^5.0.0",
+    "http-proxy": "^1.17.0",
+    "js-yaml": "^3.13.1",
+    "jsonwebtoken": "^8.5.1",
+    "kafkajs": "^1.11.0",
+    "mongodb": "^3.3.5",
+    "mongoose": "^5.7.1",
+    "morgan": "^1.9.1",
+    "mssql": "^6.0.0",
+    "nodemon": "^1.19.2",
+    "redis": "^2.8.0",
+    "request": "^2.88.0",
+    "utf8": "^3.0.0",
+    "uuid": "^3.3.3"
+  },
+  "devDependencies": {
+    "eslint": "^7.9.0",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "nodemon": "^1.19.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/byndiorpro182/WMS.git",
+    "private": true
+  }
+}
