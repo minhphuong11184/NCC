@@ -1,15 +1,9 @@
-let BASE_URL = "";
-let BASE_URLV3 = "";
 let apiVersion = "v2";
 let apiVersion3 = "v3";
-if (process.env.PROD) {
-    BASE_URL = "/api/" + apiVersion;
-    BASE_URLV3 = "/api/" + apiVersion3;
-} else {
-    BASE_URL = "//localhost:2003/api/" + apiVersion;
-    BASE_URLV3 = "//localhost:2003/api/" + apiVersion3;
-}
-//http://localhost:2003/api/
+// LAN-friendly: dùng host hiện tại của browser (server LAN IP) thay vì localhost
+const apiHost = (typeof window !== "undefined" && window.location && window.location.hostname) || "localhost";
+const BASE_URL = "http://" + apiHost + ":2003/api/" + apiVersion;
+const BASE_URLV3 = "http://" + apiHost + ":2003/api/" + apiVersion3;
 const api = {
     AUTH: BASE_URLV3 + "/login",
     VENDOR: BASE_URL + "/vendors",

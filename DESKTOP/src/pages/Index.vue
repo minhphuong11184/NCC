@@ -24,9 +24,9 @@
               <p v-html="tintuc[0].CONTENT" ></p>
             </div>
              <div v-if="xemtiep && tintuc[0].imageUrl !=''" class="col-6 col-md-5 q-mt-sm" >
-               <a :href="'http://localhost:2003/Attached/' + tintuc[0].imageUrl" target="_blank">
+               <a :href="('http://' + (window.location.hostname || 'localhost') + ':2003/Attached/') + tintuc[0].imageUrl" target="_blank">
                    <img
-                         v-bind:src="'http://localhost:2003/Attached/' + tintuc[0].imageUrl"
+                         v-bind:src="('http://' + (window.location.hostname || 'localhost') + ':2003/Attached/') + tintuc[0].imageUrl"
                           alt="File đính kèm"
                           width="180"
                           height="auto"

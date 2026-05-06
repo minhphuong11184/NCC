@@ -4,7 +4,10 @@ import moment from "moment";
 moment.locale("vi");
 
 Vue.prototype.$axios = axios;
-Vue.prototype.$axios.defaults.baseURL = "http://localhost:2003";
+// Auto detect host: nếu mở trên máy server thì là localhost,
+// nếu mở từ máy khác trong LAN thì là IP của server.
+const apiHost = (typeof window !== "undefined" && window.location && window.location.hostname) || "localhost";
+Vue.prototype.$axios.defaults.baseURL = "http://" + apiHost + ":2003";
 Vue.prototype.moment = moment;
 
 Vue.filter("lastName", function (accountId) {

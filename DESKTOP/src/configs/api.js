@@ -1,7 +1,10 @@
 const apiVersion = "v2";
 const apiVersion3 = "v3";
-const BASE_URL = "http://localhost:2003" + "/api/" + apiVersion;
-const BASE_URLV3 = "http://localhost:2003" + "/api/" + apiVersion3;
+// Lấy host theo URL hiện tại (LAN-friendly): nếu user mở từ máy khác,
+// API URL sẽ tự dùng IP của server thay vì localhost.
+const apiHost = (typeof window !== "undefined" && window.location && window.location.hostname) || "localhost";
+const BASE_URL = "http://" + apiHost + ":2003/api/" + apiVersion;
+const BASE_URLV3 = "http://" + apiHost + ":2003/api/" + apiVersion3;
 const apiConfig = {
     CHECK_TOKEN: BASE_URL + "/",
     ACCOUNT_FORMS: BASE_URLV3 + "/account-forms/",
