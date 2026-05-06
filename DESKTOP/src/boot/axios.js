@@ -4,11 +4,7 @@ import moment from "moment";
 moment.locale("vi");
 
 Vue.prototype.$axios = axios;
-if (process.env.PROD) {
-  Vue.prototype.$axios.defaults.baseURL = "https://app.woodsland.com.vn:2002";
-} else {
-  Vue.prototype.$axios.defaults.baseURL = "http://localhost:2003";
-}
+Vue.prototype.$axios.defaults.baseURL = "http://localhost:2003";
 Vue.prototype.moment = moment;
 
 Vue.filter("lastName", function (accountId) {

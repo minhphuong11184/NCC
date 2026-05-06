@@ -1,15 +1,7 @@
-const apiVersion = "v2"; //  prod https://app.woodsland.com.vn:2002
-const apiVersion3 = "v3"; // dev  https://woodslandproxy.herokuapp.com/
-let BASE_URL = "http://localhost:2003" + "/api/" + apiVersion;
-let BASE_URLV3 = "http://localhost:2003" + "/api/" + apiVersion3;
-if (process.env.BASE_URL) {
-    BASE_URL = process.env.BASE_URL + "/api/" + apiVersion;
-    BASE_URLV3 = process.env.BASE_URL + "/api/" + apiVersion3;
-}
-if (process.env.PROD) {
-    BASE_URL = process.env.PROD_URL + "/api/" + apiVersion;
-    BASE_URLV3 = process.env.PROD_URL + "/api/" + apiVersion3;
-}
+const apiVersion = "v2";
+const apiVersion3 = "v3";
+const BASE_URL = "http://localhost:2003" + "/api/" + apiVersion;
+const BASE_URLV3 = "http://localhost:2003" + "/api/" + apiVersion3;
 const apiConfig = {
     CHECK_TOKEN: BASE_URL + "/",
     ACCOUNT_FORMS: BASE_URLV3 + "/account-forms/",
