@@ -93,8 +93,8 @@ router.post('/phan-bo', async (req, res) => {
                 continue
             }
 
-            const klCacChuyen = []
-            const xeCacChuyen = []
+            let klCacChuyen = []
+            let xeCacChuyen = []
             let klConLai = klTong
 
             while (klConLai > 0.01) {
