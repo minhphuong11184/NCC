@@ -371,19 +371,25 @@ export default {
       const los = [...new Set(p.chi_tiet.map(d => d.lo_go).filter(Boolean))];
       return los.join(", ");
     },
-    async loadNcc() {
-      try {
-        const { data } = await axios.get(`http://${this.host()}:2003/api/v1/ghep-lo-go/nha-cung-cap`);
-        if (data && data.meta && data.meta.success) {
-          this.nccList = data.data.map(n => ({
-            code: n.code, name: n.name,
-            label: n.code + " — " + n.name,
-          }));
-          this.nccOptions = this.nccList;
-          const hkp = this.nccList.find(n => n.code === "HKP");
-          if (hkp) { this.nccName = hkp.name; this.nccAddress = ""; }
-        }
-      } catch (err) { console.error(err); }
+    /** Build danh sách NCC từ XUONG_XE local (chỉ xưởng có mancc_woodsland). */
+    loadNcc() {
+      this.nccList = (this.danhSachXuong || [])
+        .filter(x => x.mancc_woodsland && String(x.mancc_woodsland).trim())
+        .map(x => {
+          const code = String(x.mancc_woodsland).trim();
+          return {
+            code,
+            name: x.ten,
+            dia_chi: x.dia_chi,
+            label: code + " — " + x.ten,
+          };
+        });
+      this.nccOptions = this.nccList;
+      const hkp = this.nccList.find(n => n.code === "HKP");
+      if (hkp) {
+        this.nccName = hkp.name;
+        this.nccAddress = hkp.dia_chi || "";
+      }
     },
     filterNcc(val, update) {
       update(() => {
@@ -394,9 +400,10 @@ export default {
     async load() {
       this.loading = true;
       try {
-        // Cập nhật tên NCC
+        // Cập nhật tên + địa chỉ NCC từ XUONG_XE local
         const ncc = this.nccList.find(n => n.code === this.mancc);
         this.nccName = ncc ? ncc.name : this.mancc;
+        this.nccAddress = ncc && ncc.dia_chi ? ncc.dia_chi : "";
 
         const { data } = await axios.get(`http://${this.host()}:2003/api/v1/ghep-lo-go/ghep`, {
           params: { thang: this.thang, nam: this.nam, mancc: this.mancc, source: this.source },
