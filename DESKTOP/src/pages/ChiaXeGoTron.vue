@@ -39,6 +39,17 @@
         />
       </div>
       <div class="col-auto">
+        <div class="text-caption q-mb-xs">Cách phân ngày</div>
+        <q-btn-toggle
+          v-model="cachPhanNgay"
+          :options="[
+            { label: 'A: Liên tiếp đầu tháng', value: 'A' },
+            { label: 'B: Rải đều cả tháng', value: 'B' },
+          ]"
+          color="grey-4" text-color="black" toggle-color="primary" dense
+        />
+      </div>
+      <div class="col-auto">
         <q-btn color="primary" icon="directions_car" label="Chia xe" @click="chiaXe" :loading="loading" :disable="!xuongXe" />
       </div>
       <div class="col-auto">
@@ -195,6 +206,7 @@ export default {
       soChuyenMax: 0,
       minKlChuyen: 20,
       ngayLe: "",
+      cachPhanNgay: "B",
       xuongXe: "",
       daChiaInfo: null,
       resetting: false,
@@ -265,13 +277,94 @@ export default {
           }
         );
         if (data && data.meta && data.meta.success) {
+          const allPhieu = data.data.phieu;
+          let allTon = data.data.ton || [];
+          const W = this.danhSachNgayLamViec().length;
+          const K = xe.length;
+          const cap = 2 * K * W;
+
+          if (allPhieu.length > cap) {
+            // Vượt cap 2 chuyến/xe/ngày → hỏi user
+            const choice = await new Promise(resolve => {
+              this.$q.dialog({
+                title: "Vượt cap chia xe",
+                message: `<b>${allPhieu.length}</b> chuyến > cap <b>${cap}</b> (= 2 chuyến/xe/ngày × ${K} xe × ${W} ngày làm việc).<br/><br/>
+                  Bạn muốn xử lý thế nào?<br/>
+                  • <b>Chia tiếp</b>: tăng lên 3+ chuyến/xe/ngày (vượt cap)<br/>
+                  • <b>Dừng, lưu tồn</b>: chỉ chia ${cap} chuyến đầu; các hộ bị cắt giữa chừng → chuyển sang KH tháng sau`,
+                html: true,
+                persistent: true,
+                cancel: { label: "Dừng, lưu tồn", color: "orange" },
+                ok: { label: "Chia tiếp", color: "primary" },
+              }).onOk(() => resolve("tiep"))
+                .onCancel(() => resolve("ton"));
+            });
+
+            if (choice === "ton") {
+              // Cắt phieu trong cap; hộ bị cắt giữa chừng → đẩy vào ton
+              const phieuOk = [];
+              const tenHoOk = new Set();
+              const tenHoBoQua = new Set();
+              const hoInfo = new Map();  // ten_ho -> { kl_kh, info }
+              for (const p of allPhieu) {
+                if (!hoInfo.has(p.ten_ho)) hoInfo.set(p.ten_ho, { kl_kh: p.kl_tong_ho, info: p });
+                if (tenHoBoQua.has(p.ten_ho)) continue;
+                if (phieuOk.length + 1 > cap) {
+                  tenHoBoQua.add(p.ten_ho);
+                  tenHoOk.delete(p.ten_ho);
+                  for (let i = phieuOk.length - 1; i >= 0; i--) {
+                    if (phieuOk[i].ten_ho === p.ten_ho) phieuOk.splice(i, 1);
+                  }
+                  continue;
+                }
+                phieuOk.push(p);
+                tenHoOk.add(p.ten_ho);
+              }
+              // Tạo thêm dòng tồn cho các hộ bị cắt (chia 0, tồn toàn bộ KL)
+              const tonAdd = Array.from(tenHoBoQua).map(name => {
+                const v = hoInfo.get(name) || {};
+                const info = v.info || {};
+                return {
+                  ten_ho: name, xa: info.xa, thon: info.thon,
+                  kl_kh: v.kl_kh, kl_da_chia: 0, kl_ton: v.kl_kh,
+                  khoanh: info.khoanh, lo: info.lo, dien_tich: info.dien_tich,
+                  loai_cay: info.loai_cay, nam_trong: info.nam_trong,
+                  cccd: info.cccd, chung_chi: info.chung_chi,
+                  so_bkls: info.so_bkls, ngay_bkls: info.ngay_bkls,
+                  thang_goc: info.thang, nam: info.nam,
+                  lo_go_tron: info.lo_go_tron, lo_go_xe: info.lo_go_xe,
+                  dia_chi_cccd: info.dia_chi_cccd, don_gia: info.don_gia,
+                  KD: info.KD, VD: info.VD,
+                  xuong_xe: info.xuong_xe, nhom_chung_chi: info.nhom_chung_chi,
+                };
+              });
+              allTon = [...allTon, ...tonAdd];
+              const tongKl = Math.round(phieuOk.reduce((s, r) => s + r.khoi_luong, 0) * 100) / 100;
+              const tongTon = Math.round(allTon.reduce((s, t) => s + (t.kl_ton || 0), 0) * 100) / 100;
+              this.phieu = phieuOk;
+              this.ton = allTon;
+              this.summary = {
+                so_ho: tenHoOk.size, so_phieu: phieuOk.length,
+                tong_kl: tongKl, xe: data.data.xe,
+                tong_ton: tongTon, so_ho_ton: allTon.length,
+              };
+              this.$q.notify({
+                type: "info",
+                message: `Đã cắt: chia ${phieuOk.length}/${allPhieu.length} chuyến (${tenHoOk.size} hộ). ${tenHoBoQua.size} hộ bị cắt sẽ chuyển KH tháng sau.`,
+                timeout: 8000,
+              });
+              return;
+            }
+            // "Chia tiếp" → fall through
+          }
+
+          this.phieu = allPhieu;
+          this.ton = allTon;
           this.summary = {
             so_ho: data.data.so_ho, so_phieu: data.data.so_phieu,
             tong_kl: data.data.tong_kl, xe: data.data.xe,
             tong_ton: data.data.tong_ton, so_ho_ton: data.data.so_ho_ton,
           };
-          this.phieu = data.data.phieu;
-          this.ton = data.data.ton || [];
           if (this.ton.length) {
             this.$q.notify({
               type: "warning",
@@ -301,22 +394,40 @@ export default {
       let savedTon = 0;
       let tonThangMoi = null;
       try {
-        // 1. Sắp xếp phiếu theo lô gỗ tăng dần (chuyến thứ tự trong cùng lô gỗ)
-        this.phieu.sort((a, b) => {
-          const la = (a.lo_go_tron || "~").toString();
-          const lb = (b.lo_go_tron || "~").toString();
-          const cmp = la.localeCompare(lb, "vi", { numeric: true, sensitivity: "base" });
-          if (cmp !== 0) return cmp;
-          return (a.chuyen_thu || 0) - (b.chuyen_thu || 0);
+        // 1. Group theo xe, sort mỗi queue theo lô gỗ + chuyến thứ
+        const byXe = new Map();
+        this.phieu.forEach(p => {
+          if (!byXe.has(p.xe)) byXe.set(p.xe, []);
+          byXe.get(p.xe).push(p);
         });
-        // Re-STT theo thứ tự đã sort
-        this.phieu.forEach((p, i) => {
+        for (const q of byXe.values()) {
+          q.sort((a, b) => {
+            const la = (a.lo_go_tron || "~").toString();
+            const lb = (b.lo_go_tron || "~").toString();
+            const cmp = la.localeCompare(lb, "vi", { numeric: true, sensitivity: "base" });
+            if (cmp !== 0) return cmp;
+            return (a.chuyen_thu || 0) - (b.chuyen_thu || 0);
+          });
+        }
+
+        // 2. Round-robin các xe: xe A→B→C→A→B→C... đảm bảo trong 1 ngày các xe đều có chuyến
+        const xeQueues = Array.from(byXe.values());
+        const ordered = [];
+        while (xeQueues.some(q => q.length > 0)) {
+          for (const q of xeQueues) {
+            if (q.length > 0) ordered.push(q.shift());
+          }
+        }
+
+        // 3. Re-STT theo thứ tự đã interleave
+        ordered.forEach((p, i) => {
           p.stt = i + 1;
           p.so_phieu_du_kien = `${i + 1}/${this.thang || ""}-TT`;
         });
+        this.phieu = ordered;
 
-        // 2. Phân bổ Ngay_nhap: 2 chuyến/ngày, bỏ Chủ nhật + ngày lễ.
-        // Nếu N > 2*workdays → các ngày cuối tháng tăng lên 3 chuyến/ngày.
+        // 4. Phân bổ Ngay_nhap: K chuyến/ngày = số xe (mỗi xe 1 chuyến/ngày).
+        // Nếu vượt → 2K chuyến/ngày (1 xe 2 chuyến/ngày).
         const ngayList = this.phanBoNgayNhap(this.phieu.length);
         if (!ngayList) {
           this.$q.notify({
@@ -479,45 +590,66 @@ export default {
     },
 
     /**
-     * Phân bổ N phiếu vào các ngày làm việc theo quy tắc:
-     * - Ưu tiên 2 chuyến/ngày
-     * - Nếu N > 2W → các ngày cuối có 3 chuyến/ngày để hấp thụ phần dư
-     * - Nếu N > 3W → chia đều base = ceil(N/W) (cảnh báo)
+     * Phân bổ N chuyến vào các ngày làm việc theo quy tắc:
+     * - Mỗi ngày = K chuyến (K = số xe) → tất cả xe đều chạy 1 chuyến/ngày
+     * - Nếu N > K*W → một số ngày tăng lên 2K chuyến (mỗi xe 2 chuyến/ngày)
+     * - Nếu N > 2*K*W → quá tải, chia đều có cảnh báo
      * Trả về mảng N phần tử dạng ISO date string "YYYY-MM-DDT09:00:00".
      */
     phanBoNgayNhap(N) {
       const workdays = this.danhSachNgayLamViec();
       const W = workdays.length;
+      const xeList = this.danhSachXe.filter(x => x.bien_so);
+      const K = Math.max(1, xeList.length);
       if (W === 0 || N === 0) return null;
 
       let perDayPlan = [];
-      if (N <= W * 2) {
+      if (N <= K * W) {
+        // Mỗi ngày K chuyến (mỗi xe 1 chuyến); ngày cuối có thể < K
         let remaining = N;
         while (remaining > 0) {
-          perDayPlan.push(Math.min(2, remaining));
-          remaining -= 2;
+          perDayPlan.push(Math.min(K, remaining));
+          remaining -= K;
         }
-      } else if (N <= W * 3) {
-        const days3 = N - W * 2;
-        const days2 = W - days3;
-        for (let i = 0; i < days2; i++) perDayPlan.push(2);
-        for (let i = 0; i < days3; i++) perDayPlan.push(3);
+      } else if (N <= 2 * K * W) {
+        // Vượt mức K/ngày → một số ngày 2K chuyến (mỗi xe 2 chuyến), còn lại K chuyến
+        const extra = N - K * W;
+        const days2K = Math.ceil(extra / K);
+        const days1K = W - days2K;
+        for (let i = 0; i < days1K; i++) perDayPlan.push(K);
+        for (let i = 0; i < days2K; i++) perDayPlan.push(2 * K);
       } else {
-        // Quá tải: chia đều, mỗi ngày tối thiểu base = ceil(N/W)
+        // Quá tải: chia đều base = ceil(N/W), cảnh báo
         const base = Math.floor(N / W);
         const rem = N % W;
         for (let i = 0; i < W; i++) perDayPlan.push(base + (i < rem ? 1 : 0));
         this.$q.notify({
           type: "warning",
-          message: `${N} phiếu / ${W} ngày làm việc — vượt quá 3 chuyến/ngày, tự động phân bổ cao hơn.`,
+          message: `${N} chuyến / ${W} ngày làm việc với ${K} xe — vượt 2 chuyến/xe/ngày, phải chia cao hơn.`,
           timeout: 7000,
         });
       }
 
+      // Chọn ngày làm việc cho từng buổi theo cách A hoặc B
+      const numSessions = perDayPlan.length;
+      let chosenDays;
+      if (this.cachPhanNgay === "B" && numSessions > 1 && numSessions < W) {
+        // Mode B: rải đều cả tháng — step = floor(W/numSessions)
+        const step = Math.floor(W / numSessions);
+        chosenDays = [];
+        for (let i = 0; i < numSessions; i++) {
+          const idx = Math.min(W - 1, i * step);
+          chosenDays.push(workdays[idx]);
+        }
+      } else {
+        // Mode A (mặc định): liên tiếp từ ngày đầu
+        chosenDays = workdays.slice(0, numSessions);
+      }
+
       const result = [];
       let phIdx = 0;
-      for (let dayIdx = 0; dayIdx < perDayPlan.length; dayIdx++) {
-        const dayIso = workdays[dayIdx];
+      for (let dayIdx = 0; dayIdx < numSessions; dayIdx++) {
+        const dayIso = chosenDays[dayIdx];
         for (let k = 0; k < perDayPlan[dayIdx]; k++) {
           result[phIdx++] = `${dayIso}T09:00:00`;
         }

@@ -86,6 +86,12 @@
       <dx-column data-field="kl_go" caption="KL thực tế" data-type="number" format="#,##0.00" :width="100" />
       <dx-column data-field="don_gia" caption="Đơn giá" data-type="number" format="#,##0" :width="100" />
       <dx-column data-field="so_bkls" caption="Số BKLS" :width="110" />
+      <dx-column data-field="so_hop_dong" caption="Số HĐ" :width="120" />
+      <dx-column data-field="ngay_hop_dong" caption="Ngày HĐ" :width="110" />
+      <dx-column data-field="so_phu_luc" caption="Số PLHĐ" :width="120" />
+      <dx-column data-field="ngay_phu_luc" caption="Ngày PLHĐ" :width="110" />
+      <dx-column data-field="KD" caption="Kinh độ" :width="110" />
+      <dx-column data-field="VD" caption="Vĩ độ" :width="110" />
       <dx-column data-field="cccd" caption="CCCD" />
       <dx-summary>
         <dx-total-item column="_idx" summary-type="count" display-format="{0} hộ" />
@@ -177,6 +183,10 @@ export default {
        * [18] Vĩ độ
        * [19] Đơn Giá gỗ Tròn
        * [20] Thành tiền
+       * [21] Số hợp đồng              ← MỚI
+       * [22] Ngày hợp đồng            ← MỚI
+       * [23] Số phụ lục hợp đồng      ← MỚI
+       * [24] Ngày phụ lục hợp đồng    ← MỚI
        */
       const out = [];
       for (let i = 4; i < raw.length; i++) {
@@ -206,6 +216,10 @@ export default {
           VD: toStr(r[18]),
           don_gia: toFloat(r[19]),
           thanh_tien: toFloat(r[20]),
+          so_hop_dong: toStr(r[21]),
+          ngay_hop_dong: toStr(r[22]),
+          so_phu_luc: toStr(r[23]),
+          ngay_phu_luc: toStr(r[24]),
         });
       }
       this.rows = out;

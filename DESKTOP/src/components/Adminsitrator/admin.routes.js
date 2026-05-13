@@ -117,6 +117,26 @@ export const adminRoutes = [
     meta: { requiresAuth: true }
   },
   {
+    path: "/phuong-an-khai-thac",
+    component: () => import("pages/PhuongAnKhaiThac.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/danh-sach-kh",
+    component: () => import("pages/DanhSachKH.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/chia-xe-ngay",
+    component: () => import("pages/ChiaXeNgay.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/bieu-mau-dg",
+    component: () => import("pages/BieuMauDG.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
     path: "/ghep-lo-go",
     component: () => import("pages/GhepLoGo.vue"),
     meta: { requiresAuth: true }

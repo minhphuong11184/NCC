@@ -350,8 +350,20 @@ router.post('/luu', async (req, res) => {
         ))
 
         const result = await new mssql.Request().bulk(table)
+
+        // Đánh dấu KH đã chia trong KH_KHAI_THAC (cùng thang/nam/xuong)
+        const updRes = await new mssql.Request()
+            .input('thang', thangChia).input('nam', namChia).input('xuong', xuongChia)
+            .query(`
+                UPDATE [prod].[KH_KHAI_THAC]
+                SET da_chia = 1, ngay_chia = GETDATE()
+                WHERE thang = @thang AND nam = @nam
+                  AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong
+            `)
+
         res.api.sendData({
             inserted: result.rowsAffected,
+            kh_marked: updRes.rowsAffected[0] || 0,
             thang_chia: thangChia, nam_chia: namChia,
         })
     } catch (err) {
@@ -447,9 +459,23 @@ router.post('/reset', async (req, res) => {
             WHERE ${tonWhere}
         `)
 
+        // Reset đánh dấu da_chia về 0 cho các KH gốc tháng đó
+        const khReq = new mssql.Request().input('thang', thang).input('nam', nam)
+        let khWhere = 'thang = @thang AND nam = @nam'
+        if (xuong) {
+            khReq.input('xuong', xuong)
+            khWhere += " AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong"
+        }
+        const khRes = await khReq.query(`
+            UPDATE [prod].[KH_KHAI_THAC]
+            SET da_chia = 0, ngay_chia = NULL
+            WHERE ${khWhere}
+        `)
+
         res.api.sendData({
             deleted_phieu: phieuDel.rowsAffected[0] || 0,
             deleted_ton: tonDel.rowsAffected[0] || 0,
+            kh_unmarked: khRes.rowsAffected[0] || 0,
             thang, nam, xuong_xe: xuong,
         })
     } catch (err) {
@@ -555,6 +581,477 @@ router.post('/luu-ton', async (req, res) => {
         })
     } catch (err) {
         console.error(err)
+        res.api.sendFail({ number: 4907, message: String(err.message || err) })
+    }
+})
+
+/* ===================== CHIA XE THEO ĐỢT (theo ngày) ===================== */
+
+/**
+ * GET /kh-chua-chia?thang=&nam=&xuong_xe=
+ * Trả về list KH có da_chia=0 (chưa chia hoặc đã reset), group theo ten_ho.
+ */
+router.get('/kh-chua-chia', async (req, res) => {
+    try {
+        const thang = parseInt(req.query.thang)
+        const nam = parseInt(req.query.nam)
+        const xuong = (req.query.xuong_xe || '').toString().trim()
+        if (!thang || !nam || !xuong) {
+            return res.api.sendFail({ number: 4900, message: 'Thiếu tháng/năm/xưởng' })
+        }
+        const { recordset } = await new mssql.Request()
+            .input('thang', thang).input('nam', nam).input('xuong', xuong)
+            .query(`
+                SELECT
+                    ten_ho, MAX(xa) AS xa, MAX(thon) AS thon,
+                    MAX(cccd) AS cccd, MAX(dia_chi_cccd) AS dia_chi_cccd,
+                    MAX(chung_chi) AS chung_chi,
+                    MAX(nhom_chung_chi) AS nhom_chung_chi,
+                    SUM(kl_bang_ke) AS tong_kl_bang_ke,
+                    SUM(kl_go) AS tong_kl_go,
+                    COUNT(*) AS so_lo,
+                    MAX(CAST(da_chia AS INT)) AS da_chia
+                FROM [prod].[KH_KHAI_THAC]
+                WHERE thang=@thang AND nam=@nam
+                  AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong
+                  AND da_chia = 0
+                  AND (kl_go > 0 OR kl_bang_ke > 0)
+                GROUP BY ten_ho
+                ORDER BY ten_ho
+            `)
+        res.api.sendData(recordset)
+    } catch (err) {
+        console.error(err)
+        res.api.sendFail({ number: 4907, message: String(err.message || err) })
+    }
+})
+
+/**
+ * POST /phan-bo-dot
+ * Body: { thang, nam, xuong_xe, xe[], dung_sai, min_kl_chuyen, ten_ho_chon[] }
+ * Chia xe cho các hộ user đã chọn; STT phiếu bắt đầu từ max+1 (nối tiếp đợt cũ).
+ */
+router.post('/phan-bo-dot', async (req, res) => {
+    try {
+        const thang = req.body.thang || null
+        const nam = req.body.nam || null
+        const xuongXe = (req.body.xuong_xe || '').toString().trim() || null
+        const phanTram = req.body.dung_sai || 10
+        const minKlChuyen = parseFloat(req.body.min_kl_chuyen) || 20
+        const tenHoChon = Array.isArray(req.body.ten_ho_chon) ? req.body.ten_ho_chon : []
+
+        if (!thang || !nam || !xuongXe) {
+            return res.api.sendFail({ number: 4900, message: 'Thiếu tháng/năm/xưởng' })
+        }
+        if (!tenHoChon.length) {
+            return res.api.sendFail({ number: 4900, message: 'Chưa chọn hộ nào để chia' })
+        }
+
+        const rawXe = req.body.xe || []
+        const danhSachXe = rawXe.map(x => typeof x === 'string'
+            ? { bien_so: x, m3: 30 }
+            : { bien_so: x.bien_so, m3: x.m3 || 30 })
+        if (!danhSachXe.length) {
+            return res.api.sendFail({ number: 4900, message: 'Chưa có danh sách xe' })
+        }
+
+        // Tính offset STT phiếu: COUNT các phiếu đã có của (thang, nam, xuong)
+        const offRes = await new mssql.Request()
+            .input('thang', thang).input('nam', nam).input('xuong', xuongXe)
+            .query(`
+                SELECT COUNT(*) AS so_phieu_cu
+                FROM [prod].[NHAP_GO_TRON]
+                WHERE thang_chia=@thang AND nam_chia=@nam
+                  AND LTRIM(RTRIM(ISNULL(Xuong_xe, ''))) = @xuong
+            `)
+        const sttOffset = offRes.recordset[0].so_phieu_cu || 0
+
+        // Lấy KH các hộ user chọn (da_chia=0, kl > 0)
+        const req2 = new mssql.Request()
+            .input('thang', thang).input('nam', nam).input('xuong', xuongXe)
+        const placeholders = tenHoChon.map((_, i) => `@h${i}`).join(',')
+        tenHoChon.forEach((h, i) => req2.input(`h${i}`, h))
+        const { recordset } = await req2.query(`
+            SELECT * FROM [prod].[KH_KHAI_THAC]
+            WHERE thang=@thang AND nam=@nam
+              AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong
+              AND da_chia = 0
+              AND ten_ho IN (${placeholders})
+              AND (kl_go > 0 OR kl_bang_ke > 0)
+            ORDER BY ten_ho
+        `)
+        if (!recordset.length) {
+            return res.api.sendFail({
+                number: 4900,
+                message: 'Không tìm thấy KH chưa chia cho các hộ đã chọn',
+            })
+        }
+
+        // Chia phiếu (logic giống /phan-bo, không có soChuyenMax)
+        const result = []
+        const ton = []
+        let xeIdx = 0
+        let sttPhieu = sttOffset
+
+        for (const ho of recordset) {
+            const klTong = ho.kl_go || ho.kl_bang_ke || 0
+            if (klTong <= 0) continue
+
+            let klCacChuyen = []
+            let xeCacChuyen = []
+            let klConLai = klTong
+
+            while (klConLai > 0.01) {
+                const xeHienTai = danhSachXe[xeIdx % danhSachXe.length]
+                xeIdx++
+                const xeMax = xeHienTai.m3 * (1 + phanTram / 100)
+                const xeMin = xeHienTai.m3 * (1 - phanTram / 100)
+                if (klConLai <= xeMax) {
+                    klCacChuyen.push(Math.round(klConLai * 100) / 100)
+                    xeCacChuyen.push(xeHienTai)
+                    klConLai = 0
+                } else {
+                    const kl = Math.round((xeMin + Math.random() * (xeMax - xeMin)) * 100) / 100
+                    klCacChuyen.push(kl)
+                    xeCacChuyen.push(xeHienTai)
+                    klConLai -= kl
+                }
+            }
+
+            // Cân chuyến cuối < min (cùng logic /phan-bo)
+            const lastIdx = klCacChuyen.length - 1
+            if (klCacChuyen.length > 1 && klCacChuyen[lastIdx] < minKlChuyen - 0.01) {
+                const tongHoChia = klCacChuyen.reduce((s, k) => s + k, 0)
+                const N_orig = klCacChuyen.length
+                let n_opt = N_orig
+                for (let n = 1; n <= N_orig; n++) {
+                    const avg = tongHoChia / n
+                    const fitAll = xeCacChuyen.slice(0, n).every(
+                        x => avg <= x.m3 * (1 + phanTram / 100) + 0.01
+                    )
+                    if (fitAll) { n_opt = n; break }
+                }
+                const xeArr = xeCacChuyen.slice(0, n_opt)
+                const maxes = xeArr.map(x => x.m3 * (1 + phanTram / 100))
+                const effMin = Math.min(minKlChuyen, tongHoChia / n_opt - 0.01)
+                const newKl = []
+                let remaining = tongHoChia
+                for (let i = 0; i < n_opt - 1; i++) {
+                    const remN = n_opt - i - 1
+                    const remMin = effMin * remN
+                    const remMax = maxes.slice(i + 1).reduce((s, m) => s + m, 0)
+                    const lower = Math.max(effMin, remaining - remMax)
+                    const upper = Math.min(maxes[i], remaining - remMin)
+                    let kl
+                    if (upper - lower < 0.01) kl = (lower + upper) / 2
+                    else kl = lower + Math.random() * (upper - lower)
+                    kl = Math.round(kl * 100) / 100
+                    newKl.push(kl)
+                    remaining = Math.round((remaining - kl) * 100) / 100
+                }
+                newKl.push(Math.round(remaining * 100) / 100)
+                klCacChuyen = newKl
+                xeCacChuyen = xeArr
+            }
+
+            const soChuyen = klCacChuyen.length
+            const klDaChia = klCacChuyen.reduce((s, k) => s + k, 0)
+
+            for (let c = 0; c < soChuyen; c++) {
+                sttPhieu++
+                result.push({
+                    stt: sttPhieu,
+                    so_phieu_du_kien: `${sttPhieu}/${thang}-TT`,
+                    ten_ho: ho.ten_ho, xa: ho.xa, thon: ho.thon,
+                    khoi_luong: klCacChuyen[c],
+                    xe: xeCacChuyen[c].bien_so, xe_m3: xeCacChuyen[c].m3,
+                    kl_tong_ho: klTong, so_chuyen_ho: soChuyen, chuyen_thu: c + 1,
+                    khoanh: ho.khoanh, lo: ho.lo, dien_tich: ho.dien_tich,
+                    loai_cay: ho.loai_cay, nam_trong: ho.nam_trong,
+                    cccd: ho.cccd, chung_chi: ho.chung_chi,
+                    so_bkls: ho.so_bkls, ngay_bkls: ho.ngay_bkls,
+                    thang: ho.thang, nam: ho.nam,
+                    lo_go_tron: ho.lo_go_tron, lo_go_xe: ho.lo_go_xe,
+                    dia_chi_cccd: ho.dia_chi_cccd, don_gia: ho.don_gia,
+                    KD: ho.KD, VD: ho.VD,
+                    xuong_xe: ho.xuong_xe, nhom_chung_chi: ho.nhom_chung_chi,
+                })
+            }
+
+            const klTon = Math.round((klTong - klDaChia) * 100) / 100
+            if (klTon > 0.01) {
+                ton.push({
+                    ten_ho: ho.ten_ho, xa: ho.xa, thon: ho.thon,
+                    kl_kh: klTong, kl_da_chia: Math.round(klDaChia * 100) / 100, kl_ton: klTon,
+                    khoanh: ho.khoanh, lo: ho.lo, dien_tich: ho.dien_tich,
+                    thang_goc: ho.thang, nam: ho.nam,
+                })
+            }
+        }
+
+        res.api.sendData({
+            so_ho: recordset.length,
+            so_phieu: result.length,
+            tong_kl: Math.round(result.reduce((s, r) => s + r.khoi_luong, 0) * 100) / 100,
+            xe: danhSachXe,
+            stt_offset: sttOffset,
+            phieu: result,
+            ton: ton,
+        })
+    } catch (err) {
+        console.error(err)
+        res.api.sendFail({ number: 4907, message: String(err.message || err) })
+    }
+})
+
+/**
+ * POST /luu-dot
+ * Body: { phieu, thang_chia, nam_chia, xuong_xe, ten_ho_chia[] }
+ * KHÔNG chặn nếu tháng đã chia 1 phần. Chỉ chặn nếu hộ trong ten_ho_chia đã da_chia=1.
+ * Sau khi insert NHAP_GO_TRON → UPDATE da_chia=1 CHỈ cho các hộ trong ten_ho_chia.
+ */
+router.post('/luu-dot', async (req, res) => {
+    try {
+        const rows = Array.isArray(req.body.phieu) ? req.body.phieu : []
+        const thangChia = parseInt(req.body.thang_chia) || null
+        const namChia = parseInt(req.body.nam_chia) || null
+        const xuongChia = (req.body.xuong_xe || '').toString().trim() || null
+        const tenHoChia = Array.isArray(req.body.ten_ho_chia) ? req.body.ten_ho_chia : []
+        if (!rows.length) return res.api.sendFail({ number: 4900, message: 'Không có dữ liệu' })
+        if (!thangChia || !namChia || !xuongChia) {
+            return res.api.sendFail({ number: 4900, message: 'Thiếu tháng/năm/xưởng' })
+        }
+        if (!tenHoChia.length) {
+            return res.api.sendFail({ number: 4900, message: 'Thiếu danh sách hộ chia' })
+        }
+
+        // Defensive: check các hộ trong ten_ho_chia có hộ nào đã da_chia=1 chưa
+        const reqCheck = new mssql.Request()
+            .input('thang', thangChia).input('nam', namChia).input('xuong', xuongChia)
+        const phs = tenHoChia.map((_, i) => `@hc${i}`).join(',')
+        tenHoChia.forEach((h, i) => reqCheck.input(`hc${i}`, h))
+        const chkRes = await reqCheck.query(`
+            SELECT ten_ho FROM [prod].[KH_KHAI_THAC]
+            WHERE thang=@thang AND nam=@nam
+              AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong
+              AND da_chia = 1
+              AND ten_ho IN (${phs})
+        `)
+        if (chkRes.recordset.length > 0) {
+            const dupNames = chkRes.recordset.map(r => r.ten_ho).join(', ')
+            return res.api.sendFail({
+                number: 4900,
+                message: `Các hộ đã chia rồi, không thể chia lại: ${dupNames}`,
+            })
+        }
+
+        // Insert NHAP_GO_TRON (giống /luu)
+        const table = new mssql.Table('[prod].[NHAP_GO_TRON]')
+        table.create = false
+        table.columns.add('TT', mssql.Float, { nullable: true })
+        table.columns.add('Xuong_xe', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('Chu_rung', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('Xa', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('Huyen', mssql.NVarChar(255), { nullable: true })
+        table.columns.add('Loai_go', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('Lo_go', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('Thang', mssql.Int, { nullable: true })
+        table.columns.add('So_phieu', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('Ngay_nhap', mssql.DateTime, { nullable: true })
+        table.columns.add('Khoi_luong', mssql.Float, { nullable: true })
+        table.columns.add('Xe', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('So_chung_chi', mssql.NVarChar(255), { nullable: true })
+        table.columns.add('Hinh_thuc_xe', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('Khoang', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('Lo', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('Dien_tich', mssql.Float, { nullable: true })
+        table.columns.add('Nam', mssql.Int, { nullable: true })
+        table.columns.add('Don_gia', mssql.Float, { nullable: true })
+        table.columns.add('So_BKLS', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('Go_xe_giao', mssql.Float, { nullable: true })
+        table.columns.add('Ngay_BKLS', mssql.NVarChar(200), { nullable: true })
+        table.columns.add('cccd', mssql.NVarChar(500), { nullable: true })
+        table.columns.add('dia_chi_cccd', mssql.NVarChar(500), { nullable: true })
+        table.columns.add('Thon', mssql.NVarChar(255), { nullable: true })
+        table.columns.add('KD', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('VD', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('thang_chia', mssql.Int, { nullable: true })
+        table.columns.add('nam_chia', mssql.Int, { nullable: true })
+        table.columns.add('Nam_trong', mssql.Int, { nullable: true })
+        table.columns.add('nhom_chung_chi', mssql.NVarChar(255), { nullable: true })
+
+        rows.forEach(d => table.rows.add(
+            d.stt || null, d.xuong_xe || null, d.ten_ho || null,
+            d.xa || null, d.huyen || null, 'Acacia Mangium', d.lo_go_tron || null,
+            d.thang || null, d.so_phieu_du_kien || null,
+            d.ngay_nhap ? new Date(d.ngay_nhap) : null,
+            d.khoi_luong || null, d.xe || null, d.chung_chi || null,
+            d.hinh_thuc_xe || null, d.khoanh || null, d.lo || null,
+            d.dien_tich || null, d.nam || null, d.don_gia || null,
+            d.so_bkls || null, d.go_xe_giao || null, d.ngay_bkls || null,
+            d.cccd || null, d.dia_chi_cccd || null, d.thon || null,
+            d.KD || null, d.VD || null,
+            thangChia, namChia, d.nam_trong || null, d.nhom_chung_chi || null
+        ))
+        const result = await new mssql.Request().bulk(table)
+
+        // UPDATE da_chia=1 chỉ cho các hộ trong ten_ho_chia
+        const reqUpd = new mssql.Request()
+            .input('thang', thangChia).input('nam', namChia).input('xuong', xuongChia)
+        const phsU = tenHoChia.map((_, i) => `@hu${i}`).join(',')
+        tenHoChia.forEach((h, i) => reqUpd.input(`hu${i}`, h))
+        const updRes = await reqUpd.query(`
+            UPDATE [prod].[KH_KHAI_THAC]
+            SET da_chia=1, ngay_chia=GETDATE()
+            WHERE thang=@thang AND nam=@nam
+              AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong
+              AND ten_ho IN (${phsU})
+        `)
+
+        res.api.sendData({
+            inserted: result.rowsAffected,
+            kh_marked: updRes.rowsAffected[0] || 0,
+            thang_chia: thangChia, nam_chia: namChia,
+        })
+    } catch (err) {
+        console.error(err)
+        res.api.sendFail({ number: 4907, message: String(err.message || err) })
+    }
+})
+
+/**
+ * POST /chuyen-ton-cuoi-thang
+ * Body: { thang, nam, xuong_xe, ton_partial?: [{ten_ho, kl_ton}] }
+ * - Chuyển các hộ còn da_chia=0 sang KH tháng sau với KL nguyên gốc.
+ * - Nếu ton_partial có giá trị: chuyển thêm các hộ đã chia một phần với kl_go=kl_ton.
+ * Cuối cùng đánh dấu da_chia=1, ngay_chia=GETDATE() cho hộ gốc tháng hiện tại.
+ */
+router.post('/chuyen-ton-cuoi-thang', async (req, res) => {
+    try {
+        const thang = parseInt(req.body.thang) || null
+        const nam = parseInt(req.body.nam) || null
+        const xuong = (req.body.xuong_xe || '').toString().trim() || null
+        const tonPartial = Array.isArray(req.body.ton_partial) ? req.body.ton_partial : []
+        if (!thang || !nam || !xuong) {
+            return res.api.sendFail({ number: 4900, message: 'Thiếu tháng/năm/xưởng' })
+        }
+
+        // 1. Lấy hộ chưa chia (da_chia=0) — preserve mọi dòng/lô
+        const { recordset: rowsNotChia } = await new mssql.Request()
+            .input('thang', thang).input('nam', nam).input('xuong', xuong)
+            .query(`
+                SELECT * FROM [prod].[KH_KHAI_THAC]
+                WHERE thang=@thang AND nam=@nam
+                  AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong
+                  AND da_chia = 0
+                  AND (kl_go > 0 OR kl_bang_ke > 0)
+            `)
+
+        // 2. Lấy hộ partial (đã chia một phần — chỉ lấy 1 dòng/hộ, gộp KL còn lại)
+        let rowsPartial = []
+        if (tonPartial.length) {
+            const reqP = new mssql.Request().input('thang', thang).input('nam', nam).input('xuong', xuong)
+            const phs = tonPartial.map((_, i) => `@hp${i}`).join(',')
+            tonPartial.forEach((t, i) => reqP.input(`hp${i}`, t.ten_ho))
+            const klMap = new Map(tonPartial.map(t => [t.ten_ho, Number(t.kl_ton) || 0]))
+            const { recordset } = await reqP.query(`
+                SELECT * FROM (
+                    SELECT *, ROW_NUMBER() OVER (PARTITION BY ten_ho ORDER BY ID) AS rn
+                    FROM [prod].[KH_KHAI_THAC]
+                    WHERE thang=@thang AND nam=@nam
+                      AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong
+                      AND ten_ho IN (${phs})
+                ) t WHERE rn = 1
+            `)
+            rowsPartial = recordset.map(r => ({
+                ...r,
+                kl_go: klMap.get(r.ten_ho) || 0,
+                kl_bang_ke: klMap.get(r.ten_ho) || 0,
+            }))
+        }
+
+        const rows = [...rowsNotChia, ...rowsPartial]
+        if (!rows.length) {
+            return res.api.sendData({ inserted: 0, marked: 0, message: 'Không còn hộ nào để chuyển' })
+        }
+
+        // Xác định tháng sau
+        const thangMoi = thang + 1 > 12 ? 1 : thang + 1
+        const namMoi = thang + 1 > 12 ? nam + 1 : nam
+
+        // Xóa tồn cũ của tháng đích (nếu đã chuyển trước đó) — tránh duplicate
+        await new mssql.Request()
+            .input('thang', thangMoi).input('nam', namMoi)
+            .input('chiaThang', thang).input('chiaNam', nam)
+            .input('xuong', xuong)
+            .query(`
+                DELETE FROM [prod].[KH_KHAI_THAC]
+                WHERE thang=@thang AND nam=@nam
+                  AND chia_thang=@chiaThang AND chia_nam=@chiaNam
+                  AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong
+                  AND source_sheet = 'TON'
+            `)
+
+        // Bulk insert các dòng tồn sang KH tháng sau
+        const table = new mssql.Table('[prod].[KH_KHAI_THAC]')
+        table.create = false
+        table.columns.add('thang', mssql.Int, { nullable: true })
+        table.columns.add('nam', mssql.Int, { nullable: true })
+        table.columns.add('xa', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('ten_ho', mssql.NVarChar(200), { nullable: true })
+        table.columns.add('thon', mssql.NVarChar(500), { nullable: true })
+        table.columns.add('cccd', mssql.NVarChar(500), { nullable: true })
+        table.columns.add('chung_chi', mssql.NVarChar(500), { nullable: true })
+        table.columns.add('nhom_chung_chi', mssql.NVarChar(255), { nullable: true })
+        table.columns.add('khoanh', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('lo', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('dien_tich', mssql.Float, { nullable: true })
+        table.columns.add('nam_trong', mssql.Int, { nullable: true })
+        table.columns.add('kl_bang_ke', mssql.Float, { nullable: true })
+        table.columns.add('kl_go', mssql.Float, { nullable: true })
+        table.columns.add('so_bkls', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('ngay_bkls', mssql.NVarChar(200), { nullable: true })
+        table.columns.add('KD', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('VD', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('source_sheet', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('source_file', mssql.NVarChar(500), { nullable: true })
+        table.columns.add('lo_go_tron', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('lo_go_xe', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('dia_chi_cccd', mssql.NVarChar(500), { nullable: true })
+        table.columns.add('don_gia', mssql.Float, { nullable: true })
+        table.columns.add('thanh_tien', mssql.Float, { nullable: true })
+        table.columns.add('chia_thang', mssql.Int, { nullable: true })
+        table.columns.add('chia_nam', mssql.Int, { nullable: true })
+        table.columns.add('xuong_xe', mssql.NVarChar(255), { nullable: true })
+
+        rows.forEach(d => table.rows.add(
+            thangMoi, namMoi, d.xa, d.ten_ho, d.thon, d.cccd, d.chung_chi,
+            d.nhom_chung_chi, d.khoanh, d.lo, d.dien_tich, d.nam_trong,
+            d.kl_bang_ke, d.kl_go, d.so_bkls, d.ngay_bkls, d.KD, d.VD,
+            'TON', d.source_file, d.lo_go_tron, d.lo_go_xe, d.dia_chi_cccd,
+            d.don_gia, d.thanh_tien,
+            thang, nam, d.xuong_xe
+        ))
+        const ins = await new mssql.Request().bulk(table)
+
+        // Đánh dấu hộ gốc da_chia=1 để không hiện trong "chưa chia" nữa
+        const upd = await new mssql.Request()
+            .input('thang', thang).input('nam', nam).input('xuong', xuong)
+            .query(`
+                UPDATE [prod].[KH_KHAI_THAC]
+                SET da_chia=1, ngay_chia=GETDATE()
+                WHERE thang=@thang AND nam=@nam
+                  AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) = @xuong
+                  AND da_chia = 0
+            `)
+
+        res.api.sendData({
+            inserted: ins.rowsAffected[0] || 0,
+            marked: upd.rowsAffected[0] || 0,
+            thang_moi: thangMoi, nam_moi: namMoi,
+        })
+    } catch (err) {
+        console.error('[chuyen-ton-cuoi-thang]', err)
         res.api.sendFail({ number: 4907, message: String(err.message || err) })
     }
 })

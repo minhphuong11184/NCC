@@ -35,7 +35,13 @@ router.get('/danh-sach', async (req, res) => {
                 SUM(thanh_tien) AS tong_thanh_tien,
                 MAX(so_bkls) AS so_bkls,
                 MAX(ngay_bkls) AS ngay_bkls,
-                MAX(source_sheet) AS source_sheet
+                MAX(so_hop_dong) AS so_hop_dong,
+                MAX(ngay_hop_dong) AS ngay_hop_dong,
+                MAX(so_phu_luc) AS so_phu_luc,
+                MAX(ngay_phu_luc) AS ngay_phu_luc,
+                MAX(source_sheet) AS source_sheet,
+                MAX(CAST(da_chia AS INT)) AS da_chia,
+                MAX(ngay_chia) AS ngay_chia
             FROM [prod].[KH_KHAI_THAC]
             WHERE ${where}
             GROUP BY ten_ho

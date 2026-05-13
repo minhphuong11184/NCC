@@ -49,6 +49,10 @@ router.post('/import', async (req, res) => {
         table.columns.add('don_gia', mssql.Float, { nullable: true })
         table.columns.add('thanh_tien', mssql.Float, { nullable: true })
         table.columns.add('xuong_xe', mssql.NVarChar(255), { nullable: true })
+        table.columns.add('so_hop_dong', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('ngay_hop_dong', mssql.NVarChar(200), { nullable: true })
+        table.columns.add('so_phu_luc', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('ngay_phu_luc', mssql.NVarChar(200), { nullable: true })
 
         rows.forEach(d => table.rows.add(
             d.thang, d.nam, d.xa, d.ten_ho, d.thon, d.cccd, d.chung_chi,
@@ -58,7 +62,9 @@ router.post('/import', async (req, res) => {
             d.so_bkls, d.ngay_bkls, d.KD, d.VD, d.source_sheet, d.source_file,
             d.lo_go_tron || null, d.lo_go_xe || null, d.dia_chi_cccd || null,
             d.don_gia || null, d.thanh_tien || null,
-            d.xuong_xe || null
+            d.xuong_xe || null,
+            d.so_hop_dong || null, d.ngay_hop_dong || null,
+            d.so_phu_luc || null, d.ngay_phu_luc || null
         ))
 
         const result = await new mssql.Request().bulk(table)

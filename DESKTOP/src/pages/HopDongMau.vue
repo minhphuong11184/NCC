@@ -198,7 +198,7 @@
         <div class="hd-text">- Căn cứ vào Hợp đồng nguyên tắc mua bán gỗ số {{ soHopDong }} ngày {{ ngayHD.ngay }} tháng {{ ngayHD.thang }} năm {{ ngayHD.nam }};</div>
         <div class="hd-text">- Căn cứ nhu cầu và khả năng của hai bên.</div>
         <div class="hd-text indent q-mt-sm">
-          Hôm nay, ngày <b>{{ ngayHD.ngay }}</b> tháng <b>{{ ngayHD.thang }}</b> năm <b>{{ ngayHD.nam }}</b>, tại trụ sở {{ xuongTen }} - Địa chỉ: {{ xuongDiaChi }}, chúng tôi gồm:
+          Hôm nay, ngày <b>{{ ngayPL.ngay }}</b> tháng <b>{{ ngayPL.thang }}</b> năm <b>{{ ngayPL.nam }}</b>, tại trụ sở {{ xuongTen }} - Địa chỉ: {{ xuongDiaChi }}, chúng tôi gồm:
         </div>
 
         <!-- Bên A -->
@@ -358,21 +358,38 @@ export default {
       return this.lo.ten_ho.trim().split(/\s+/)
         .map(w => w.charAt(0).toUpperCase()).join("");
     },
-    /** Số HĐ dạng "001-26/HĐMB-{xuongCode}-{initials}". */
+    /**
+     * Số HĐ — ưu tiên cột so_hop_dong nhập từ Excel KH.
+     * Fallback: dựng từ Mã lô gỗ "{stt}-{yy}/HĐMB-{xuongCode}-{initials}".
+     */
     soHopDong() {
-      const yy = String(this.nam).slice(-2);
+      if (this.lo && this.lo.so_hop_dong) return this.lo.so_hop_dong;
       const code = this.xuongCode || "XXX";
-      return `001-${yy}/HĐMB-${code}-${this.benBInitials}`;
+      const { stt, yy } = this.parseLoGoTron();
+      const base = `${stt}-${yy}/HĐMB-${code}`;
+      return code === "LT" ? base : `${base}-${this.benBInitials}`;
     },
-    /** Số PLHĐ dạng "01/PLHĐ - {xuongCode}-{initials}". */
+    /** Số PLHĐ — ưu tiên cột so_phu_luc nhập từ Excel KH. */
     soPhuLuc() {
+      if (this.lo && this.lo.so_phu_luc) return this.lo.so_phu_luc;
       const code = this.xuongCode || "XXX";
-      return `01/PLHĐ - ${code}-${this.benBInitials}`;
+      const { stt, yy } = this.parseLoGoTron();
+      const base = `${stt}-${yy}/PLHĐ-${code}`;
+      return code === "LT" ? base : `${base}-${this.benBInitials}`;
     },
-    /** Ngày ký HĐ: hôm nay. */
+    /** Ngày ký HĐ — ưu tiên cột ngay_hop_dong nhập từ Excel KH, fallback = hôm nay. */
     ngayHD() {
-      const d = new Date();
+      const parsed = this.parseDateString(this.lo && this.lo.ngay_hop_dong);
+      const d = parsed || new Date();
       return { ngay: d.getDate(), thang: d.getMonth() + 1, nam: d.getFullYear() };
+    },
+    /** Ngày ký PLHĐ — ưu tiên cột ngay_phu_luc, fallback dùng ngày HĐ. */
+    ngayPL() {
+      const parsed = this.parseDateString(this.lo && this.lo.ngay_phu_luc);
+      if (parsed) {
+        return { ngay: parsed.getDate(), thang: parsed.getMonth() + 1, nam: parsed.getFullYear() };
+      }
+      return this.ngayHD;
     },
   },
   async created() { await this.loadXuongXe(); },
@@ -380,6 +397,34 @@ export default {
     host() { return window.location.hostname || "127.0.0.1"; },
     fmtNum(v) { return v == null ? "" : Number(v).toFixed(2); },
     fmtMoney(v) { return v == null ? "" : Math.round(Number(v)).toLocaleString("vi-VN"); },
+    /**
+     * Parse chuỗi ngày từ Excel — chấp nhận "12/05/2026", "12-05-2026", "2026-05-12",
+     * hoặc Date đã được xlsx convert. Trả về Date hoặc null.
+     */
+    parseDateString(raw) {
+      if (!raw) return null;
+      if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw;
+      const s = String(raw).trim();
+      if (!s) return null;
+      let m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+      if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+      m = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+      if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    },
+    /**
+     * Tách "FSCLOG25-266" → { stt: "266", yy: "25" }.
+     * Nếu không khớp pattern, dùng "001" và 2 chữ số cuối của năm đang chọn.
+     */
+    parseLoGoTron() {
+      const yyFallback = String(this.nam).slice(-2);
+      const lots = (this.lo && this.lo.lo_list) || [];
+      const code = (lots[0] && lots[0].lo_go_tron) || "";
+      const m = code.match(/^FSCLOG(\d{2})-(\d+)/i);
+      if (m) return { yy: m[1], stt: m[2] };
+      return { yy: yyFallback, stt: "001" };
+    },
     async load() {
       if (!this.xuongXe) {
         this.$q.notify({ type: "warning", message: "Vui lòng chọn xưởng xẻ trước" });
