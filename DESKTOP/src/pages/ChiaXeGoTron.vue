@@ -394,35 +394,31 @@ export default {
       let savedTon = 0;
       let tonThangMoi = null;
       try {
-        // 1. Group theo xe, sort mỗi queue theo lô gỗ + chuyến thứ
-        const byXe = new Map();
-        this.phieu.forEach(p => {
-          if (!byXe.has(p.xe)) byXe.set(p.xe, []);
-          byXe.get(p.xe).push(p);
+        // 1. Sort GLOBAL theo lô gỗ tròn tăng dần (numeric-aware), tiebreak chuyến thứ
+        const ordered = [...this.phieu].sort((a, b) => {
+          const la = (a.lo_go_tron || "~").toString();
+          const lb = (b.lo_go_tron || "~").toString();
+          const cmp = la.localeCompare(lb, "vi", { numeric: true, sensitivity: "base" });
+          if (cmp !== 0) return cmp;
+          return (a.chuyen_thu || 0) - (b.chuyen_thu || 0);
         });
-        for (const q of byXe.values()) {
-          q.sort((a, b) => {
-            const la = (a.lo_go_tron || "~").toString();
-            const lb = (b.lo_go_tron || "~").toString();
-            const cmp = la.localeCompare(lb, "vi", { numeric: true, sensitivity: "base" });
-            if (cmp !== 0) return cmp;
-            return (a.chuyen_thu || 0) - (b.chuyen_thu || 0);
-          });
+
+        // 2. Lấy mã xưởng — ưu tiên parse từ so_phieu_du_kien backend đã set (vd "1/5-TV"),
+        //    fallback xuongByTen, cuối cùng "TT"
+        let maXuong = "TT";
+        const sample = (ordered[0] && ordered[0].so_phieu_du_kien) || "";
+        const m = sample.match(/-([^-/\s]+)\s*$/);
+        if (m && m[1]) {
+          maXuong = m[1];
+        } else {
+          const xuongObj = (this.xuongByTen && this.xuongByTen[this.xuongXe]) || {};
+          if (xuongObj.ma) maXuong = String(xuongObj.ma).trim();
         }
 
-        // 2. Round-robin các xe: xe A→B→C→A→B→C... đảm bảo trong 1 ngày các xe đều có chuyến
-        const xeQueues = Array.from(byXe.values());
-        const ordered = [];
-        while (xeQueues.some(q => q.length > 0)) {
-          for (const q of xeQueues) {
-            if (q.length > 0) ordered.push(q.shift());
-          }
-        }
-
-        // 3. Re-STT theo thứ tự đã interleave
+        // 3. Re-STT theo thứ tự đã sort — số phiếu chạy lần lượt theo mã lô gỗ
         ordered.forEach((p, i) => {
           p.stt = i + 1;
-          p.so_phieu_du_kien = `${i + 1}/${this.thang || ""}-TT`;
+          p.so_phieu_du_kien = `${i + 1}/${this.thang || ""}-${maXuong}`;
         });
         this.phieu = ordered;
 
