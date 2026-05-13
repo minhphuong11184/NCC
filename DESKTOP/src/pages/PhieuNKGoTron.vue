@@ -227,13 +227,13 @@
             <tr><td class="lbl">- Địa chỉ nơi tổ chức thu mua:</td><td class="val">{{ diaChiChuRung }}</td></tr>
             <tr>
               <td class="lbl">- Số phiếu của biên bản nghiệm thu gỗ keo tai tượng (Acacia Mangium) FSC100%:</td>
-              <td class="val">{{ phieu.So_phieu }} &nbsp;&nbsp;&nbsp; Lô gỗ tròn: <b>{{ phieu.Lo_go }}</b></td>
+              <td class="val">{{ phieu.So_phieu }} &nbsp;&nbsp;&nbsp; Lô gỗ tròn: <b>{{ phieu.Lo_go_tron }}</b></td>
             </tr>
             <tr><td class="lbl">- Số chứng chỉ FM/COC:</td><td class="val">{{ phieu.So_chung_chi }}</td></tr>
             <tr><td class="lbl">- Nhóm Sp:</td><td class="val">W1.1</td></tr>
             <tr>
               <td class="lbl"></td>
-              <td class="val"><span class="hd-highlight">Theo HĐ số: {{ phieu.So_hop_dong || '' }}</span></td>
+              <td class="val"><span class="hd-highlight">Theo HĐ số: {{ phieu.So_hop_dong || '' }}<span v-if="phieu.Ngay_hop_dong"> ngày {{ phieu.Ngay_hop_dong }}</span></span></td>
             </tr>
           </table>
 
@@ -885,13 +885,13 @@ export default {
       line(`- Số chứng chỉ FM/COC: ${cfg.CHUNG_CHI_CTY}. Hiệu lực chứng chỉ: ${cfg.HIEU_LUC_CTY}.`);
       cur++;
 
-      // 2. Thông tin tổ chức, cá nhân mua
+      // 2. Thông tin tổ chức, cá nhân mua/nhận = Chủ rừng
       line("2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:", { bold: true });
-      line("- Tên tổ chức, cá nhân(4): ………………………………………………..");
-      line("- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): …………………");
-      line("- Địa chỉ(6): ………………………………………………………………");
-      line("- Số điện thoại: ………………, Địa chỉ Email: …………………………");
-      line("- Số chứng chỉ FM/COC: ………………………… Hiệu lực: ……………………….");
+      line(`- Tên tổ chức, cá nhân(4): ${p.Chu_rung || ""}`);
+      line(`- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): ${p.cccd || ""}`);
+      line(`- Địa chỉ(6): ${p.dia_chi_cccd || diaChiCR}`);
+      line(`- Số điện thoại: ………………, Địa chỉ Email: …………………………`);
+      line(`- Số chứng chỉ FM/COC: ${p.So_chung_chi || ""}`);
       cur++;
 
       // 3. Thông tin về lâm sản
@@ -903,8 +903,8 @@ export default {
       line("- Giá trị (nếu có): ……………………………………………………………");
       line(`- Khối lượng/trọng lượng: ${klStr} m³    Bằng chữ: ${klStr} mét khối.`);
       line("- Số lượng: …………………; đơn vị tính (lóng, khúc; thanh, tấm, hộp, viên, ...): ……………");
-      line(`- Thông tin về lô khai thác(8):    Khoảnh: ${p.Khoang || ""}    Lô: ${p.Lo || ""}    Diện tích: ${(p.Dien_tich || 0).toFixed(2)} ha`);
-      line(`- Thông tin khác có liên quan (nếu có): Địa danh khai thác: ${diaDanhKT}`);
+      line(`- Thông tin về lô khai thác(8):    KĐ: ${p.KD || "………"}    VĐ: ${p.VD || "………"}`);
+      line(`- Thông tin khác có liên quan (nếu có): Địa danh khai thác: ${diaDanhKT}    Lô: ${p.Lo || ""}    Khoảnh: ${p.Khoang || ""}`);
       cur++;
 
       // 4. Thông tin chi tiết
@@ -999,16 +999,18 @@ export default {
         "- Số phiếu của biên bản nghiệm thu gỗ keo tai tượng (Acacia Mangium) FSC100%:",
         { merge: `F${cur}`, bold: true, wrap: true });
       this.setCell(ws, `G${cur}`, p.So_phieu || "", { merge: `H${cur}`, center: true });
-      this.setCell(ws, `I${cur}`, `Lô gỗ tròn: ${p.Lo_go || ""}`, { merge: `J${cur}`, bold: true });
+      this.setCell(ws, `I${cur}`, `Lô gỗ tròn: ${p.Lo_go_tron || ""}`, { merge: `J${cur}`, bold: true });
       ws.getRow(cur).height = 36;
       cur++;
 
       setInfoLine("- Số chứng chỉ FM/COC:", p.So_chung_chi || "");
       setInfoLine("- Nhóm Sp:", "W1.1");
 
-      // "Theo HĐ số:" với highlight vàng — căn phải
-      this.setCell(ws, `H${cur}`, `Theo HĐ số: ${p.So_hop_dong || ""}`,
-        { merge: `J${cur}`, bold: true, fill: "FFFFEB3B", border: true, center: true });
+      // "Theo HĐ số: ... ngày ..." — căn phải
+      const hdText = `Theo HĐ số: ${p.So_hop_dong || ""}` +
+        (p.Ngay_hop_dong ? ` ngày ${p.Ngay_hop_dong}` : "");
+      this.setCell(ws, `F${cur}`, hdText,
+        { merge: `J${cur}`, bold: true, border: true, center: true });
       cur += 2;
 
       // ---- Data table (10 cols A-J) ----
@@ -1139,7 +1141,7 @@ export default {
         .header-bar { display: table; width: 100%; }
         .header-bar > div { display: table-cell; }
         .mau-so-box { display: inline-block; border: 1px solid #333; padding: 4pt 8pt; font-size: 10pt; }
-        .hd-hi { background: #FFEB3B; font-weight: bold; padding: 1pt 4pt; }
+        .hd-hi { font-weight: bold; }
         /* BKLS riêng: cỡ chữ 12pt để vừa 1 trang A4 */
         .bkls { font-size: 12pt; line-height: 1.25; }
         .bkls p { font-size: 12pt; margin: 0 0 2pt 0; }
@@ -1275,11 +1277,11 @@ export default {
         <p>- Số điện thoại: ${e(cfg.SDT_CTY)}, Địa chỉ Email: ………………………</p>
         <p>- Số chứng chỉ FM/COC: <b>${e(cfg.CHUNG_CHI_CTY)}</b>. Hiệu lực chứng chỉ: <b>${e(cfg.HIEU_LUC_CTY)}</b>.</p>
         <p class="bold">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</p>
-        <p>- Tên tổ chức, cá nhân(4): ………………………………………………..</p>
-        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): …………………</p>
-        <p>- Địa chỉ(6): ………………………………………………………………</p>
+        <p>- Tên tổ chức, cá nhân(4): <b>${e(p.Chu_rung || "")}</b></p>
+        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>${e(p.cccd || "")}</b></p>
+        <p>- Địa chỉ(6): <b>${e(p.dia_chi_cccd || diaChiCR)}</b></p>
         <p>- Số điện thoại: ………………, Địa chỉ Email: …………………………</p>
-        <p>- Số chứng chỉ FM/COC: ………………………… Hiệu lực: ……………………….</p>
+        <p>- Số chứng chỉ FM/COC: <b>${e(p.So_chung_chi || "")}</b></p>
         <p class="bold">3. Thông tin về lâm sản:</p>
         <p>- Tên loài: Gỗ tròn Keo tai tượng FSC 100% (Acacia Mangium)</p>
         <p>- Nhóm loài: Thông thường</p>
@@ -1288,8 +1290,8 @@ export default {
         <p>- Giá trị (nếu có): ……………………………………………………………</p>
         <p>- Khối lượng/trọng lượng: <b>${klStr}</b> m³    Bằng chữ: <b>${klStr}</b> mét khối.</p>
         <p>- Số lượng: …………………; đơn vị tính (lóng, khúc; thanh, tấm, hộp, viên, ...): ……………</p>
-        <p>- Thông tin về lô khai thác(8):    Khoảnh: <b>${e(p.Khoang)}</b>    Lô: <b>${e(p.Lo)}</b>    Diện tích: <b>${dtStr} ha</b></p>
-        <p>- Thông tin khác có liên quan (nếu có): Địa danh khai thác: <b>${e(diaDanhKT)}</b></p>
+        <p>- Thông tin về lô khai thác(8):    KĐ: <b>${e(p.KD || "………")}</b>    VĐ: <b>${e(p.VD || "………")}</b></p>
+        <p>- Thông tin khác có liên quan (nếu có): Địa danh khai thác: <b>${e(diaDanhKT)}</b>    Lô: <b>${e(p.Lo)}</b>    Khoảnh: <b>${e(p.Khoang)}</b></p>
         <p class="bold">4. Thông tin chi tiết tại Bảng kê khai kèm theo:</p>
         <p class="small italic">(Áp dụng đối với gỗ nguyên liệu, sản phẩm gỗ: khai thác từ rừng tự nhiên trong nước, gỗ và sản phẩm gỗ nhập khẩu, gỗ và sản phẩm gỗ sau xử lý tịch thu)</p>
         <p class="bold">5. Thông tin vận chuyển (nếu có):</p>
@@ -1339,10 +1341,10 @@ export default {
         <p>- Địa chỉ: <b>${e(cfg.DIA_CHI_CTY)}</b></p>
         <p>- Số điện thoại: ${e(cfg.SDT_CTY)}</p>
         <p>- Địa chỉ nơi tổ chức thu mua: ${e(diaChiCR)}</p>
-        <p>- Số phiếu của biên bản nghiệm thu gỗ keo tai tượng (Acacia Mangium) FSC100%: <b>${e(p.So_phieu)}</b>    Lô gỗ tròn: <b>${e(p.Lo_go)}</b></p>
+        <p>- Số phiếu của biên bản nghiệm thu gỗ keo tai tượng (Acacia Mangium) FSC100%: <b>${e(p.So_phieu)}</b>    Lô gỗ tròn: <b>${e(p.Lo_go_tron || "")}</b></p>
         <p>- Số chứng chỉ FM/COC: <b>${e(p.So_chung_chi)}</b></p>
         <p>- Nhóm Sp: W1.1</p>
-        <p class="right"><span class="hd-hi">Theo HĐ số: ${e(p.So_hop_dong || "")}</span></p>
+        <p class="right"><span class="hd-hi">Theo HĐ số: ${e(p.So_hop_dong || "")}${p.Ngay_hop_dong ? " ngày " + e(p.Ngay_hop_dong) : ""}</span></p>
         <table class="tbl">
           <tr>
             <th rowspan="2">Ngày tháng năm mua hàng</th>
@@ -1531,9 +1533,6 @@ export default {
   font-size: 11px;
 }
 .hd-highlight {
-  background: #fff59d;
-  padding: 1px 8px;
-  display: inline-block;
   font-weight: bold;
 }
 .bktm-title { text-align: center; font-weight: bold; font-size: 14px; text-transform: uppercase; }

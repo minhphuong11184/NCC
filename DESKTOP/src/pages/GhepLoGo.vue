@@ -11,7 +11,7 @@
         <q-input v-model.number="nam" type="number" label="Năm" filled dense style="width:100px" />
       </div>
       <div class="col-auto">
-        <q-select v-model="mancc" :options="nccOptions" option-value="code" option-label="label" emit-value map-options label="Nhà cung cấp" filled dense style="min-width:300px" use-input @filter="filterNcc" />
+        <q-select v-model="mancc" :options="nccOptions" option-value="code" option-label="label" emit-value map-options label="Xưởng xẻ" filled dense style="min-width:300px" use-input @filter="filterNcc" />
       </div>
       <div class="col-auto">
         <q-select v-model="source" :options="sourceOptions" emit-value map-options label="Nguồn dữ liệu" filled dense style="min-width:230px" />

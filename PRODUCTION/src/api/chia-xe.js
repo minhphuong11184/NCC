@@ -26,6 +26,18 @@ router.post('/phan-bo', async (req, res) => {
         if (!danhSachXe.length) return res.api.sendFail({ number: 4900, message: 'Chưa có danh sách xe' })
         if (!xuongXe) return res.api.sendFail({ number: 4900, message: 'Chưa chọn xưởng xẻ' })
 
+        // Lấy mã xưởng (XUONG_XE.ma) từ tên — dùng làm suffix số phiếu (vd "1-TT", "1-TV")
+        let maXuong = 'TT'
+        try {
+            const maRes = await new mssql.Request()
+                .input('ten', xuongXe)
+                .query(`SELECT TOP 1 ma FROM [prod].[XUONG_XE]
+                        WHERE LTRIM(RTRIM(ten)) = LTRIM(RTRIM(@ten))`)
+            if (maRes.recordset[0] && maRes.recordset[0].ma) {
+                maXuong = String(maRes.recordset[0].ma).trim()
+            }
+        } catch (_) { /* fallback giữ 'TT' */ }
+
         // Chặn: nếu (thang, nam, xưởng) đã có data chia xe trước đó → không cho chia lại
         if (thang && nam) {
             const checkReq = new mssql.Request()
@@ -121,16 +133,15 @@ router.post('/phan-bo', async (req, res) => {
                 }
             }
 
-            // === Cân chuyến: chia max trước; nếu chuyến cuối < min thì redistribute ===
+            // === Cân chuyến: chia max trước; nếu BẤT KỲ chuyến nào < min thì redistribute ===
             // Quy tắc:
             //   1. Stage A (đã làm trong vòng while ở trên): mỗi chuyến random trong
             //      [xeMin, xeMax] — gần xeMax (chia max).
-            //   2. Stage B: nếu chuyến cuối < minKlChuyen → tổng hợp lại, tìm N tối ưu
+            //   2. Stage B: nếu CÓ chuyến nào < minKlChuyen → tổng hợp lại, tìm N tối ưu
             //      (smallest N s.t. avg ≤ xeMax) rồi gen KL ngẫu nhiên trong [min, xeMax]
             //      sao cho sum = tổng KL — các chuyến KHÁC NHAU (không giống hệt).
-            const lastIdx = klCacChuyen.length - 1
-            if (klCacChuyen.length > 1
-                && klCacChuyen[lastIdx] < minKlChuyen - 0.01) {
+            const hasUnderMin = klCacChuyen.some(k => k < minKlChuyen - 0.01)
+            if (klCacChuyen.length > 1 && hasUnderMin) {
                 const tongHoChia = klCacChuyen.reduce((s, k) => s + k, 0)
                 const N_orig = klCacChuyen.length
                 // Smallest N: avg = tongHoChia/N ≤ xeMax mọi xe[0..N-1]
@@ -178,7 +189,7 @@ router.post('/phan-bo', async (req, res) => {
                 sttPhieu++
                 result.push({
                     stt: sttPhieu,
-                    so_phieu_du_kien: `${sttPhieu}/${thang || ''}-TT`,
+                    so_phieu_du_kien: `${sttPhieu}/${thang || ''}-${maXuong}`,
                     ten_ho: ho.ten_ho,
                     xa: ho.xa,
                     thon: ho.thon,
@@ -207,6 +218,8 @@ router.post('/phan-bo', async (req, res) => {
                     VD: ho.VD,
                     xuong_xe: ho.xuong_xe,
                     nhom_chung_chi: ho.nhom_chung_chi,
+                    so_hop_dong: ho.so_hop_dong,
+                    ngay_hop_dong: ho.ngay_hop_dong,
                 })
             }
 
@@ -314,6 +327,9 @@ router.post('/luu', async (req, res) => {
         table.columns.add('nam_chia', mssql.Int, { nullable: true })
         table.columns.add('Nam_trong', mssql.Int, { nullable: true })
         table.columns.add('nhom_chung_chi', mssql.NVarChar(255), { nullable: true })
+        table.columns.add('So_hop_dong', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('Ngay_hop_dong', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('Lo_go_tron', mssql.NVarChar(100), { nullable: true })
 
         rows.forEach(d => table.rows.add(
             d.stt || null,
@@ -322,7 +338,7 @@ router.post('/luu', async (req, res) => {
             d.xa || null,
             d.huyen || null,
             'Acacia Mangium',
-            d.lo_go_tron || null,
+            d.lo_go_xe || null,
             d.thang || null,
             d.so_phieu_du_kien || null,
             d.ngay_nhap ? new Date(d.ngay_nhap) : null,
@@ -346,7 +362,10 @@ router.post('/luu', async (req, res) => {
             thangChia,
             namChia,
             d.nam_trong || null,
-            d.nhom_chung_chi || null
+            d.nhom_chung_chi || null,
+            d.so_hop_dong || null,
+            d.ngay_hop_dong || null,
+            d.lo_go_tron || null
         ))
 
         const result = await new mssql.Request().bulk(table)
@@ -655,6 +674,18 @@ router.post('/phan-bo-dot', async (req, res) => {
             return res.api.sendFail({ number: 4900, message: 'Chưa có danh sách xe' })
         }
 
+        // Lấy mã xưởng (XUONG_XE.ma) — suffix số phiếu (vd "1-TT", "1-TV")
+        let maXuong = 'TT'
+        try {
+            const maRes = await new mssql.Request()
+                .input('ten', xuongXe)
+                .query(`SELECT TOP 1 ma FROM [prod].[XUONG_XE]
+                        WHERE LTRIM(RTRIM(ten)) = LTRIM(RTRIM(@ten))`)
+            if (maRes.recordset[0] && maRes.recordset[0].ma) {
+                maXuong = String(maRes.recordset[0].ma).trim()
+            }
+        } catch (_) { /* fallback giữ 'TT' */ }
+
         // Tính offset STT phiếu: COUNT các phiếu đã có của (thang, nam, xuong)
         const offRes = await new mssql.Request()
             .input('thang', thang).input('nam', nam).input('xuong', xuongXe)
@@ -719,8 +750,8 @@ router.post('/phan-bo-dot', async (req, res) => {
             }
 
             // Cân chuyến cuối < min (cùng logic /phan-bo)
-            const lastIdx = klCacChuyen.length - 1
-            if (klCacChuyen.length > 1 && klCacChuyen[lastIdx] < minKlChuyen - 0.01) {
+            const hasUnderMin2 = klCacChuyen.some(k => k < minKlChuyen - 0.01)
+            if (klCacChuyen.length > 1 && hasUnderMin2) {
                 const tongHoChia = klCacChuyen.reduce((s, k) => s + k, 0)
                 const N_orig = klCacChuyen.length
                 let n_opt = N_orig
@@ -761,7 +792,7 @@ router.post('/phan-bo-dot', async (req, res) => {
                 sttPhieu++
                 result.push({
                     stt: sttPhieu,
-                    so_phieu_du_kien: `${sttPhieu}/${thang}-TT`,
+                    so_phieu_du_kien: `${sttPhieu}/${thang}-${maXuong}`,
                     ten_ho: ho.ten_ho, xa: ho.xa, thon: ho.thon,
                     khoi_luong: klCacChuyen[c],
                     xe: xeCacChuyen[c].bien_so, xe_m3: xeCacChuyen[c].m3,
@@ -775,6 +806,7 @@ router.post('/phan-bo-dot', async (req, res) => {
                     dia_chi_cccd: ho.dia_chi_cccd, don_gia: ho.don_gia,
                     KD: ho.KD, VD: ho.VD,
                     xuong_xe: ho.xuong_xe, nhom_chung_chi: ho.nhom_chung_chi,
+                    so_hop_dong: ho.so_hop_dong, ngay_hop_dong: ho.ngay_hop_dong,
                 })
             }
 
@@ -879,10 +911,13 @@ router.post('/luu-dot', async (req, res) => {
         table.columns.add('nam_chia', mssql.Int, { nullable: true })
         table.columns.add('Nam_trong', mssql.Int, { nullable: true })
         table.columns.add('nhom_chung_chi', mssql.NVarChar(255), { nullable: true })
+        table.columns.add('So_hop_dong', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('Ngay_hop_dong', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('Lo_go_tron', mssql.NVarChar(100), { nullable: true })
 
         rows.forEach(d => table.rows.add(
             d.stt || null, d.xuong_xe || null, d.ten_ho || null,
-            d.xa || null, d.huyen || null, 'Acacia Mangium', d.lo_go_tron || null,
+            d.xa || null, d.huyen || null, 'Acacia Mangium', d.lo_go_xe || null,
             d.thang || null, d.so_phieu_du_kien || null,
             d.ngay_nhap ? new Date(d.ngay_nhap) : null,
             d.khoi_luong || null, d.xe || null, d.chung_chi || null,
@@ -891,7 +926,9 @@ router.post('/luu-dot', async (req, res) => {
             d.so_bkls || null, d.go_xe_giao || null, d.ngay_bkls || null,
             d.cccd || null, d.dia_chi_cccd || null, d.thon || null,
             d.KD || null, d.VD || null,
-            thangChia, namChia, d.nam_trong || null, d.nhom_chung_chi || null
+            thangChia, namChia, d.nam_trong || null, d.nhom_chung_chi || null,
+            d.so_hop_dong || null, d.ngay_hop_dong || null,
+            d.lo_go_tron || null
         ))
         const result = await new mssql.Request().bulk(table)
 

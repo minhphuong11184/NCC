@@ -12,22 +12,17 @@
         <q-select v-model="selectedCode" :options="codes" option-label="label" option-value="value" label="Mã phiếu" filled dense style="min-width:280px" @input="loadPhieu" />
       </div>
       <div class="col-auto">
-        <q-select v-model="buyerXuong" :options="xuongSelectOptions" emit-value map-options
-                  label="Xưởng xẻ (Bên mua)" filled dense style="min-width:280px"
-                  clearable @input="applyBuyerXuong" />
-      </div>
-      <div class="col-auto">
         <q-btn icon="print" label="In" color="primary" @click="printPage" :disable="!phieu" />
       </div>
     </div>
 
-    <!-- Biểu mẫu BKLS -->
+    <!-- Biểu mẫu BKLS — theo mẫu TT.xlsx sheet BKLS -->
     <div v-if="phieu" class="print-area">
       <div class="bkls-form">
         <!-- Header -->
         <div class="header-row">
           <div class="left-header">
-            <div class="company-name">{{ chuRungTen }}</div>
+            <div class="company-name">{{ TEN_CTY }}</div>
             <div class="separator">-------</div>
           </div>
           <div class="right-header">
@@ -45,33 +40,33 @@
 
         <div class="title">BẢNG KÊ LÂM SẢN</div>
 
-        <!-- 1. Thông tin chủ lâm sản (chủ rừng) -->
+        <!-- 1. Thông tin chủ lâm sản (= Xưởng xẻ / Cty mua đang vận chuyển) -->
         <div class="section-title">1. Thông tin chủ lâm sản:</div>
-        <div class="info-line">- Tên chủ lâm sản(4): <b>{{ chuRungTen || '………………………………………………..' }}</b></div>
-        <div class="info-line">- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>{{ chuRungCCCD || '…………………' }}</b></div>
-        <div class="info-line">- Địa chỉ(6): <b>{{ chuRungDiaChi || '………………………………………………………………' }}</b></div>
-        <div class="info-line">- Số điện thoại: ………………, Địa chỉ Email: …………………………</div>
-        <div class="info-line">- Số chứng chỉ FM/COC: <b>{{ chuRungChungChi || '…………………………' }}</b> Hiệu lực: <b>{{ chuRungHieuLuc || '……………………….' }}</b></div>
+        <div class="info-line">- Tên chủ lâm sản(4): <b>{{ TEN_CTY || '………………………………………………..' }}</b></div>
+        <div class="info-line">- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>{{ MA_SO_THUE || '…………………' }}</b></div>
+        <div class="info-line">- Địa chỉ(6): <b>{{ DIA_CHI_CTY || '………………………………………………………………' }}</b></div>
+        <div class="info-line">- Số điện thoại: <b>{{ SDT_CTY || '………………' }}</b>, Địa chỉ Email: …………………………</div>
+        <div class="info-line">- Số chứng chỉ FM/COC: <b>{{ CHUNG_CHI_CTY || '…………………………' }}</b>. Hiệu lực chứng chỉ: <b>{{ HIEU_LUC_CTY || '……………………….' }}</b>.</div>
 
-        <!-- 2. Thông tin tổ chức, cá nhân mua -->
+        <!-- 2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao = Chủ rừng -->
         <div class="section-title">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</div>
-        <div class="info-line">- Tên tổ chức, cá nhân(4): <b>{{ BUYER_TEN || '………………………………………………..' }}</b></div>
-        <div class="info-line">- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>{{ BUYER_MST || '…………………' }}</b></div>
-        <div class="info-line">- Địa chỉ(6): <b>{{ BUYER_DIA_CHI || '………………………………………………………………' }}</b></div>
-        <div class="info-line">- Số điện thoại: {{ BUYER_SDT || '………………' }}, Địa chỉ Email: …………………………</div>
-        <div class="info-line">- Số chứng chỉ FM/COC: <b>{{ BUYER_CC || '…………………………' }}</b> Hiệu lực: <b>{{ BUYER_HL || '……………………….' }}</b></div>
+        <div class="info-line">- Tên tổ chức, cá nhân(4): <b>{{ phieu.Chu_rung || '………………………………………………..' }}</b></div>
+        <div class="info-line">- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>{{ phieu.cccd || '…………………' }}</b></div>
+        <div class="info-line">- Địa chỉ(6): <b>{{ phieu.dia_chi_cccd || diaChiChuRung || '………………………………………………………………' }}</b></div>
+        <div class="info-line">- Số điện thoại: ………………, Địa chỉ Email: …………………………</div>
+        <div class="info-line">- Số chứng chỉ FM/COC: <b>{{ phieu.So_chung_chi || '…………………………' }}</b></div>
 
         <!-- 3. Thông tin về lâm sản -->
         <div class="section-title">3. Thông tin về lâm sản:</div>
-        <div class="info-line">- Tên loài: <b>Gỗ tròn Keo tai tượng FSC 100% ({{ phieu.Loai_go || 'Acacia mangium' }})</b></div>
+        <div class="info-line">- Tên loài: <b>Gỗ tròn Keo tai tượng FSC 100% (Acacia mangium)</b></div>
         <div class="info-line">- Nhóm loài: Thông thường</div>
-        <div class="info-line">- Nguồn gốc(7): <b>{{ phieu.So_BKLS }}</b>&nbsp;&nbsp;&nbsp;&nbsp;Địa chỉ: <b>{{ diaChiChuRung }}</b></div>
+        <div class="info-line">- Nguồn gốc(7): <b>{{ phieu.So_BKLS || '………………' }}</b>&nbsp;&nbsp;&nbsp;&nbsp;Địa chỉ: <b>{{ diaChiChuRung || '………………' }}</b></div>
         <div class="info-line">- Mã HS (áp dụng đối với lâm sản nhập khẩu, xuất khẩu): …………………</div>
         <div class="info-line">- Giá trị (nếu có): ……………………………………………………………</div>
         <div class="info-line">- Khối lượng/trọng lượng: <b>{{ fmtNum(phieu.Khoi_luong) }}</b> m³&nbsp;&nbsp;&nbsp;&nbsp;Bằng chữ: <b>{{ soThanhChu }} mét khối.</b></div>
         <div class="info-line">- Số lượng: ….....................; đơn vị tính (lóng, khúc; thanh, tấm, hộp, viên, ...): ......................</div>
-        <div class="info-line">- Thông tin về lô khai thác(8):&nbsp;&nbsp;&nbsp;&nbsp;Khoảnh: <b>{{ phieu.Khoang }}</b>&nbsp;&nbsp;&nbsp;&nbsp;Lô: <b>{{ phieu.Lo }}</b>&nbsp;&nbsp;&nbsp;&nbsp;Diện tích: <b>{{ fmtNum(phieu.Dien_tich) }} ha</b></div>
-        <div class="info-line">- Thông tin khác có liên quan (nếu có):&nbsp;&nbsp;Địa danh khai thác: <b>{{ diaChiChuRung }}</b></div>
+        <div class="info-line">- Thông tin về lô khai thác(8):&nbsp;&nbsp;&nbsp;&nbsp;KĐ: <b>{{ phieu.KD || '………' }}</b>&nbsp;&nbsp;&nbsp;&nbsp;VĐ: <b>{{ phieu.VD || '………' }}</b></div>
+        <div class="info-line">- Thông tin khác có liên quan (nếu có):&nbsp;&nbsp;Địa danh khai thác: <b>{{ diaChiChuRung }}</b>&nbsp;&nbsp;&nbsp;&nbsp;Lô: <b>{{ phieu.Lo }}</b>&nbsp;&nbsp;&nbsp;&nbsp;Khoảnh: <b>{{ phieu.Khoang }}</b></div>
 
         <!-- 4. Bảng kê khai kèm theo -->
         <div class="section-title">4. Thông tin chi tiết tại Bảng kê khai kèm theo:</div>
@@ -105,7 +100,7 @@
             <div class="sign-title">TỔ CHỨC/CÁ NHÂN LẬP BẢNG KÊ</div>
             <div class="sign-sub">(Ký, ghi rõ họ tên, đóng dấu đối với tổ chức)</div>
             <div class="sign-space"></div>
-            <div class="sign-name">{{ chuRungTen }}</div>
+            <div class="sign-name">{{ NGUOI_LAP }}</div>
           </div>
         </div>
       </div>
@@ -130,26 +125,14 @@ export default {
       phieu: null,
       TEN_CTY: "", DIA_CHI_CTY: "", MA_SO_THUE: "", SDT_CTY: "",
       CHUNG_CHI_CTY: "", HIEU_LUC_CTY: "", NGUOI_LAP: "",
-      buyerXuong: null,
-      BUYER_TEN: "", BUYER_MST: "", BUYER_DIA_CHI: "", BUYER_SDT: "",
-      BUYER_CC: "", BUYER_HL: "",
     };
   },
   computed: {
+    /** Địa chỉ chủ rừng (dùng cho Mục 3 - nguồn gốc + địa danh khai thác). */
     diaChiChuRung() {
       if (!this.phieu) return "";
-      return [this.phieu.Xa, this.phieu.Huyen].filter(Boolean).join(", ");
+      return [this.phieu.Thon, this.phieu.Xa, this.phieu.Huyen].filter(Boolean).join(", ");
     },
-    /** Mục 1 — Chủ lâm sản (chính là chủ rừng) lấy từ phiếu hiện tại. */
-    chuRungTen() { return (this.phieu && this.phieu.Chu_rung) || ""; },
-    chuRungCCCD() { return (this.phieu && (this.phieu.cccd || this.phieu.mst)) || ""; },
-    chuRungDiaChi() {
-      if (!this.phieu) return "";
-      return this.phieu.dia_chi_cccd
-        || [this.phieu.Thon, this.phieu.Xa, this.phieu.Huyen].filter(Boolean).join(", ");
-    },
-    chuRungChungChi() { return (this.phieu && this.phieu.So_chung_chi) || ""; },
-    chuRungHieuLuc() { return (this.phieu && this.phieu.Ngay_hieu_luc) || ""; },
     /** Ngày của BKLS: ưu tiên Ngay_BKLS từ KH, fallback Ngay_nhap */
     ngayBKLS() {
       const raw = (this.phieu && this.phieu.Ngay_BKLS) || (this.phieu && this.phieu.Ngay_nhap) || null;
@@ -198,16 +181,6 @@ export default {
       this.CHUNG_CHI_CTY = cfg.chung_chi || "";
       this.HIEU_LUC_CTY = cfg.hieu_luc_cc || "";
       this.NGUOI_LAP = cfg.nguoi_dai_dien || "";
-    },
-    /** Điền mục 2 (Bên mua) từ xưởng xẻ được chọn. */
-    applyBuyerXuong() {
-      const cfg = this.getXuongConfig(this.buyerXuong);
-      this.BUYER_TEN = cfg.ten || "";
-      this.BUYER_MST = cfg.mst || "";
-      this.BUYER_DIA_CHI = cfg.dia_chi || "";
-      this.BUYER_SDT = cfg.sdt || "";
-      this.BUYER_CC = cfg.chung_chi || "";
-      this.BUYER_HL = cfg.hieu_luc_cc || "";
     },
     formatDate(d) {
       if (!d) return "";
