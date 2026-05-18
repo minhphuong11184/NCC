@@ -463,24 +463,39 @@ export default {
     async luuVaoDB() {
       this.saving = true;
       try {
-        // Round-robin xe (1 ngày các xe đều có chuyến)
-        const byXe = new Map();
-        this.phieu.forEach(p => {
-          if (!byXe.has(p.xe)) byXe.set(p.xe, []);
-          byXe.get(p.xe).push(p);
+        // 1. Sort GLOBAL theo lô gỗ tròn tăng dần (numeric-aware vi locale),
+        //    tiebreak theo chuyến thứ. Giống logic ChiaXeGoTron — đảm bảo số phiếu
+        //    chạy lần lượt theo mã lô gỗ tròn (FSCLOG26-001 → 002 → ...).
+        const ordered = [...this.phieu].sort((a, b) => {
+          const la = (a.lo_go_tron || "~").toString();
+          const lb = (b.lo_go_tron || "~").toString();
+          const cmp = la.localeCompare(lb, "vi", { numeric: true, sensitivity: "base" });
+          if (cmp !== 0) return cmp;
+          return (a.chuyen_thu || 0) - (b.chuyen_thu || 0);
         });
-        for (const q of byXe.values()) {
-          q.sort((a, b) => (a.chuyen_thu || 0) - (b.chuyen_thu || 0));
-        }
-        const xeQueues = Array.from(byXe.values());
-        const ordered = [];
-        while (xeQueues.some(q => q.length > 0)) {
-          for (const q of xeQueues) {
-            if (q.length > 0) ordered.push(q.shift());
-          }
+
+        // 2. Lấy mã xưởng — ưu tiên parse từ so_phieu_du_kien backend đã set (vd "5/5-TV"),
+        //    fallback xuongByTen (XUONG_XE.ma), cuối cùng "TT".
+        let maXuong = "TT";
+        const sample = (ordered[0] && ordered[0].so_phieu_du_kien) || "";
+        const m = sample.match(/-([^-/\s]+)\s*$/);
+        if (m && m[1]) {
+          maXuong = m[1];
+        } else {
+          const xuongObj = (this.xuongByTen && this.xuongByTen[this.xuongXe]) || {};
+          if (xuongObj.ma) maXuong = String(xuongObj.ma).trim();
         }
 
-        // Phân ngày
+        // 3. Re-STT — tiếp tục từ stt_offset (cho phép nhiều đợt nối tiếp trong tháng).
+        const sttOffset = (this.summary && this.summary.stt_offset) || 0;
+        ordered.forEach((p, i) => {
+          p.stt = sttOffset + i + 1;
+          p.so_phieu_du_kien = `${p.stt}/${this.thang || ""}-${maXuong}`;
+        });
+        this.phieu = ordered;
+
+        // 4. Phân ngày tuần tự — mỗi K chuyến/ngày (K = số xe). Số phiếu chạy
+        //    theo thứ tự lô gỗ, ngày chạy theo thứ tự đó.
         const ngayList = this.phanBoNgayNhap(ordered.length);
         if (!ngayList) {
           this.$q.notify({ type: "negative", message: "Không có ngày làm việc nào" });
