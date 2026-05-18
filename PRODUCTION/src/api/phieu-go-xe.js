@@ -37,7 +37,8 @@ router.get('/list', async (req, res) => {
                     N.Chu_rung AS chu_rung,
                     N.So_chung_chi AS chung_chi_cr,
                     N.Khoang, N.Lo AS lo_kt, N.Dien_tich AS dien_tich,
-                    N.Thon, N.Xa, N.Huyen, N.cccd, N.dia_chi_cccd
+                    N.Thon, N.Xa, N.Huyen, N.cccd, N.dia_chi_cccd,
+                    N.So_BKLS AS so_bkls, N.KD AS kd, N.VD AS vd
                 FROM [prod].[GHEP_LO_GO_RESULT] G
                 LEFT JOIN (
                     SELECT
@@ -52,7 +53,10 @@ router.get('/list', async (req, res) => {
                         MIN(Xa) AS Xa,
                         MIN(Huyen) AS Huyen,
                         MIN(cccd) AS cccd,
-                        MIN(dia_chi_cccd) AS dia_chi_cccd
+                        MIN(dia_chi_cccd) AS dia_chi_cccd,
+                        MIN(So_BKLS) AS So_BKLS,
+                        MIN(KD) AS KD,
+                        MIN(VD) AS VD
                     FROM [prod].[NHAP_GO_TRON]
                     WHERE Lo_go IS NOT NULL
                     GROUP BY Lo_go
@@ -93,6 +97,9 @@ router.get('/list', async (req, res) => {
                 khoang: d.Khoang, lo: d.lo_kt, dien_tich: d.dien_tich,
                 thon: d.Thon, xa: d.Xa, huyen: d.Huyen,
                 cccd: d.cccd, dia_chi_cccd: d.dia_chi_cccd,
+                so_bkls: d.so_bkls ? d.so_bkls.trim() : null,
+                kd: d.kd ? String(d.kd).trim() : null,
+                vd: d.vd ? String(d.vd).trim() : null,
             })
             phieuMap[d.SOPHIEU].tong_kl += (d.kl_m3 || 0)
         })

@@ -207,80 +207,103 @@
         </table>
       </div>
 
-      <!-- ========== BKLS ========== -->
+      <!-- ========== BKLS — đúng mẫu file go_xe.xlsx sheet BKLS ========== -->
       <div v-show="currentTab === 'BKLS'" class="phieu-form bkls">
-        <table class="head">
+        <!-- Header 2 cột: tên xưởng | CỘNG HÒA -->
+        <table class="head head-2col">
           <tr>
-            <td class="bold center w50">{{ cfg.ten || '...' }}<br/>-------</td>
-            <td class="bold center w50">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/><span class="italic">Độc lập - Tự do - Hạnh phúc</span><br/>---------------</td>
+            <td class="bold center w50">{{ cfg.ten || '...' }}</td>
+            <td class="bold center w50">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</td>
+          </tr>
+          <tr>
+            <td class="center">-------</td>
+            <td class="center italic">Độc lập - Tự do - Hạnh phúc</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td class="center">---------------</td>
           </tr>
           <tr>
             <td>Số(1): <b>{{ soBKLS }}</b></td>
-            <td class="right">Tờ số(2): 01 &nbsp;&nbsp; Tổng số tờ: 01</td>
+            <td class="right">Tờ số(2): <b>01</b> &nbsp; Tổng số tờ: <b>01</b></td>
           </tr>
         </table>
         <div class="title">BẢNG KÊ LÂM SẢN</div>
 
+        <!-- 1. Chủ lâm sản = Xưởng xẻ (sở hữu gỗ xẻ thành phẩm) -->
         <div class="section-title">1. Thông tin chủ lâm sản:</div>
         <p>- Tên chủ lâm sản(4): <b>{{ cfg.ten }}</b></p>
-        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>{{ cfg.mst }}</b></p>
+        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CMND/HC(5): <b>{{ cfg.mst }}</b></p>
         <p>- Địa chỉ(6): <b>{{ cfg.dia_chi }}</b></p>
-        <p>- Số điện thoại: <b>{{ cfg.sdt }}</b>, Địa chỉ Email: ………………………</p>
+        <p>- Số điện thoại: <b>{{ cfg.sdt || '………………' }}</b>, Địa chỉ Email: <b>{{ cfg.email || '…………………………' }}</b></p>
         <p>- Số chứng chỉ: <b>{{ cfg.chung_chi }}</b>. Hiệu lực chứng chỉ: <b>{{ cfg.hieu_luc_cc }}</b>.</p>
 
-        <div class="section-title">2. Thông tin tổ chức/cá nhân mua/nhận chuyển giao:</div>
-        <p>- Tên tổ chức(4): <b>{{ WL.ten }}</b></p>
-        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>{{ WL.mst }}</b></p>
+        <!-- 2. Tổ chức/cá nhân mua = Woodsland -->
+        <div class="section-title">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</div>
+        <p>- Tên tổ chức, cá nhân(4): <b>{{ WL.ten }}</b></p>
+        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CMND/HC(5): <b>{{ WL.mst }}</b></p>
         <p>- Địa chỉ(6): <b>{{ WL.dia_chi }}</b></p>
-        <p>- Số chứng chỉ: <b>{{ WL.chung_chi }}</b>. Hiệu lực: <b>{{ WL.hieu_luc }}</b>.</p>
+        <p>- Số chứng chỉ: <b>{{ WL.chung_chi }}</b>. Hiệu lực chứng chỉ: <b>{{ WL.hieu_luc }}</b>.</p>
 
+        <!-- 3. Thông tin lâm sản -->
         <div class="section-title">3. Thông tin về lâm sản:</div>
-        <p>- Tên loài: Gỗ Keo xẻ FSC 100% (Acacia mangium)</p>
+        <p>- Tên loài: <b>Gỗ keo xẻ FSC 100% Keo tai tượng (Acacia mangium)</b></p>
         <p>- Nhóm loài: Thông thường</p>
-        <p>- Khối lượng/trọng lượng: <b>{{ fmtKL(currentPhieu.tong_kl) }}</b> m³ &nbsp; Bằng chữ: <b>{{ tongKLChu(currentPhieu.tong_kl) }}</b>.</p>
-        <p>- Biển kiểm soát/số hiệu phương tiện: <b>{{ currentPhieu.BIENSOXE }}</b></p>
-        <p>- Thời gian vận chuyển: 01 ngày — Từ ngày: <b>{{ fmtDate(currentPhieu.CREATED_AT) }}</b> đến ngày: <b>{{ fmtDate(currentPhieu.CREATED_AT) }}</b></p>
-        <p>- Vận chuyển từ: <b>{{ cfg.dia_chi }}</b> đến: <b>{{ WL.dia_chi }}</b></p>
-
-        <table class="tbl">
-          <thead>
-            <tr>
-              <th>STT</th>
-              <th>Tên chủ rừng</th>
-              <th>Mã lô gỗ tròn</th>
-              <th>Mã lô gỗ xẻ</th>
-              <th>Quy cách<br/>(dày × rộng × dài) mm</th>
-              <th>Số thanh</th>
-              <th>KL (m³)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(d, di) in currentPhieu.chi_tiet" :key="'bkls-'+di">
-              <td>{{ di + 1 }}</td>
-              <td>{{ d.chu_rung || '' }}</td>
-              <td>{{ d.lo_go_tron || '' }}</td>
-              <td>{{ d.lo_go_xe || '' }}</td>
-              <td>{{ d.dt_day }} × {{ d.dt_rong }} × {{ d.dt_cao }}</td>
-              <td>{{ d.tong_thanh }}</td>
-              <td class="num">{{ fmtKL(d.kl_m3) }}</td>
-            </tr>
-            <tr class="total-row">
-              <td colspan="6">TỔNG</td>
-              <td class="num">{{ fmtKL(currentPhieu.tong_kl) }}</td>
-            </tr>
-          </tbody>
+        <p>- Nguồn gốc(7): Số BKLS gốc + tên chủ rừng + lô khoảnh + địa chỉ</p>
+        <table class="tbl tbl-source">
+          <tr v-for="(g, gi) in nguonGocList" :key="'ng-'+gi">
+            <td>Số BKLS: <b>{{ g.so_bkls || '………' }}</b></td>
+            <td>Chủ rừng: <b>{{ g.chu_rung || '………' }}</b></td>
+            <td>Lô <b>{{ g.lo || '…' }}</b> khoảng <b>{{ g.khoang || '…' }}</b></td>
+            <td>Địa chỉ: <b>{{ g.dia_chi || '………' }}</b></td>
+          </tr>
         </table>
+        <p>- Mã HS (áp dụng đối với lâm sản nhập khẩu, xuất khẩu): …………………</p>
+        <p>- Giá trị (nếu có): ……………………………………………………………</p>
+        <p>- Khối lượng/trọng lượng: <b>{{ fmtKL(currentPhieu.tong_kl) }}</b> M³ &nbsp;&nbsp; Bằng chữ: <b>{{ tongKLChu(currentPhieu.tong_kl) }}</b>.</p>
+        <p>- Số lượng: <b>{{ tongSoThanh }}</b> &nbsp; Đơn vị tính: <b>Thanh</b></p>
+        <p>- Thông tin về lô khai thác(8):</p>
+        <table class="tbl tbl-source">
+          <tr v-for="(g, gi) in loKhaiThacList" :key="'kt-'+gi">
+            <td>KĐ: <b>{{ g.kd || '………' }}</b></td>
+            <td>VĐ: <b>{{ g.vd || '………' }}</b></td>
+            <td></td>
+            <td></td>
+          </tr>
+        </table>
+        <p>- Thông tin khác có liên quan (nếu có): Số lô gỗ xẻ</p>
+        <p v-for="(lx, li) in loGoXeList" :key="'lx-'+li" class="indent">
+          <b>{{ lx }}</b>
+        </p>
 
-        <p class="italic q-mt-sm">Tôi cam kết những nội dung kê khai trong bảng kê này là đúng sự thật và chịu trách nhiệm trước pháp luật.</p>
-        <p class="right italic">Ngày {{ ngayInfo.d }} tháng {{ ngayInfo.m }} năm {{ ngayInfo.y }}</p>
+        <!-- 4 -->
+        <div class="section-title">4. Thông tin chi tiết tại Bảng kê khai kèm theo:</div>
+        <p class="italic small">(Áp dụng đối với gỗ nguyên liệu, sản phẩm gỗ: khai thác từ rừng tự nhiên trong nước, gỗ và sản phẩm gỗ nhập khẩu, gỗ và sản phẩm gỗ sau xử lý tịch thu)</p>
+
+        <!-- 5. Vận chuyển -->
+        <div class="section-title">5. Thông tin vận chuyển:</div>
+        <p>Phương tiện vận chuyển, biển số xe: <b>{{ currentPhieu.BIENSOXE }}</b></p>
+        <p>Thời gian vận chuyển: <b>01 ngày</b>; Từ ngày: <b>{{ fmtDate(currentPhieu.CREATED_AT) }}</b> &nbsp;&nbsp; Đến ngày: <b>{{ fmtDate(currentPhieu.CREATED_AT) }}</b></p>
+        <p>Vận chuyển từ: <b>{{ cfg.ten }}</b> &nbsp;&nbsp; Đến: <b>{{ WL.ten }}</b></p>
+        <p>Địa chỉ: <b>{{ cfg.dia_chi }}</b> &nbsp;&nbsp; <b>{{ WL.dia_chi }}</b></p>
+
+        <!-- 6. Hồ sơ -->
+        <div class="section-title">6. Hồ sơ kèm theo (nếu có):</div>
+
+        <p class="italic q-mt-sm">Chúng tôi/Tôi cam kết những nội dung kê khai trong bảng kê này là đúng sự thật và chịu trách nhiệm trước pháp luật về sự trung thực của thông tin đã kê khai.</p>
+
         <table class="sign-2col">
+          <tr>
+            <td class="right italic">……, ngày … tháng …… năm 20……</td>
+            <td class="right italic"><b>{{ diaDanhXuong }}, ngày {{ ngayInfo.d }} tháng {{ pad2(ngayInfo.m) }} năm {{ ngayInfo.y }}</b></td>
+          </tr>
           <tr>
             <td class="sign-title">XÁC NHẬN CỦA CƠ QUAN CÓ THẨM QUYỀN (9)</td>
             <td class="sign-title">TỔ CHỨC/CÁ NHÂN LẬP BẢNG KÊ</td>
           </tr>
           <tr>
-            <td class="small italic">(Ký, ghi rõ họ tên, đóng dấu)</td>
-            <td class="small italic">(Ký, ghi rõ họ tên, đóng dấu)</td>
+            <td class="small italic">Vào sổ số: …/…<br/>(Người có thẩm quyền ký, ghi rõ họ tên, đóng dấu)</td>
+            <td class="small italic">(Ký, ghi rõ họ tên, đóng dấu đối với tổ chức)</td>
           </tr>
           <tr>
             <td class="sign-space"></td>
@@ -366,6 +389,65 @@ export default {
         ? new Date(this.currentPhieu.CREATED_AT) : new Date();
       return { d: d.getDate(), m: d.getMonth() + 1, y: d.getFullYear() };
     },
+    /** Tổng số thanh trong toàn bộ chi tiết */
+    tongSoThanh() {
+      if (!this.currentPhieu) return 0;
+      return (this.currentPhieu.chi_tiet || [])
+        .reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
+    },
+    /** Mục 3 — Nguồn gốc: group theo (lo_go_tron, chu_rung), unique */
+    nguonGocList() {
+      if (!this.currentPhieu) return [];
+      const seen = new Set();
+      const out = [];
+      (this.currentPhieu.chi_tiet || []).forEach(d => {
+        const key = (d.lo_go_tron || "") + "|" + (d.chu_rung || "");
+        if (seen.has(key)) return;
+        seen.add(key);
+        const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
+        out.push({
+          so_bkls: d.so_bkls,
+          chu_rung: d.chu_rung,
+          lo_go_tron: d.lo_go_tron,
+          lo: d.lo,
+          khoang: d.khoang,
+          dia_chi: diaChi,
+        });
+      });
+      return out;
+    },
+    /** Mục 3 — Lô khai thác: list (KĐ, VĐ) unique theo lo_go_tron */
+    loKhaiThacList() {
+      if (!this.currentPhieu) return [];
+      const seen = new Set();
+      const out = [];
+      (this.currentPhieu.chi_tiet || []).forEach(d => {
+        const key = (d.kd || "") + "|" + (d.vd || "");
+        if (!d.kd && !d.vd) return;
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push({ kd: d.kd, vd: d.vd });
+      });
+      return out;
+    },
+    /** Mục 3 — Số lô gỗ xẻ: list unique lo_go_xe */
+    loGoXeList() {
+      if (!this.currentPhieu) return [];
+      const seen = new Set();
+      (this.currentPhieu.chi_tiet || []).forEach(d => {
+        if (d.lo_go_xe) seen.add(d.lo_go_xe);
+      });
+      return Array.from(seen);
+    },
+    /** Địa danh từ địa chỉ xưởng — lấy phần cuối (vd "tỉnh Phú Thọ") */
+    diaDanhXuong() {
+      const dc = this.cfg.dia_chi || "";
+      // Tách theo dấu phẩy/gạch, lấy phần cuối có "tỉnh" hoặc fallback toàn bộ
+      const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
+      if (!parts.length) return "";
+      const tinh = parts.find(p => /tỉnh|TP|thành phố/i.test(p));
+      return tinh || parts[parts.length - 1];
+    },
   },
   methods: {
     host() { return window.location.hostname || "127.0.0.1"; },
@@ -381,6 +463,7 @@ export default {
       if (v == null || v === "") return "";
       return Number(v).toFixed(4);
     },
+    pad2(n) { return String(n).padStart(2, "0"); },
     fmtNum2(v) {
       if (v == null || v === "") return "";
       return Number(v).toFixed(2);
@@ -467,33 +550,37 @@ export default {
 
     wordCss() {
       return `<style>
-        @page Section1 { size: 21cm 29.7cm; margin: 1.2cm 1.2cm 1.2cm 1.2cm; mso-page-orientation: portrait; }
+        @page Section1 { size: 21cm 29.7cm; margin: 1cm 1.1cm 0.8cm 1.1cm; mso-page-orientation: portrait; }
         div.Section1 { page: Section1; }
-        body { font-family: "Times New Roman", serif; font-size: 11pt; line-height: 1.35; }
-        p { margin: 0 0 3pt 0; }
+        body { font-family: "Times New Roman", serif; font-size: 10pt; line-height: 1.2; }
+        p { margin: 0 0 1pt 0; }
         .center { text-align: center; }
         .right { text-align: right; }
         .bold { font-weight: bold; }
         .italic { font-style: italic; }
-        .small { font-size: 9pt; }
-        .title { font-size: 14pt; font-weight: bold; text-align: center; margin: 6pt 0 6pt 0; text-transform: uppercase; }
-        .section-title { font-weight: bold; margin-top: 6pt; }
-        table.head { width: 100%; border-collapse: collapse; margin-bottom: 4pt; }
-        table.head td { vertical-align: top; padding: 1pt 4pt; font-size: 10pt; }
-        table.info { width: 100%; border-collapse: collapse; margin: 4pt 0; }
-        table.info td { padding: 2pt 4pt; vertical-align: top; font-size: 11pt; }
+        .small { font-size: 8pt; }
+        .title { font-size: 13pt; font-weight: bold; text-align: center; margin: 3pt 0 3pt 0; text-transform: uppercase; }
+        .section-title { font-weight: bold; margin-top: 3pt; margin-bottom: 1pt; }
+        table.head { width: 100%; border-collapse: collapse; margin-bottom: 2pt; }
+        table.head td { vertical-align: top; padding: 0 4pt; font-size: 9pt; line-height: 1.15; }
+        table.info { width: 100%; border-collapse: collapse; margin: 2pt 0; }
+        table.info td { padding: 1pt 3pt; vertical-align: top; font-size: 10pt; line-height: 1.2; }
         table.info td.lbl { font-weight: bold; white-space: nowrap; width: 18%; }
-        table.tbl { border-collapse: collapse; width: 100%; margin: 4pt 0; }
-        table.tbl th, table.tbl td { border: 1px solid #333; padding: 2pt 4pt; font-size: 10pt; text-align: center; vertical-align: middle; }
+        table.tbl { border-collapse: collapse; width: 100%; margin: 2pt 0; }
+        table.tbl th, table.tbl td { border: 1px solid #333; padding: 1pt 3pt; font-size: 9pt; text-align: center; vertical-align: middle; line-height: 1.15; }
         table.tbl th { background: #F0F0F0; font-weight: bold; }
         table.tbl td.num { text-align: right; }
         table.tbl tr.total-row td { font-weight: bold; }
-        table.sign-3col { width: 100%; margin-top: 12pt; border-collapse: collapse; }
+        table.tbl-source { border-collapse: collapse; margin: 1pt 0 1pt 10pt; }
+        table.tbl-source td { padding: 0 12pt 0 0; font-size: 9pt; text-align: left; white-space: nowrap; border: none; line-height: 1.15; }
+        .indent { margin-left: 14pt; }
+        table.head-2col td { width: 50%; vertical-align: top; }
+        table.sign-3col { width: 100%; margin-top: 6pt; border-collapse: collapse; }
         table.sign-3col td { width: 33.3%; text-align: center; vertical-align: top; padding: 0 4pt; }
-        table.sign-2col { width: 100%; margin-top: 10pt; border-collapse: collapse; }
+        table.sign-2col { width: 100%; margin-top: 4pt; border-collapse: collapse; }
         table.sign-2col td { width: 50%; text-align: center; vertical-align: top; padding: 0 4pt; }
         .sign-title { font-weight: bold; }
-        .sign-space { height: 52pt; }
+        .sign-space { height: 36pt; }
         .sign-name { font-weight: bold; font-style: italic; }
         .pgbreak { page-break-before: always; }
       </style>`;
@@ -622,74 +709,136 @@ export default {
         </table>`;
     },
 
-    /** Word: 1 phiếu BKLS (1 trang) */
+    /** Word: 1 phiếu BKLS (1 trang) — đúng mẫu file go_xe.xlsx sheet BKLS */
     wordBKLS(p, cfg) {
       const e = this.wordEsc.bind(this);
       const soBKLS = `${p.SOPHIEU}/${this.nam}/BKLS`;
       const dt = p.CREATED_AT ? new Date(p.CREATED_AT) : new Date();
-      const ngayChu = `Ngày ${dt.getDate()} tháng ${dt.getMonth() + 1} năm ${dt.getFullYear()}`;
-      const rows = (p.chi_tiet || []).map((d, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${e(d.chu_rung || "")}</td>
-          <td>${e(d.lo_go_tron || "")}</td>
-          <td>${e(d.lo_go_xe || "")}</td>
-          <td>${e(d.dt_day || "")} × ${e(d.dt_rong || "")} × ${e(d.dt_cao || "")}</td>
-          <td>${e(d.tong_thanh || "")}</td>
-          <td class="num">${this.fmtKL(d.kl_m3)}</td>
-        </tr>`).join("");
       const tong = this.fmtKL(p.tong_kl);
+      const tongChu = volumeToWordsVN(p.tong_kl);
+      const tongThanh = (p.chi_tiet || []).reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
+
+      // Group lo_go_tron + chu_rung
+      const seenNG = new Set();
+      const nguonGoc = [];
+      (p.chi_tiet || []).forEach(d => {
+        const k = (d.lo_go_tron || "") + "|" + (d.chu_rung || "");
+        if (seenNG.has(k)) return;
+        seenNG.add(k);
+        const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
+        nguonGoc.push({ so_bkls: d.so_bkls, chu_rung: d.chu_rung, lo: d.lo, khoang: d.khoang, dia_chi: diaChi });
+      });
+      const seenKT = new Set();
+      const loKT = [];
+      (p.chi_tiet || []).forEach(d => {
+        if (!d.kd && !d.vd) return;
+        const k = (d.kd || "") + "|" + (d.vd || "");
+        if (seenKT.has(k)) return;
+        seenKT.add(k);
+        loKT.push({ kd: d.kd, vd: d.vd });
+      });
+      const seenLX = new Set();
+      const loGoXe = [];
+      (p.chi_tiet || []).forEach(d => {
+        if (d.lo_go_xe && !seenLX.has(d.lo_go_xe)) {
+          seenLX.add(d.lo_go_xe); loGoXe.push(d.lo_go_xe);
+        }
+      });
+
+      // Địa danh xưởng
+      const dc = cfg.dia_chi || "";
+      const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
+      const diaDanh = parts.find(s => /tỉnh|TP|thành phố/i.test(s)) || (parts[parts.length - 1] || "");
+      const ngayChu = `${diaDanh}, ngày ${String(dt.getDate()).padStart(2, "0")} tháng ${String(dt.getMonth() + 1).padStart(2, "0")} năm ${dt.getFullYear()}`;
+
+      const ngRows = nguonGoc.map(g => `
+        <tr>
+          <td>Số BKLS: <b>${e(g.so_bkls || "………")}</b></td>
+          <td>Chủ rừng: <b>${e(g.chu_rung || "………")}</b></td>
+          <td>Lô <b>${e(g.lo || "…")}</b> khoảng <b>${e(g.khoang || "…")}</b></td>
+          <td>Địa chỉ: <b>${e(g.dia_chi || "………")}</b></td>
+        </tr>`).join("");
+      const ktRows = loKT.map(g => `
+        <tr>
+          <td>KĐ: <b>${e(g.kd || "………")}</b></td>
+          <td>VĐ: <b>${e(g.vd || "………")}</b></td>
+          <td></td><td></td>
+        </tr>`).join("");
+      const lxLines = loGoXe.map(lx => `<p class="indent"><b>${e(lx)}</b></p>`).join("");
+
       return `
-        <table class="head">
+        <table class="head head-2col">
           <tr>
-            <td class="bold center">${e(cfg.ten || "")}<br/>-------</td>
-            <td class="bold center">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/><span class="italic">Độc lập - Tự do - Hạnh phúc</span><br/>---------------</td>
+            <td class="bold center">${e(cfg.ten || "")}</td>
+            <td class="bold center">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</td>
+          </tr>
+          <tr>
+            <td class="center">-------</td>
+            <td class="italic center">Độc lập - Tự do - Hạnh phúc</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td class="center">---------------</td>
           </tr>
           <tr>
             <td>Số(1): <b>${e(soBKLS)}</b></td>
-            <td class="right">Tờ số(2): 01 &nbsp;&nbsp; Tổng số tờ: 01</td>
+            <td class="right">Tờ số(2): <b>01</b> &nbsp; Tổng số tờ: <b>01</b></td>
           </tr>
         </table>
         <p class="title">BẢNG KÊ LÂM SẢN</p>
+
         <p class="section-title">1. Thông tin chủ lâm sản:</p>
         <p>- Tên chủ lâm sản(4): <b>${e(cfg.ten || "")}</b></p>
-        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>${e(cfg.mst || "")}</b></p>
+        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CMND/HC(5): <b>${e(cfg.mst || "")}</b></p>
         <p>- Địa chỉ(6): <b>${e(cfg.dia_chi || "")}</b></p>
-        <p>- Số điện thoại: <b>${e(cfg.sdt || "")}</b>, Địa chỉ Email: ………………………</p>
-        <p>- Số chứng chỉ: <b>${e(cfg.chung_chi || "")}</b>. Hiệu lực: <b>${e(cfg.hieu_luc_cc || "")}</b>.</p>
-        <p class="section-title">2. Thông tin tổ chức/cá nhân mua/nhận chuyển giao quyền sở hữu:</p>
-        <p>- Tên tổ chức(4): <b>${e(this.WL.ten)}</b></p>
-        <p>- Số GCN/MSDN: <b>${e(this.WL.mst)}</b></p>
-        <p>- Địa chỉ: <b>${e(this.WL.dia_chi)}</b></p>
-        <p>- Số chứng chỉ: <b>${e(this.WL.chung_chi)}</b>. Hiệu lực: <b>${e(this.WL.hieu_luc)}</b>.</p>
+        <p>- Số điện thoại: <b>${e(cfg.sdt || "")}</b>, Địa chỉ Email: <b>${e(cfg.email || "…………………………")}</b></p>
+        <p>- Số chứng chỉ: <b>${e(cfg.chung_chi || "")}</b>. Hiệu lực chứng chỉ: <b>${e(cfg.hieu_luc_cc || "")}</b>.</p>
+
+        <p class="section-title">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</p>
+        <p>- Tên tổ chức, cá nhân(4): <b>${e(this.WL.ten)}</b></p>
+        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CMND/HC(5): <b>${e(this.WL.mst)}</b></p>
+        <p>- Địa chỉ(6): <b>${e(this.WL.dia_chi)}</b></p>
+        <p>- Số chứng chỉ: <b>${e(this.WL.chung_chi)}</b>. Hiệu lực chứng chỉ: <b>${e(this.WL.hieu_luc)}</b>.</p>
+
         <p class="section-title">3. Thông tin về lâm sản:</p>
-        <p>- Tên loài: Gỗ Keo xẻ FSC 100% (Acacia mangium)</p>
+        <p>- Tên loài: <b>Gỗ keo xẻ FSC 100% Keo tai tượng (Acacia mangium)</b></p>
         <p>- Nhóm loài: Thông thường</p>
-        <p>- Khối lượng/trọng lượng: <b>${tong}</b> m³ &nbsp; Bằng chữ: <b>${e(volumeToWordsVN(p.tong_kl))}</b>.</p>
-        <p>- Biển kiểm soát: <b>${e(p.BIENSOXE || "")}</b> — Thời gian: 01 ngày — Từ ngày: <b>${e(this.fmtDate(p.CREATED_AT))}</b> đến: <b>${e(this.fmtDate(p.CREATED_AT))}</b></p>
-        <p>- Vận chuyển từ: <b>${e(cfg.dia_chi || "")}</b> đến: <b>${e(this.WL.dia_chi)}</b></p>
-        <table class="tbl">
-          <thead>
-            <tr>
-              <th>STT</th><th>Tên chủ rừng</th><th>Mã lô gỗ tròn</th><th>Mã lô gỗ xẻ</th>
-              <th>Quy cách (mm)</th><th>Số thanh</th><th>KL (m³)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-            <tr class="total-row"><td colspan="6">TỔNG</td><td class="num">${tong}</td></tr>
-          </tbody>
-        </table>
-        <p class="italic">Tôi cam kết những nội dung kê khai trong bảng kê này là đúng sự thật và chịu trách nhiệm trước pháp luật.</p>
-        <p class="right italic">${e(ngayChu)}</p>
+        <p>- Nguồn gốc(7): Số BKLS gốc + tên chủ rừng + lô khoảnh + địa chỉ</p>
+        <table class="tbl-source">${ngRows}</table>
+        <p>- Mã HS (áp dụng đối với lâm sản nhập khẩu, xuất khẩu): …………………</p>
+        <p>- Giá trị (nếu có): ……………………………………………………………</p>
+        <p>- Khối lượng/trọng lượng: <b>${tong}</b> M³ &nbsp; Bằng chữ: <b>${e(tongChu)}</b>.</p>
+        <p>- Số lượng: <b>${tongThanh}</b> &nbsp; Đơn vị tính: <b>Thanh</b></p>
+        <p>- Thông tin về lô khai thác(8):</p>
+        <table class="tbl-source">${ktRows}</table>
+        <p>- Thông tin khác có liên quan (nếu có): Số lô gỗ xẻ</p>
+        ${lxLines}
+
+        <p class="section-title">4. Thông tin chi tiết tại Bảng kê khai kèm theo:</p>
+        <p class="italic small">(Áp dụng đối với gỗ nguyên liệu, sản phẩm gỗ: khai thác từ rừng tự nhiên trong nước, gỗ và sản phẩm gỗ nhập khẩu, gỗ và sản phẩm gỗ sau xử lý tịch thu)</p>
+
+        <p class="section-title">5. Thông tin vận chuyển:</p>
+        <p>Phương tiện vận chuyển, biển số xe: <b>${e(p.BIENSOXE || "")}</b></p>
+        <p>Thời gian vận chuyển: <b>01 ngày</b>; Từ ngày: <b>${e(this.fmtDate(p.CREATED_AT))}</b> &nbsp; Đến ngày: <b>${e(this.fmtDate(p.CREATED_AT))}</b></p>
+        <p>Vận chuyển từ: <b>${e(cfg.ten || "")}</b> &nbsp; Đến: <b>${e(this.WL.ten)}</b></p>
+        <p>Địa chỉ: <b>${e(cfg.dia_chi || "")}</b> &nbsp; <b>${e(this.WL.dia_chi)}</b></p>
+
+        <p class="section-title">6. Hồ sơ kèm theo (nếu có):</p>
+
+        <p class="italic">Chúng tôi/Tôi cam kết những nội dung kê khai trong bảng kê này là đúng sự thật và chịu trách nhiệm trước pháp luật về sự trung thực của thông tin đã kê khai.</p>
+
         <table class="sign-2col">
+          <tr>
+            <td class="right italic">……, ngày … tháng …… năm 20……</td>
+            <td class="right italic"><b>${e(ngayChu)}</b></td>
+          </tr>
           <tr>
             <td class="sign-title">XÁC NHẬN CỦA CƠ QUAN CÓ THẨM QUYỀN (9)</td>
             <td class="sign-title">TỔ CHỨC/CÁ NHÂN LẬP BẢNG KÊ</td>
           </tr>
           <tr>
-            <td class="small italic">(Ký, ghi rõ họ tên, đóng dấu)</td>
-            <td class="small italic">(Ký, ghi rõ họ tên, đóng dấu)</td>
+            <td class="small italic">Vào sổ số: …/…<br/>(Người có thẩm quyền ký, ghi rõ họ tên, đóng dấu)</td>
+            <td class="small italic">(Ký, ghi rõ họ tên, đóng dấu đối với tổ chức)</td>
           </tr>
           <tr>
             <td class="sign-space"></td>
@@ -1026,6 +1175,31 @@ export default {
     },
     buildBlockBKLS(ws, p, cfg, start) {
       let r = start;
+      const dt = p.CREATED_AT ? new Date(p.CREATED_AT) : new Date();
+      const tongThanh = (p.chi_tiet || []).reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
+
+      // Group nguồn gốc, lô khai thác, lô gỗ xẻ
+      const seenNG = new Set(); const nguonGoc = [];
+      const seenKT = new Set(); const loKT = [];
+      const seenLX = new Set(); const loGoXe = [];
+      (p.chi_tiet || []).forEach(d => {
+        const k1 = (d.lo_go_tron || "") + "|" + (d.chu_rung || "");
+        if (!seenNG.has(k1)) {
+          seenNG.add(k1);
+          const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
+          nguonGoc.push({ so_bkls: d.so_bkls, chu_rung: d.chu_rung, lo: d.lo, khoang: d.khoang, dia_chi: diaChi });
+        }
+        if ((d.kd || d.vd)) {
+          const k2 = (d.kd || "") + "|" + (d.vd || "");
+          if (!seenKT.has(k2)) { seenKT.add(k2); loKT.push({ kd: d.kd, vd: d.vd }); }
+        }
+        if (d.lo_go_xe && !seenLX.has(d.lo_go_xe)) { seenLX.add(d.lo_go_xe); loGoXe.push(d.lo_go_xe); }
+      });
+      const dc = cfg.dia_chi || "";
+      const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
+      const diaDanh = parts.find(s => /tỉnh|TP|thành phố/i.test(s)) || (parts[parts.length - 1] || "");
+
+      // === Header 2 cột ===
       this.setCell(ws, `A${r}`, cfg.ten || "", { merge: `C${r}`, bold: true, center: true });
       this.setCell(ws, `D${r}`, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM", { merge: `G${r}`, bold: true, center: true });
       r++;
@@ -1040,78 +1214,118 @@ export default {
       this.setCell(ws, `A${r}`, "BẢNG KÊ LÂM SẢN",
         { merge: `G${r}`, bold: true, center: true, size: 14 });
       r += 2;
-      this.setCell(ws, `A${r}`, "1. Thông tin chủ lâm sản:", { merge: `G${r}`, bold: true });
+
+      // === Mục 1 ===
+      this.setCell(ws, `A${r}`, "1. Thông tin chủ lâm sản", { merge: `G${r}`, bold: true });
       r++;
       [
         `- Tên chủ lâm sản: ${cfg.ten || ""}`,
-        `- Mã số thuế/CCCD: ${cfg.mst || ""}`,
+        `- Số GCN/MSDN/GPTL/ĐKHĐ/CMND/HC: ${cfg.mst || ""}`,
         `- Địa chỉ: ${cfg.dia_chi || ""}`,
-        `- Số điện thoại: ${cfg.sdt || ""}`,
-        `- Số chứng chỉ: ${cfg.chung_chi || ""}. Hiệu lực: ${cfg.hieu_luc_cc || ""}.`,
+        `- Số điện thoại: ${cfg.sdt || ""}, Địa chỉ Email: ${cfg.email || "…………"}`,
+        `- Số chứng chỉ: ${cfg.chung_chi || ""}. Hiệu lực chứng chỉ: ${cfg.hieu_luc_cc || ""}.`,
       ].forEach(line => { this.setCell(ws, `A${r}`, line, { merge: `G${r}` }); r++; });
       r++;
-      this.setCell(ws, `A${r}`, "2. Thông tin tổ chức/cá nhân mua/nhận:", { merge: `G${r}`, bold: true });
+
+      // === Mục 2 ===
+      this.setCell(ws, `A${r}`, "2. Thông tin tổ chức cá nhân mua:", { merge: `G${r}`, bold: true });
       r++;
       [
-        `- Tên tổ chức: ${this.WL.ten}`,
-        `- Mã số thuế: ${this.WL.mst}`,
+        `- Tên: ${this.WL.ten}`,
+        `- Số GCN/MSDN/GPTL/ĐKHĐ/CMND/HC: ${this.WL.mst}`,
         `- Địa chỉ: ${this.WL.dia_chi}`,
-        `- Số chứng chỉ: ${this.WL.chung_chi}. Hiệu lực: ${this.WL.hieu_luc}.`,
+        `- Số chứng chỉ: ${this.WL.chung_chi}. Hiệu lực chứng chỉ: ${this.WL.hieu_luc}.`,
       ].forEach(line => { this.setCell(ws, `A${r}`, line, { merge: `G${r}` }); r++; });
       r++;
+
+      // === Mục 3 ===
       this.setCell(ws, `A${r}`, "3. Thông tin về lâm sản:", { merge: `G${r}`, bold: true });
       r++;
-      [
-        "- Tên loài: Gỗ Keo xẻ FSC 100% (Acacia mangium)",
-        "- Nhóm loài: Thông thường",
-        `- Khối lượng: ${this.fmtKL(p.tong_kl)} m³ — Bằng chữ: ${volumeToWordsVN(p.tong_kl)}.`,
-        `- Biển kiểm soát: ${p.BIENSOXE || ""} — Thời gian vận chuyển: 01 ngày`,
-        `- Từ ngày: ${this.fmtDate(p.CREATED_AT)} đến: ${this.fmtDate(p.CREATED_AT)}`,
-        `- Vận chuyển từ: ${cfg.dia_chi || ""} đến: ${this.WL.dia_chi}`,
-      ].forEach(line => { this.setCell(ws, `A${r}`, line, { merge: `G${r}` }); r++; });
+      this.setCell(ws, `A${r}`, "- Tên loài: Gỗ keo xẻ FSC 100% Keo tai tượng (Acacia mangium)", { merge: `G${r}` });
       r++;
-      // Bảng chi tiết
-      const hdrTexts = ["STT", "Tên chủ rừng", "Mã lô gỗ tròn", "Mã lô gỗ xẻ", "Quy cách (mm)", "Số thanh", "KL (m³)"];
-      const hdr = ws.getRow(r);
-      hdrTexts.forEach((t, i) => {
-        const c = hdr.getCell(i + 1);
-        c.value = t;
-        c.font = { name: "Times New Roman", size: 10, bold: true };
-        c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E0E0" } };
-        c.border = this.bThin();
-      });
+      this.setCell(ws, `A${r}`, "- Nhóm loài: Thông thường", { merge: `G${r}` });
       r++;
-      (p.chi_tiet || []).forEach((d, i) => {
-        const row = ws.getRow(r);
-        [i + 1, d.chu_rung || "", d.lo_go_tron || "", d.lo_go_xe || "",
-          `${d.dt_day || ""} × ${d.dt_rong || ""} × ${d.dt_cao || ""}`,
-          d.tong_thanh, d.kl_m3 ? Number(d.kl_m3) : 0].forEach((v, ci) => {
-            const c = row.getCell(ci + 1);
-            c.value = v;
-            c.font = { name: "Times New Roman", size: 10 };
-            c.alignment = { horizontal: ci === 0 || ci === 5 || ci === 6 ? "center" : "left", vertical: "middle", wrapText: true };
-            c.border = this.bThin();
-            if (ci === 6) c.numFmt = "#,##0.0000";
-          });
+      this.setCell(ws, `A${r}`, "- Nguồn gốc(7): Số BKLS gốc + tên chủ rừng + lô khoảnh + địa chỉ", { merge: `G${r}` });
+      r++;
+      // Nguồn gốc — 1 dòng / 1 lô (4 cột: BKLS | Chủ rừng | Lô khoảng | Địa chỉ)
+      nguonGoc.forEach(g => {
+        this.setCell(ws, `A${r}`, `Số BKLS: ${g.so_bkls || "………"}`, { merge: `B${r}` });
+        this.setCell(ws, `C${r}`, `Chủ rừng: ${g.chu_rung || "………"}`);
+        this.setCell(ws, `D${r}`, `Lô ${g.lo || "…"} khoảng ${g.khoang || "…"}`);
+        this.setCell(ws, `E${r}`, `Địa chỉ: ${g.dia_chi || "………"}`, { merge: `G${r}` });
         r++;
       });
-      this.setCell(ws, `A${r}`, "TỔNG", { merge: `F${r}`, bold: true, center: true, border: true });
-      const cT = ws.getRow(r).getCell(7);
-      cT.value = Number(p.tong_kl) || 0;
-      cT.numFmt = "#,##0.0000";
-      cT.font = { name: "Times New Roman", size: 10, bold: true };
-      cT.border = this.bThin();
-      cT.alignment = { horizontal: "center", vertical: "middle" };
+      this.setCell(ws, `A${r}`, "- Mã HS (áp dụng đối với lâm sản nhập khẩu, xuất khẩu): …………………", { merge: `G${r}` });
+      r++;
+      this.setCell(ws, `A${r}`, "- Giá trị (nếu có): ……………………………………………………………", { merge: `G${r}` });
+      r++;
+      this.setCell(ws, `A${r}`, `- Khối lượng/trọng lượng: ${this.fmtKL(p.tong_kl)} M³  Bằng chữ: ${volumeToWordsVN(p.tong_kl)}.`,
+        { merge: `G${r}` });
+      r++;
+      this.setCell(ws, `A${r}`, `- Số lượng: ${tongThanh}  Đơn vị tính: Thanh`, { merge: `G${r}` });
+      r++;
+      this.setCell(ws, `A${r}`, "- Thông tin về lô khai thác(8):", { merge: `G${r}` });
+      r++;
+      loKT.forEach(g => {
+        this.setCell(ws, `A${r}`, "", { merge: `B${r}` });
+        this.setCell(ws, `C${r}`, `KĐ: ${g.kd || "………"}`);
+        this.setCell(ws, `D${r}`, `VĐ: ${g.vd || "………"}`, { merge: `G${r}` });
+        r++;
+      });
+      this.setCell(ws, `A${r}`, "- Thông tin khác có liên quan (nếu có): Số lô gỗ xẻ", { merge: `G${r}` });
+      r++;
+      loGoXe.forEach(lx => {
+        this.setCell(ws, `B${r}`, lx, { merge: `G${r}`, bold: true });
+        r++;
+      });
+      r++;
+
+      // === Mục 4 ===
+      this.setCell(ws, `A${r}`, "4. Thông tin chi tiết tại Bảng kê khai kèm theo:", { merge: `G${r}`, bold: true });
+      r++;
+      this.setCell(ws, `A${r}`,
+        "(Áp dụng đối với gỗ nguyên liệu, sản phẩm gỗ: khai thác từ rừng tự nhiên trong nước, gỗ và sản phẩm gỗ nhập khẩu, gỗ và sản phẩm gỗ sau xử lý tịch thu)",
+        { merge: `G${r}`, italic: true, size: 10 });
+      r++;
+
+      // === Mục 5 ===
+      this.setCell(ws, `A${r}`, "5. Thông tin vận chuyển", { merge: `G${r}`, bold: true });
+      r++;
+      this.setCell(ws, `A${r}`, `Phương tiện vận chuyển, biển số xe: ${p.BIENSOXE || ""}`, { merge: `G${r}` });
+      r++;
+      this.setCell(ws, `A${r}`,
+        `Thời gian vận chuyển: 01 ngày;  Từ ngày: ${this.fmtDate(p.CREATED_AT)}  Đến ngày: ${this.fmtDate(p.CREATED_AT)}`,
+        { merge: `G${r}` });
+      r++;
+      this.setCell(ws, `A${r}`, `Vận chuyển từ: ${cfg.ten || ""}  Đến: ${this.WL.ten}`, { merge: `G${r}` });
+      r++;
+      this.setCell(ws, `A${r}`, `Địa chỉ: ${cfg.dia_chi || ""}   ${this.WL.dia_chi}`, { merge: `G${r}` });
+      r++;
+
+      // === Mục 6 ===
+      this.setCell(ws, `A${r}`, "6. Hồ sơ kèm theo (nếu có):", { merge: `G${r}`, bold: true });
       r += 2;
-      const dt = p.CREATED_AT ? new Date(p.CREATED_AT) : new Date();
-      this.setCell(ws, `D${r}`, `Ngày ${dt.getDate()} tháng ${dt.getMonth() + 1} năm ${dt.getFullYear()}`,
-        { merge: `G${r}`, italic: true, center: true });
+
+      this.setCell(ws, `A${r}`,
+        "Chúng tôi/Tôi cam kết những nội dung kê khai trong bảng kê này là đúng sự thật và chịu trách nhiệm trước pháp luật về sự trung thực của thông tin đã kê khai.",
+        { merge: `G${r}`, italic: true });
       r += 2;
-      this.setCell(ws, `A${r}`, "XÁC NHẬN CỦA CƠ QUAN", { merge: `C${r}`, center: true, bold: true });
+
+      // Date + ký
+      this.setCell(ws, `A${r}`, "……, ngày … tháng …… năm 20……", { merge: `C${r}`, right: true, italic: true });
+      this.setCell(ws, `D${r}`,
+        `${diaDanh}, ngày ${String(dt.getDate()).padStart(2, "0")} tháng ${String(dt.getMonth() + 1).padStart(2, "0")} năm ${dt.getFullYear()}`,
+        { merge: `G${r}`, right: true, italic: true, bold: true });
+      r++;
+      this.setCell(ws, `A${r}`, "XÁC NHẬN CỦA CƠ QUAN CÓ THẨM QUYỀN (9)", { merge: `C${r}`, center: true, bold: true });
       this.setCell(ws, `D${r}`, "TỔ CHỨC/CÁ NHÂN LẬP BẢNG KÊ", { merge: `G${r}`, center: true, bold: true });
+      r++;
+      this.setCell(ws, `A${r}`, "Vào sổ số: …/…  (Người có thẩm quyền ký, ghi rõ họ tên, đóng dấu)",
+        { merge: `C${r}`, center: true, italic: true, size: 10 });
+      this.setCell(ws, `D${r}`, "(Ký, ghi rõ họ tên, đóng dấu đối với tổ chức)",
+        { merge: `G${r}`, center: true, italic: true, size: 10 });
       r += 4;
-      this.setCell(ws, `D${r}`, cfg.nguoi_dai_dien || "", { merge: `G${r}`, center: true, italic: true });
+      this.setCell(ws, `D${r}`, cfg.nguoi_dai_dien || "", { merge: `G${r}`, center: true, italic: true, bold: true });
       r += 2;
       return r + 1;
     },
@@ -1209,6 +1423,20 @@ export default {
 .phieu-form .section-title { font-weight: bold; margin-top: 8px; margin-bottom: 2px; }
 .phieu-form.bkls { font-size: 12px; line-height: 1.45; }
 .phieu-form.bkls p { margin: 0 0 3px 0; }
+.phieu-form.bkls .indent { margin-left: 18px; }
+.phieu-form.bkls .tbl-source {
+  width: auto;
+  border-collapse: collapse;
+  margin: 4px 0 4px 12px;
+}
+.phieu-form.bkls .tbl-source td {
+  border: none;
+  padding: 1px 12px 1px 0;
+  text-align: left;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.phieu-form .head-2col td { width: 50%; }
 .w50 { width: 50%; }
 
 /* ===== Print ===== */
