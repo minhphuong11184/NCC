@@ -38,7 +38,8 @@ router.get('/list', async (req, res) => {
                     N.So_chung_chi AS chung_chi_cr,
                     N.Khoang, N.Lo AS lo_kt, N.Dien_tich AS dien_tich,
                     N.Thon, N.Xa, N.Huyen, N.cccd, N.dia_chi_cccd,
-                    N.So_BKLS AS so_bkls, N.KD AS kd, N.VD AS vd
+                    N.So_BKLS AS so_bkls, N.KD AS kd, N.VD AS vd,
+                    H.he_so AS he_so_lo
                 FROM [prod].[GHEP_LO_GO_RESULT] G
                 LEFT JOIN (
                     SELECT
@@ -61,6 +62,8 @@ router.get('/list', async (req, res) => {
                     WHERE Lo_go IS NOT NULL
                     GROUP BY Lo_go
                 ) N ON LTRIM(RTRIM(G.LO_GO_GAN)) = LTRIM(RTRIM(N.Lo_go))
+                LEFT JOIN [prod].[LO_GO_HE_SO] H
+                    ON LTRIM(RTRIM(G.LO_GO_GAN)) = LTRIM(RTRIM(H.lo_go))
                 WHERE G.thang = @thang AND G.nam = @nam
                     AND LTRIM(RTRIM(G.mancc)) = @mancc
                 ORDER BY G.CREATED_AT, G.SOPHIEU, G.id
@@ -100,7 +103,9 @@ router.get('/list', async (req, res) => {
                 so_bkls: d.so_bkls ? d.so_bkls.trim() : null,
                 kd: d.kd ? String(d.kd).trim() : null,
                 vd: d.vd ? String(d.vd).trim() : null,
-                he_so: d.saved_he_so || null,
+                // Ưu tiên hệ số riêng theo lô (LO_GO_HE_SO);
+                // fallback saved_he_so (giá trị global lúc save biên bản)
+                he_so: d.he_so_lo != null ? d.he_so_lo : (d.saved_he_so || null),
             })
             phieuMap[d.SOPHIEU].tong_kl += (d.kl_m3 || 0)
         })
