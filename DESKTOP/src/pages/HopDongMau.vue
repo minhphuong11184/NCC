@@ -35,6 +35,11 @@
           :label="viewMode === 'hd' ? 'In Hợp đồng' : (viewMode === 'plhd' ? 'In PLHĐ' : 'In cả 2')"
           @click="printPage" :disable="!selectedLo" />
       </div>
+      <div class="col-auto">
+        <q-btn color="deep-orange" icon="description"
+          label="Xuất Word tất cả"
+          @click="exportAllWord" :disable="!loList.length || !xuongXe" :loading="exporting" />
+      </div>
     </div>
 
     <!-- ============ HỢP ĐỒNG NGUYÊN TẮC MUA BÁN GỖ TRÒN ============ -->
@@ -303,6 +308,7 @@
 
 <script>
 import axios from "axios";
+import { saveAs } from "file-saver";
 import xuongXeMixin from "../mixins/xuongXeMixin";
 
 export default {
@@ -336,6 +342,7 @@ export default {
       xuongNguoiDD: "",
       xuongUQNguoi: "",
       xuongCode: "",
+      exporting: false,
     };
   },
   computed: {
@@ -472,6 +479,274 @@ export default {
       this.xuongCode = cfg.ma || "";
     },
     printPage() { window.print(); },
+
+    /* ===== Helper: tính số HĐ / PLHĐ / initials cho 1 chủ rừng ===== */
+    benBInitialsOf(lo) {
+      if (!lo || !lo.ten_ho) return "XYZ";
+      return lo.ten_ho.trim().split(/\s+/)
+        .map(w => w.charAt(0).toUpperCase()).join("");
+    },
+    soHopDongOf(lo) {
+      const yy = String(this.nam).slice(-2);
+      const code = this.xuongCode || "XXX";
+      return `001-${yy}/HĐMB-${code}-${this.benBInitialsOf(lo)}`;
+    },
+    soPhuLucOf(lo) {
+      const code = this.xuongCode || "XXX";
+      return `01/PLHĐ - ${code}-${this.benBInitialsOf(lo)}`;
+    },
+
+    /* ===== Render HTML: HỢP ĐỒNG nguyên tắc ===== */
+    renderHopDongHtml(lo) {
+      const e = s => String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const tenHoUpper = lo.ten_ho ? lo.ten_ho.toUpperCase() : "";
+      const diaChi = lo.dia_chi_cccd || lo.xa || "";
+      const ng = this.ngayHD;
+      const soHD = this.soHopDongOf(lo);
+      return `
+<div class="hd-form">
+  <div class="hd-header">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+  <div class="hd-header bold">Độc lập - Tự do - Hạnh phúc</div>
+  <div class="hd-separator">──────────</div>
+  <div class="hd-title">HỢP ĐỒNG NGUYÊN TẮC MUA BÁN GỖ TRÒN</div>
+  <div class="hd-center">Số: ${e(soHD)}</div>
+  <div class="hd-text">- Căn cứ Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015 và các văn bản hướng dẫn thi hành;</div>
+  <div class="hd-text">- Căn cứ Luật Doanh nghiệp số 68/2014/QH13 ngày 26/11/2014 và các văn bản hướng dẫn thi hành;</div>
+  <div class="hd-text">- Căn cứ Luật Thương mại số 36/2005/QH11 ngày 14/06/2005 và các văn bản hướng dẫn thi hành;</div>
+  <div class="hd-text">- Căn cứ Luật Lâm nghiệp số 16/2017/QH14 ngày 15/11/2017 và các văn bản hướng dẫn thi hành;</div>
+  <div class="hd-text">- Căn cứ vào điều lệ của ${e(this.xuongTen)};</div>
+  <div class="hd-text">- Căn cứ nhu cầu và khả năng của hai bên.</div>
+  <div class="hd-text indent">Hôm nay, ngày <b>${ng.ngay}</b> tháng <b>${ng.thang}</b> năm <b>${ng.nam}</b>, tại trụ sở ${e(this.xuongTen)} - Địa chỉ: ${e(this.xuongDiaChi)}, chúng tôi gồm:</div>
+  <div class="hd-section">I. BÊN MUA (Sau đây được gọi tắt là Bên A)</div>
+  <div class="hd-text bold">${e(this.xuongTen)}</div>
+  <div class="hd-text">Mã số doanh nghiệp: <b>${e(this.xuongMST)}</b></div>
+  <div class="hd-text">Trụ sở: ${e(this.xuongDiaChi)}</div>
+  <div class="hd-text">Mã chứng chỉ: <b>${e(this.xuongCCRaw)}</b> &nbsp;&nbsp;&nbsp;&nbsp; Hiệu lực: <b>${e(this.xuongHieuLuc)}</b></div>
+  <div class="hd-text">Người đại diện: ${e(this.xuongNguoiDD)}</div>
+  ${this.xuongUQNguoi ? `<div class="hd-text">Người đại diện thu mua gỗ keo tròn FSC100% theo ủy quyền: <b>${e(this.xuongUQNguoi)}</b></div>` : ""}
+  <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
+  <div class="hd-text">Ông/Bà: <b>${e(tenHoUpper)}</b></div>
+  <div class="hd-text">CCCD số: <b>${e(lo.cccd || "..............................")}</b></div>
+  <div class="hd-text">Địa chỉ: ${e(diaChi)}</div>
+  <div class="hd-text">Mã chứng chỉ rừng: <b>${e(lo.chung_chi || "...............")}</b></div>
+  ${lo.nhom_chung_chi ? `<div class="hd-text">Thuộc nhóm chứng chỉ rừng FSC: <b>${e(lo.nhom_chung_chi)}</b></div>` : ""}
+  <div class="hd-text">Hai bên cùng trao đổi và thống nhất ký kết Hợp đồng nguyên tắc mua bán gỗ tròn keo tai tượng (Acacia mangium) rừng trồng có chứng chỉ FSC 100% với các nội dung sau:</div>
+  <div class="hd-section">Điều 1: Đối tượng của Hợp đồng</div>
+  <div class="hd-text">Bên B đồng ý bán gỗ tròn keo tai tượng (Acacia mangium) có chứng chỉ FSC 100% (do Bên B tự trồng) cho Bên A và Bên A đồng ý nhận mua gỗ tròn từ Bên B. Số lượng, chất lượng và tiêu chuẩn gỗ tròn sẽ được thực hiện theo thỏa thuận tại Phụ lục đính kèm Hợp đồng này.</div>
+  <div class="hd-section">Điều 2: Giá trị Hợp đồng và phương thức thanh toán</div>
+  <div class="hd-text bold">2.1. Giá trị Hợp đồng</div>
+  <div class="hd-text">Giá trị Hợp đồng này sẽ được các bên thống nhất thỏa thuận tại Phụ lục đính kèm Hợp đồng này.</div>
+  <div class="hd-text bold">2.2. Phương thức thanh toán</div>
+  <div class="hd-text">+ Bên A nhận đủ số lượng gỗ theo thỏa thuận tại Phụ lục Hợp đồng;</div>
+  <div class="hd-text">+ Bên B bàn giao cho Bên A toàn bộ hồ sơ về nguồn gốc gỗ.</div>
+  <div class="hd-text">- Đồng tiền thanh toán: Việt Nam đồng.</div>
+  <div class="hd-text">- Hình thức thanh toán: Tiền mặt / chuyển khoản.</div>
+  <div class="hd-section">Điều 3: Địa điểm và phương thức giao nhận</div>
+  <div class="hd-text bold">3.1. Địa điểm giao nhận</div>
+  <div class="hd-text">Địa điểm giao nhận gỗ: Tại bãi 1 địa chỉ do Bên B chỉ định.</div>
+  <div class="hd-text bold">3.2. Phương thức giao nhận</div>
+  <div class="hd-text">- Bên B có trách nhiệm bàn giao toàn bộ số lượng gỗ theo kế hoạch đã thống nhất với Bên A.</div>
+  <div class="hd-text">- Bên A có trách nhiệm thanh toán toàn bộ chi phí vận chuyển từ bãi 1 đến xưởng của Bên A.</div>
+  <div class="hd-text">- Thời điểm giao nhận và người phụ trách giao nhận sẽ được Bên B thông báo tới Bên A.</div>
+  <div class="hd-text">- Việc giao nhận gỗ keo tròn FSC 100% đạt yêu cầu sẽ được lập thành Biên bản.</div>
+  <div class="hd-section">Điều 4: Quyền và nghĩa vụ của Bên A</div>
+  <div class="hd-text bold">4.1. Quyền của Bên A</div>
+  <div class="hd-text">- Yêu cầu Bên B giao hàng đúng số lượng, chất lượng, kích thước và thời gian theo quy định tại Hợp đồng;</div>
+  <div class="hd-text">- Đơn phương chấm dứt Hợp đồng nếu Bên B vi phạm điều khoản.</div>
+  <div class="hd-text bold">4.2. Nghĩa vụ của Bên A</div>
+  <div class="hd-text">- Thanh toán giá trị Hợp đồng đúng thời hạn theo quy định.</div>
+  <div class="hd-text">- Tổ chức tiếp nhận gỗ nhanh chóng, an toàn, dứt điểm.</div>
+  <div class="hd-section">Điều 5: Quyền và nghĩa vụ của Bên B</div>
+  <div class="hd-text bold">5.1. Quyền của Bên B</div>
+  <div class="hd-text">- Yêu cầu Bên A thanh toán giá trị Hợp đồng đúng hạn.</div>
+  <div class="hd-text bold">5.2. Nghĩa vụ của Bên B</div>
+  <div class="hd-text">- Giao hàng đúng số lượng, chất lượng, kích thước và thời gian thỏa thuận.</div>
+  <div class="hd-text">- Cung cấp hồ sơ nguồn gốc gỗ hợp pháp.</div>
+  <div class="hd-section">Điều 6: Thời điểm chịu rủi ro</div>
+  <div class="hd-text">1. Bên B chịu rủi ro trong quá trình vận chuyển đến bãi 1.</div>
+  <div class="hd-text">2. Sau 2 ngày kể từ thời điểm bàn giao gỗ mà Bên A không khiếu nại, Bên B không phải chịu trách nhiệm phát sinh.</div>
+  <div class="hd-section">Điều 7: Quyền đơn phương chấm dứt Hợp đồng</div>
+  <div class="hd-text">Quy định tại Điều 4.1 và quy định pháp luật.</div>
+  <div class="hd-section">Điều 8: Trách nhiệm khi đơn phương chấm dứt Hợp đồng</div>
+  <div class="hd-text">Bên đề nghị có trách nhiệm thông báo bằng văn bản. Thời hạn khắc phục 15 ngày.</div>
+  <div class="hd-section">Điều 9: Giải quyết tranh chấp</div>
+  <div class="hd-text">Đàm phán, thương lượng. Nếu không thỏa thuận được, khởi kiện tại Tòa án có thẩm quyền nơi Bên A có trụ sở.</div>
+  <div class="hd-section">Điều 10: Hiệu lực của Hợp đồng</div>
+  <div class="hd-text">Hợp đồng có hiệu lực kể từ ngày ký và chấm dứt theo thỏa thuận hoặc theo các điều kiện quy định trong Hợp đồng.</div>
+  <div class="hd-section">Điều 11: Điều khoản chung</div>
+  <div class="hd-text">Hai bên cam kết thực hiện nghiêm chỉnh, đầy đủ các quy định trong Hợp đồng và Phụ lục kèm theo.</div>
+  <div class="hd-text">Hợp đồng được lập thành 03 bản gốc, Bên A giữ 02, Bên B giữ 01.</div>
+  <table class="sign-table"><tr>
+    <td class="sign-col"><div class="sign-title">ĐẠI DIỆN BÊN A</div><div class="sign-space"></div></td>
+    <td class="sign-col"><div class="sign-title">ĐẠI DIỆN BÊN B</div><div class="sign-space"></div><div class="sign-name">${e(tenHoUpper)}</div></td>
+  </tr></table>
+</div>`;
+    },
+
+    /* ===== Render HTML: PHỤ LỤC HĐ ===== */
+    renderPhuLucHtml(lo) {
+      const e = s => String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const tenHoUpper = lo.ten_ho ? lo.ten_ho.toUpperCase() : "";
+      const diaChi = lo.dia_chi_cccd || lo.xa || "";
+      const ng = this.ngayHD;
+      const soHD = this.soHopDongOf(lo);
+      const soPL = this.soPhuLucOf(lo);
+      const tongKl = Number(lo.tong_kl_go || 0).toFixed(2);
+      const donGia = (lo.don_gia || 0).toLocaleString("vi-VN");
+      const tongTien = (lo.tong_thanh_tien || (lo.tong_kl_go || 0) * (lo.don_gia || 0));
+      const tongTienStr = Math.round(tongTien).toLocaleString("vi-VN");
+      const loList = (lo.lo_list || []).map(lot =>
+        `<div class="hd-text">Khoảnh: <b>${e(lot.khoanh || "")}</b> &nbsp;&nbsp;&nbsp;&nbsp; Lô: <b>${e(lot.lo || "")}</b> &nbsp;&nbsp;&nbsp;&nbsp; Diện tích <b>${Number(lot.dien_tich || 0).toFixed(2)}</b> (ha)</div>`
+      ).join("");
+      return `
+<div class="hd-form">
+  <div class="hd-header">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+  <div class="hd-header bold">Độc lập - Tự do - Hạnh phúc</div>
+  <div class="hd-separator">──────────</div>
+  <div class="hd-title">PHỤ LỤC HỢP ĐỒNG</div>
+  <div class="hd-center">Số: ${e(soPL)}</div>
+  <div class="hd-text">- Căn cứ vào các văn bản quy phạm pháp luật hiện hành;</div>
+  <div class="hd-text">- Căn cứ vào Hợp đồng nguyên tắc mua bán gỗ số ${e(soHD)} ngày ${ng.ngay} tháng ${ng.thang} năm ${ng.nam};</div>
+  <div class="hd-text">- Căn cứ nhu cầu và khả năng của hai bên.</div>
+  <div class="hd-text indent">Hôm nay, ngày <b>${ng.ngay}</b> tháng <b>${ng.thang}</b> năm <b>${ng.nam}</b>, tại trụ sở ${e(this.xuongTen)} - Địa chỉ: ${e(this.xuongDiaChi)}, chúng tôi gồm:</div>
+  <div class="hd-section">I. BÊN MUA (Sau đây được gọi tắt là Bên A)</div>
+  <div class="hd-text bold">${e(this.xuongTen)}</div>
+  <div class="hd-text">Mã số doanh nghiệp: <b>${e(this.xuongMST)}</b></div>
+  <div class="hd-text">Trụ sở: ${e(this.xuongDiaChi)}</div>
+  <div class="hd-text">Mã chứng chỉ: <b>${e(this.xuongCCRaw)}</b> &nbsp;&nbsp;&nbsp;&nbsp; Hiệu lực: <b>${e(this.xuongHieuLuc)}</b></div>
+  <div class="hd-text">Người đại diện: ${e(this.xuongNguoiDD)}</div>
+  ${this.xuongUQNguoi ? `<div class="hd-text">Người đại diện thu mua gỗ keo tròn FSC100% theo ủy quyền: <b>${e(this.xuongUQNguoi)}</b></div>` : ""}
+  <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
+  <div class="hd-text">Ông/Bà: <b>${e(tenHoUpper)}</b></div>
+  <div class="hd-text">CCCD số: <b>${e(lo.cccd || "..............................")}</b></div>
+  <div class="hd-text">Địa chỉ: ${e(diaChi)}</div>
+  <div class="hd-text">Mã chứng chỉ rừng: <b>${e(lo.chung_chi || "...............")}</b></div>
+  ${lo.nhom_chung_chi ? `<div class="hd-text">Thuộc nhóm chứng chỉ rừng FSC: <b>${e(lo.nhom_chung_chi)}</b></div>` : ""}
+  ${loList}
+  <div class="hd-text">Hai bên cùng trao đổi và thống nhất ký kết Phụ lục Hợp đồng mua bán gỗ tròn keo tai tượng rừng trồng FSC 100% (Acacia mangium) với các nội dung sau:</div>
+  <div class="hd-section">Điều 1: Nội dung của Phụ lục Hợp đồng</div>
+  <div class="hd-text">Căn cứ vào các quy định pháp luật và Hợp đồng nguyên tắc mua bán gỗ số ${e(soHD)} ký kết giữa hai bên, Bên B đồng ý bán gỗ tròn keo tai tượng (Acacia mangium) FSC 100% cho Bên A với các thông tin cụ thể:</div>
+  <table class="data-table"><thead><tr>
+    <th>STT</th><th>Chủng loại gỗ</th><th>ĐVT</th><th>Số lượng</th><th>Đơn giá (đ/m³)</th><th>Thành tiền</th><th>Ghi chú</th>
+  </tr></thead><tbody>
+    <tr>
+      <td>1</td><td style="text-align:left">Gỗ tròn keo tai tượng FSC 100%, đường kính từ 13cm trở lên</td>
+      <td>m³</td><td style="text-align:right">${tongKl}</td>
+      <td style="text-align:right">${donGia}</td><td style="text-align:right">${tongTienStr}</td><td></td>
+    </tr>
+    <tr class="total-row">
+      <td colspan="3" style="font-weight:bold">TỔNG</td>
+      <td style="text-align:right;font-weight:bold">${tongKl}</td>
+      <td></td><td style="text-align:right;font-weight:bold">${tongTienStr}</td><td></td>
+    </tr>
+  </tbody></table>
+  <div class="hd-text">Giá trị đơn hàng nêu trên chưa bao gồm tiền thuế thu nhập cá nhân theo quy định.</div>
+  <div class="hd-section">Điều 2: Yêu cầu về chất lượng gỗ</div>
+  <div class="hd-text">- Có đường kính ≥ 13 cm, chiều dài ≥ 2m.</div>
+  <div class="hd-text">- Không được mục ải, rỗng ruột hoặc cong vênh.</div>
+  <div class="hd-section">Điều 3: Địa điểm và thời gian giao hàng</div>
+  <div class="hd-text">- Địa điểm giao hàng: Tại địa chỉ bãi 1 do bên B chỉ định.</div>
+  <div class="hd-text">- Thời gian giao hàng: Sẽ được bên B thông báo tới bên A.</div>
+  <div class="hd-section">Điều 4: Hiệu lực của Phụ lục hợp đồng</div>
+  <div class="hd-text">Phụ lục là một phần không thể tách rời của Hợp đồng. Phụ lục có hiệu lực kể từ ngày ký và tự động chấm dứt khi Bên A nhận đủ gỗ và thanh toán cho Bên B.</div>
+  <div class="hd-text">Phụ lục được lập thành 03 bản, Bên A giữ 02, Bên B giữ 01.</div>
+  <table class="sign-table"><tr>
+    <td class="sign-col"><div class="sign-title">ĐẠI DIỆN BÊN A</div><div class="sign-space"></div></td>
+    <td class="sign-col"><div class="sign-title">ĐẠI DIỆN BÊN B</div><div class="sign-space"></div><div class="sign-name">${e(tenHoUpper)}</div></td>
+  </tr></table>
+</div>`;
+    },
+
+    /* ===== Xuất Word: tất cả chủ rừng, mỗi chủ rừng HĐ + PLHĐ ===== */
+    async exportAllWord() {
+      if (!this.loList.length) {
+        this.$q.notify({ type: "warning", message: "Chưa có dữ liệu để xuất" });
+        return;
+      }
+      if (!this.xuongXe) {
+        this.$q.notify({ type: "warning", message: "Vui lòng chọn xưởng xẻ" });
+        return;
+      }
+      this.exporting = true;
+      try {
+        const parts = [];
+        this.loList.forEach((lo, idx) => {
+          if (idx > 0) parts.push('<div style="page-break-before:always"></div>');
+          parts.push(this.renderHopDongHtml(lo));
+          parts.push('<div style="page-break-before:always"></div>');
+          parts.push(this.renderPhuLucHtml(lo));
+        });
+
+        const css = `<style>
+@page Section1 { size: 21cm 29.7cm; margin: 1.5cm 2cm 1.5cm 2cm; mso-page-orientation: portrait; }
+div.Section1 { page: Section1; }
+body { font-family: "Times New Roman", serif; font-size: 13pt; line-height: 1.5; }
+.hd-form { max-width: 100%; }
+.hd-header { text-align: center; font-size: 13pt; margin: 2pt 0; }
+.hd-header.bold { font-weight: bold; }
+.hd-separator { text-align: center; margin: 0 0 8pt 0; }
+.hd-title { text-align: center; font-weight: bold; font-size: 16pt; margin: 8pt 0; text-transform: uppercase; }
+.hd-center { text-align: center; margin: 0 0 8pt 0; }
+.hd-section { font-weight: bold; margin: 8pt 0 4pt 0; }
+.hd-text { margin: 0 0 3pt 8pt; }
+.hd-text.indent { text-indent: 2em; }
+.hd-text.bold { font-weight: bold; }
+.bold { font-weight: bold; }
+.data-table { width: 100%; border-collapse: collapse; margin: 6pt 0; }
+.data-table th, .data-table td { border: 1px solid #333; padding: 3pt 5pt; text-align: center; font-size: 11pt; }
+.data-table th { background: #F0F0F0; font-weight: bold; }
+.total-row td { font-weight: bold; }
+.sign-table { width: 100%; margin-top: 12pt; border-collapse: collapse; }
+.sign-col { text-align: center; width: 50%; vertical-align: top; padding: 0 4pt; }
+.sign-title { font-weight: bold; }
+.sign-space { height: 60pt; }
+.sign-name { font-weight: bold; margin-top: 6pt; }
+.pgbreak { page-break-before: always; }
+</style>`;
+
+        // Thay <div style="page-break-before:always"> bằng class .pgbreak để Word xử lý nhất quán
+        const bodyHtml = parts.join("\n").replace(
+          /<div style="page-break-before:always"><\/div>/g,
+          '<div class="pgbreak"></div>'
+        );
+
+        const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8"/>
+  <title>Hợp đồng &amp; PLHĐ</title>
+  <!--[if gte mso 9]><xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotPromptForConvert/>
+    </w:WordDocument>
+  </xml><![endif]-->
+  ${css}
+</head>
+<body><div class="Section1">${bodyHtml}</div></body>
+</html>`;
+
+        // Word đọc được HTML với .doc extension (MIME application/msword)
+        const blob = new Blob(['﻿' + html], { type: "application/msword;charset=utf-8" });
+        const fname = `HopDong_PLHD_${this.thang}_${this.nam}_${this.xuongCode || "ALL"}.doc`;
+        saveAs(blob, fname);
+
+        this.$q.notify({
+          type: "positive",
+          message: `Đã xuất ${this.loList.length} chủ rừng × 2 (HĐ + PLHĐ) = ${this.loList.length * 2} trang`,
+          timeout: 4000,
+        });
+      } catch (err) {
+        console.error(err);
+        this.$q.notify({ type: "negative", message: "Lỗi xuất Word: " + (err.message || err), timeout: 6000 });
+      } finally {
+        this.exporting = false;
+      }
+    },
   },
 };
 </script>
@@ -509,9 +784,14 @@ export default {
 
 @media print {
   .no-print { display: none !important; }
-  .hd-form { border: 1px solid #000; }
+  .hd-form {
+    border: none;
+    padding: 0;
+    max-width: 100%;
+    margin: 0;
+  }
   /* Khi in cả 2 (HĐ + PLHĐ): PLHĐ bắt đầu trang mới */
   .plhd-break { page-break-before: always; break-before: page; }
-  @page { size: portrait A4; margin: 10mm; }
+  @page { size: portrait A4; margin: 15mm; }
 }
 </style>

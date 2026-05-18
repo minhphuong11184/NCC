@@ -24,6 +24,12 @@ api.use('/import-kh', require('./import-kh'))
 // Chia xe tự động từ KH
 api.use('/chia-xe', require('./chia-xe'))
 
+// Phiếu cân hàng — random trọng lượng bì + in phiếu
+api.use('/phieu-can', require('./phieu-can'))
+
+// Phiếu gỗ xẻ (NKTP / XK / BKLS) sau khi đã ghép lô gỗ
+api.use('/phieu-go-xe', require('./phieu-go-xe'))
+
 // Chấm công ZKTeco
 api.use('/attendance', require('./attendance'))
 

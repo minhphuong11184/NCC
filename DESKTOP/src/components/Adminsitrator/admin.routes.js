@@ -78,6 +78,11 @@ export const adminRoutes = [
     meta: { requiresAuth: true }
   },
   {
+    path: "/phieu-can-hang",
+    component: () => import("pages/PhieuCanHang.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
     path: "/bk-thu-mua-moi",
     component: () => import("pages/BKThuMuaMoi.vue"),
     meta: { requiresAuth: true }
@@ -139,6 +144,11 @@ export const adminRoutes = [
   {
     path: "/ghep-lo-go",
     component: () => import("pages/GhepLoGo.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/phieu-go-xe",
+    component: () => import("pages/PhieuGoXe.vue"),
     meta: { requiresAuth: true }
   },
   {

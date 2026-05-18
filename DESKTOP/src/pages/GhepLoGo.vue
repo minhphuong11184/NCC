@@ -91,6 +91,10 @@
           :loading="savingResult" :disable="source === 'result'"
           @click="saveResult" />
       </div>
+      <div class="col-auto">
+        <q-btn color="blue-7" icon="description" label="Xuất Word tất cả"
+          :loading="exportingWord" @click="exportAllWord" />
+      </div>
       <div v-if="fromSaved" class="col-auto text-grey-7">
         <q-icon name="history" /> Biên bản đã lưu lúc {{ fmtSavedAt(savedAt) }}
       </div>
@@ -279,6 +283,7 @@
 
 <script>
 import axios from "axios";
+import { saveAs } from "file-saver";
 import { DxDataGrid, DxColumn, DxEditing } from "devextreme-vue/data-grid";
 import xuongXeMixin from "../mixins/xuongXeMixin";
 import khoMixin from "../mixins/khoMixin";
@@ -312,6 +317,7 @@ export default {
       showHeSo: false,
       heSoList: [],
       savingHeSo: false,
+      exportingWord: false,
     };
   },
   computed: {
@@ -508,6 +514,174 @@ export default {
         this.$q.notify({ type: "negative", message: "Lỗi lưu: " + detail, timeout: 8000 });
       } finally {
         this.savingResult = false;
+      }
+    },
+
+    /* ===================== XUẤT WORD (.doc) — 1 file tất cả biên bản, mỗi biên bản 1 trang ===================== */
+
+    wordEsc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    },
+
+    wordCss() {
+      return `<style>
+        @page Section1 { size: 21cm 29.7cm; margin: 1.5cm 1.5cm 1.5cm 1.5cm; mso-page-orientation: portrait; }
+        div.Section1 { page: Section1; }
+        body { font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.4; }
+        p { margin: 0 0 3pt 0; }
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .bold { font-weight: bold; }
+        .italic { font-style: italic; }
+        .small { font-size: 10pt; }
+        .title { font-size: 15pt; font-weight: bold; text-align: center; margin: 4pt 0 8pt 0; }
+        .header-bar { display: table; width: 100%; margin-bottom: 4pt; }
+        .header-bar > div { display: table-cell; }
+        .header-bar .h-right { text-align: right; font-style: italic; font-size: 10pt; }
+        table.info { width: 100%; border-collapse: collapse; margin: 4pt 0 8pt 0; }
+        table.info td { padding: 3pt 5pt; vertical-align: top; font-size: 12pt; }
+        table.info td.lbl { font-weight: bold; width: 18%; white-space: nowrap; }
+        table.info td.val { width: 32%; }
+        table.tbl { border-collapse: collapse; width: 100%; margin: 4pt 0; }
+        table.tbl th, table.tbl td {
+          border: 1px solid #333;
+          padding: 3pt 5pt;
+          vertical-align: middle;
+          font-size: 11pt;
+        }
+        table.tbl th { background: #F0F0F0; font-weight: bold; text-align: center; }
+        table.tbl td { text-align: center; }
+        table.tbl td.num { text-align: right; }
+        table.tbl tr.total-row td { font-weight: bold; }
+        table.sign-3col { width: 100%; margin-top: 14pt; border-collapse: collapse; }
+        table.sign-3col td {
+          width: 33.3%;
+          text-align: center;
+          vertical-align: top;
+          padding: 0 4pt;
+        }
+        .sign-title { font-weight: bold; }
+        .sign-space { height: 64pt; }
+        .pgbreak { page-break-before: always; }
+      </style>`;
+    },
+
+    /** Build HTML cho 1 biên bản nghiệm thu xẻ tươi — 1 trang A4 portrait. */
+    wordOnePhieu(p, idx) {
+      const e = this.wordEsc.bind(this);
+      const firstBreak = idx === 0 ? "" : '<br clear="all" class="pgbreak"/>';
+      const xuongName = this.xuongNameOf(p) || "";
+      const xuongAddr = this.xuongAddressOf(p) || "";
+      const loGo = this.loGoOfPhieu(p) || "";
+      const ngayStr = this.fmtDate(p.CREATED_AT);
+
+      const rows = (p.chi_tiet || []).map((d, di) => `
+        <tr>
+          <td>${di + 1}</td>
+          <td>${e(d.dt_day || "")}</td>
+          <td>${e(d.dt_rong || "")}</td>
+          <td>${e(d.dt_cao || "")}</td>
+          <td>${e(d.SOBO || "")}</td>
+          <td>${e(d.SOTHANH_BO || "")}</td>
+          <td>${e(d.tong_thanh || "")}</td>
+          <td class="num">${d.kl_m3 ? Number(d.kl_m3).toFixed(4) : ""}</td>
+          <td>${e(d.lo_go || "")}</td>
+        </tr>
+      `).join("");
+
+      const tongKl = p.tong_kl ? Number(p.tong_kl).toFixed(4) : "";
+
+      return `${firstBreak}
+        <div class="header-bar">
+          <div class="bold">SỔ TAY COC</div>
+          <div class="h-right">BM.COC.01-b</div>
+        </div>
+        <p class="title">BIÊN BẢN NGHIỆM THU XẺ TƯƠI<br/>(Kiêm phiếu nhập kho)</p>
+        <div class="header-bar">
+          <div></div>
+          <div class="h-right">Ngày BH: 30/03/2019 — Lần ban hành: 04</div>
+        </div>
+        <table class="info">
+          <tr>
+            <td class="lbl">Đơn vị giao hàng:</td><td class="val">${e(this.nccName)}</td>
+            <td class="lbl">Số phiếu:</td><td class="val bold">${e(p.SOPHIEU || "")}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Địa chỉ:</td><td class="val">${e(this.nccAddress)}</td>
+            <td class="lbl">Biển số xe:</td><td class="val">${e(p.BIENSOXE || "")}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Kho nhập:</td><td class="val">${e(xuongName)}</td>
+            <td class="lbl">Ngày nhập:</td><td class="val">${e(ngayStr)}</td>
+          </tr>
+          ${xuongAddr ? `<tr><td class="lbl">Địa chỉ:</td><td class="val" colspan="3">${e(xuongAddr)}</td></tr>` : ""}
+          <tr>
+            <td class="lbl">Trạng thái MT: FSC 100%</td>
+            <td class="val">Nhóm SP: ${e(p.NHOMSP || "")}</td>
+            <td></td><td class="val">${e(loGo)}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Loại gỗ: Keo tai tượng (Acacia mangium)</td><td></td>
+            <td class="lbl">Mã lô gỗ nhập:</td><td class="val"></td>
+          </tr>
+        </table>
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th rowspan="2">STT</th>
+              <th colspan="3">Quy cách (mm)</th>
+              <th rowspan="2">Số bó</th>
+              <th rowspan="2">Số<br/>thanh/bó</th>
+              <th rowspan="2">Tổng thanh</th>
+              <th rowspan="2">Tổng khối<br/>lượng (m³)</th>
+              <th rowspan="2">Ghi chú</th>
+            </tr>
+            <tr><th>Dày</th><th>Rộng</th><th>Dài</th></tr>
+          </thead>
+          <tbody>
+            ${rows}
+            <tr class="total-row"><td colspan="7">TỔNG</td><td class="num">${tongKl}</td><td></td></tr>
+          </tbody>
+        </table>
+        <table class="sign-3col">
+          <tr>
+            <td class="sign-title">Đại diện giao hàng</td>
+            <td class="sign-title">Thủ kho</td>
+            <td class="sign-title">QC kiểm tra</td>
+          </tr>
+          <tr>
+            <td class="sign-space"></td>
+            <td class="sign-space"></td>
+            <td class="sign-space"></td>
+          </tr>
+        </table>`;
+    },
+
+    /** Xuất 1 file Word chứa tất cả biên bản — mỗi biên bản 1 trang A4 portrait. */
+    async exportAllWord() {
+      if (!this.phieuList.length) {
+        this.$q.notify({ type: "warning", message: "Chưa có biên bản nào để xuất — bấm Ghép trước", timeout: 5000 });
+        return;
+      }
+      this.exportingWord = true;
+      try {
+        const body = this.phieuList.map((p, i) => this.wordOnePhieu(p, i)).join("");
+        const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"/>${this.wordCss()}</head><body><div class="Section1">${body}</div></body></html>`;
+        const blob = new Blob(["﻿" + html], { type: "application/msword;charset=utf-8" });
+        const fileName = `BienBan_NghiemThu_Xe_${(this.mancc || "XX").replace(/[^\p{L}\p{N}]+/gu, "_")}_T${this.thang}_${this.nam}.doc`;
+        saveAs(blob, fileName);
+        this.$q.notify({
+          type: "positive",
+          message: `Đã xuất ${this.phieuList.length} biên bản vào 1 file Word`,
+          timeout: 4000,
+        });
+      } catch (err) {
+        console.error(err);
+        this.$q.notify({ type: "negative", message: "Lỗi xuất Word: " + (err.message || err), timeout: 6000 });
+      } finally {
+        this.exportingWord = false;
       }
     },
   },

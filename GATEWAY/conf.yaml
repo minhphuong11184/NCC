@@ -77,6 +77,10 @@ routers:
     endPoint: prod
   - path: /chia-xe
     endPoint: prod
+  - path: /phieu-can
+    endPoint: prod
+  - path: /phieu-go-xe
+    endPoint: prod
   - path: /attendance
     endPoint: prod
   - path: /woodsland

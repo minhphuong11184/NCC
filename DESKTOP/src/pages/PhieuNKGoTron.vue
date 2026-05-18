@@ -285,7 +285,7 @@
 
           <div class="bktm-total-text">
             - Tổng giá trị hàng hóa, dịch vụ mua vào: <b>{{ tongGiaTriText }}</b>
-            <span class="italic">(Số tiền bằng chữ: …)</span>
+            <span class="italic">(Số tiền bằng chữ: <b>{{ tongGiaTriBangChu }}</b>)</span>
           </div>
 
           <div class="bktm-date q-mt-md">
@@ -362,6 +362,9 @@ export default {
       if (!n) return "";
       return n.toLocaleString("vi-VN") + " VNĐ";
     },
+    tongGiaTriBangChu() {
+      return this.numberToWordsVN(this.tongGiaTri);
+    },
     ngay() {
       if (!this.phieu || !this.phieu.Ngay_nhap) return "__";
       return new Date(this.phieu.Ngay_nhap).getDate();
@@ -381,6 +384,98 @@ export default {
   },
   methods: {
     ...mapActions("prod", ["getCodebangiaogotron", "getBBgiaogotron", "getAllPhieuGoTron"]),
+
+    /**
+     * Đọc 1 số nguyên không âm sang chữ tiếng Việt (chữ thường, không đơn vị).
+     * Dùng làm khối cơ bản cho numberToWordsVN (tiền) và volumeToWordsVN (khối lượng).
+     */
+    readIntegerVN(num) {
+      let n = Math.abs(Math.round(Number(num) || 0));
+      if (n === 0) return "không";
+
+      const digits = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+      const units = ["", "nghìn", "triệu", "tỷ", "nghìn tỷ"];
+
+      // Đọc 1 nhóm 3 chữ số. `full` = true khi nhóm đứng sau nhóm khác → buộc đọc đủ "X trăm"
+      const readGroup = (g, full) => {
+        const tr = Math.floor(g / 100);
+        const ch = Math.floor((g % 100) / 10);
+        const dv = g % 10;
+        let s = "";
+        if (tr > 0 || full) {
+          s += digits[tr] + " trăm";
+        }
+        if (ch > 1) {
+          s += (s ? " " : "") + digits[ch] + " mươi";
+          if (dv === 1) s += " mốt";
+          else if (dv === 4) s += " tư";
+          else if (dv === 5) s += " lăm";
+          else if (dv > 0) s += " " + digits[dv];
+        } else if (ch === 1) {
+          s += (s ? " " : "") + "mười";
+          if (dv === 5) s += " lăm";
+          else if (dv > 0) s += " " + digits[dv];
+        } else if (ch === 0 && dv > 0) {
+          if (tr > 0 || full) s += " linh " + digits[dv];
+          else s += digits[dv];
+        }
+        return s.trim();
+      };
+
+      const groups = [];
+      while (n > 0) {
+        groups.push(n % 1000);
+        n = Math.floor(n / 1000);
+      }
+
+      const parts = [];
+      for (let i = groups.length - 1; i >= 0; i--) {
+        const g = groups[i];
+        if (g === 0) continue;
+        const isFirst = parts.length === 0;
+        const text = readGroup(g, !isFirst);
+        if (text) parts.push(text + (units[i] ? " " + units[i] : ""));
+      }
+      return parts.join(" ").replace(/\s+/g, " ").trim();
+    },
+
+    /**
+     * Chuyển số tiền sang chữ tiếng Việt — viết hoa chữ đầu, kết thúc " đồng".
+     */
+    numberToWordsVN(num) {
+      if (num == null || isNaN(num)) return "";
+      const n = Math.round(Number(num));
+      if (n === 0) return "Không đồng";
+      const negative = n < 0;
+      let text = this.readIntegerVN(Math.abs(n));
+      text = text.charAt(0).toUpperCase() + text.slice(1);
+      return (negative ? "Âm " + text.toLowerCase() : text) + " đồng";
+    },
+
+    /**
+     * Chuyển khối lượng/thể tích (m³) sang chữ tiếng Việt — kết thúc " mét khối".
+     * Phần thập phân đọc từng chữ số sau "phẩy" (vd 29.52 → "hai mươi chín phẩy năm hai mét khối").
+     */
+    volumeToWordsVN(num) {
+      if (num == null || isNaN(num)) return "";
+      const sign = Number(num) < 0 ? "Âm " : "";
+      const abs = Math.abs(Number(num));
+      const intPart = Math.floor(abs);
+      const decRaw = Math.round((abs - intPart) * 100);
+
+      let combined = this.readIntegerVN(intPart);
+      if (decRaw > 0) {
+        // Đọc 2 chữ số thập phân, bỏ trailing zero (29.50 → "năm", 29.05 → "không năm")
+        let decStr = String(decRaw).padStart(2, "0").replace(/0+$/, "");
+        if (!decStr) decStr = "0";
+        const decDigits = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+        const decText = decStr.split("").map(d => decDigits[+d]).join(" ");
+        combined += " phẩy " + decText;
+      }
+      combined = combined.charAt(0).toUpperCase() + combined.slice(1);
+      return sign + combined + " mét khối";
+    },
+
     async loadCodes() {
       if (!this.fromDate || !this.toDate) return;
       const data = await this.getCodebangiaogotron({
@@ -901,7 +996,7 @@ export default {
       line(`- Nguồn gốc(7): ${p.So_BKLS || ""}    Địa chỉ: ${diaChiCR}`);
       line("- Mã HS (áp dụng đối với lâm sản nhập khẩu, xuất khẩu): …………………");
       line("- Giá trị (nếu có): ……………………………………………………………");
-      line(`- Khối lượng/trọng lượng: ${klStr} m³    Bằng chữ: ${klStr} mét khối.`);
+      line(`- Khối lượng/trọng lượng: ${klStr} m³    Bằng chữ: ${this.volumeToWordsVN(p.Khoi_luong || 0)}.`);
       line("- Số lượng: …………………; đơn vị tính (lóng, khúc; thanh, tấm, hộp, viên, ...): ……………");
       line(`- Thông tin về lô khai thác(8):    KĐ: ${p.KD || "………"}    VĐ: ${p.VD || "………"}`);
       line(`- Thông tin khác có liên quan (nếu có): Địa danh khai thác: ${diaDanhKT}    Lô: ${p.Lo || ""}    Khoảnh: ${p.Khoang || ""}`);
@@ -1075,7 +1170,8 @@ export default {
         { merge: `D${cur}`, bold: true });
       this.setCell(ws, `E${cur}`, tongTien ? tongTien.toLocaleString("vi-VN") + " VNĐ" : "",
         { merge: `G${cur}`, bold: true });
-      this.setCell(ws, `H${cur}`, "(Số tiền bằng chữ: …)",
+      this.setCell(ws, `H${cur}`,
+        tongTien ? `(Số tiền bằng chữ: ${this.numberToWordsVN(tongTien)})` : "(Số tiền bằng chữ: …)",
         { merge: `J${cur}`, italic: true });
       cur += 2;
 
@@ -1288,7 +1384,7 @@ export default {
         <p>- Nguồn gốc(7): ${e(p.So_BKLS)}    Địa chỉ: ${e(diaChiCR)}</p>
         <p>- Mã HS (áp dụng đối với lâm sản nhập khẩu, xuất khẩu): …………………</p>
         <p>- Giá trị (nếu có): ……………………………………………………………</p>
-        <p>- Khối lượng/trọng lượng: <b>${klStr}</b> m³    Bằng chữ: <b>${klStr}</b> mét khối.</p>
+        <p>- Khối lượng/trọng lượng: <b>${klStr}</b> m³    Bằng chữ: <b>${e(this.volumeToWordsVN(p.Khoi_luong || 0))}</b>.</p>
         <p>- Số lượng: …………………; đơn vị tính (lóng, khúc; thanh, tấm, hộp, viên, ...): ……………</p>
         <p>- Thông tin về lô khai thác(8):    KĐ: <b>${e(p.KD || "………")}</b>    VĐ: <b>${e(p.VD || "………")}</b></p>
         <p>- Thông tin khác có liên quan (nếu có): Địa danh khai thác: <b>${e(diaDanhKT)}</b>    Lô: <b>${e(p.Lo)}</b>    Khoảnh: <b>${e(p.Khoang)}</b></p>
@@ -1370,7 +1466,7 @@ export default {
           </tr>
           <tr><td colspan="6" class="center bold">Tổng</td><td class="num bold">${f(p.Khoi_luong)}</td><td></td><td class="num bold">${m(tongTien)}</td><td></td></tr>
         </table>
-        <p class="bold">- Tổng giá trị hàng hóa, dịch vụ mua vào: ${m(tongTien)} VNĐ <span class="italic">(Số tiền bằng chữ: …)</span></p>
+        <p class="bold">- Tổng giá trị hàng hóa, dịch vụ mua vào: ${m(tongTien)} VNĐ <span class="italic">(Số tiền bằng chữ: <b>${e(this.numberToWordsVN(tongTien))}</b>)</span></p>
         <p class="right italic">${e(dateBottom)}</p>
         <table class="sign-2col"><tr>
           <td>
@@ -1544,7 +1640,7 @@ export default {
 .bktm-date { text-align: right; font-style: italic; font-size: 12px; }
 .sign-sub { font-style: italic; font-size: 10px; }
 
-/* ===== Print style ===== */
+/* ===== Print style — bỏ khung border ngoài, chỉ giữ nội dung ===== */
 @media print {
   .no-print { display: none !important; }
   .print-area { margin: 0; }
@@ -1554,7 +1650,8 @@ export default {
     display: block;
   }
   .bieu-mau {
-    border: 1px solid #000;
+    border: none;
+    padding: 0;
     page-break-after: always;
     page-break-inside: avoid;
     margin-bottom: 0;
@@ -1568,8 +1665,12 @@ export default {
     page-break-before: always;
     margin-top: 0;
   }
-  .bktm { border: 1px solid #000; }
+  .bktm {
+    border: none;
+    padding: 0;
+    max-width: 100%;
+  }
 
-  @page { size: portrait A4; margin: 10mm; }
+  @page { size: portrait A4; margin: 15mm; }
 }
 </style>

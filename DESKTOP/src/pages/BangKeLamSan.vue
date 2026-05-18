@@ -63,7 +63,7 @@
         <div class="info-line">- Nguồn gốc(7): <b>{{ phieu.So_BKLS || '………………' }}</b>&nbsp;&nbsp;&nbsp;&nbsp;Địa chỉ: <b>{{ diaChiChuRung || '………………' }}</b></div>
         <div class="info-line">- Mã HS (áp dụng đối với lâm sản nhập khẩu, xuất khẩu): …………………</div>
         <div class="info-line">- Giá trị (nếu có): ……………………………………………………………</div>
-        <div class="info-line">- Khối lượng/trọng lượng: <b>{{ fmtNum(phieu.Khoi_luong) }}</b> m³&nbsp;&nbsp;&nbsp;&nbsp;Bằng chữ: <b>{{ soThanhChu }} mét khối.</b></div>
+        <div class="info-line">- Khối lượng/trọng lượng: <b>{{ fmtNum(phieu.Khoi_luong) }}</b> m³&nbsp;&nbsp;&nbsp;&nbsp;Bằng chữ: <b>{{ soThanhChu }}.</b></div>
         <div class="info-line">- Số lượng: ….....................; đơn vị tính (lóng, khúc; thanh, tấm, hộp, viên, ...): ......................</div>
         <div class="info-line">- Thông tin về lô khai thác(8):&nbsp;&nbsp;&nbsp;&nbsp;KĐ: <b>{{ phieu.KD || '………' }}</b>&nbsp;&nbsp;&nbsp;&nbsp;VĐ: <b>{{ phieu.VD || '………' }}</b></div>
         <div class="info-line">- Thông tin khác có liên quan (nếu có):&nbsp;&nbsp;Địa danh khai thác: <b>{{ diaChiChuRung }}</b>&nbsp;&nbsp;&nbsp;&nbsp;Lô: <b>{{ phieu.Lo }}</b>&nbsp;&nbsp;&nbsp;&nbsp;Khoảnh: <b>{{ phieu.Khoang }}</b></div>
@@ -113,6 +113,7 @@
 <script>
 import { mapActions } from "vuex";
 import xuongXeMixin from "../mixins/xuongXeMixin";
+import { volumeToWordsVN } from "../utils/numberToWordsVN";
 
 export default {
   mixins: [xuongXeMixin],
@@ -148,7 +149,7 @@ export default {
     nam() { return this.ngayBKLS ? this.ngayBKLS.getFullYear() : "____"; },
     soThanhChu() {
       if (!this.phieu || !this.phieu.Khoi_luong) return "___";
-      return this.fmtNum(this.phieu.Khoi_luong);
+      return volumeToWordsVN(this.phieu.Khoi_luong);
     },
   },
   async created() { await this.loadXuongXe(); this.loadCodes(); },
@@ -224,7 +225,12 @@ export default {
 
 @media print {
   .no-print { display: none !important; }
-  .bkls-form { border: 1px solid #000; }
-  @page { size: portrait A4; margin: 10mm; }
+  .bkls-form {
+    border: none;
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+  @page { size: portrait A4; margin: 15mm; }
 }
 </style>
