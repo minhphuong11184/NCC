@@ -42,7 +42,7 @@
           :loading="exportingWord" @click="exportAllWord" />
       </div>
       <div class="col-auto">
-        <q-btn color="green-7" icon="grid_on" label="Xuất Excel (4 sheet)"
+        <q-btn color="green-7" icon="grid_on" label="Xuất Excel (mỗi phiếu 1 sheet)"
           :loading="exportingExcel" @click="exportAllExcel" />
       </div>
     </div>
@@ -900,6 +900,7 @@ export default {
       const font = { name: "Times New Roman", size: opts.size || 11 };
       if (opts.bold) font.bold = true;
       if (opts.italic) font.italic = true;
+      if (opts.color) font.color = { argb: opts.color };
       cell.font = font;
       cell.alignment = {
         horizontal: opts.center ? "center" : (opts.right ? "right" : "left"),
@@ -907,32 +908,198 @@ export default {
         wrapText: opts.wrap !== false,
       };
       if (opts.border) cell.border = this.bThin();
+      if (opts.fill) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: opts.fill } };
       if (opts.numFmt) cell.numFmt = opts.numFmt;
       return cell;
     },
 
-    /** Sheet NL — Biên bản nghiệm thu xẻ tươi (BM.COC.01-b) */
-    buildSheetNL(wb, cfg) {
-      const ws = wb.addWorksheet("NL", {
-        pageSetup: { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1,
-          margins: { left: 0.4, right: 0.4, top: 0.4, bottom: 0.4 } },
-      });
-      ws.columns = [{ width: 6 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 10 },
-        { width: 10 }, { width: 10 }, { width: 14 }, { width: 16 }];
-      let r = 1;
-      for (const p of this.phieuList) {
-        r = this.buildBlockNL(ws, p, cfg, r);
-        ws.getRow(r - 1).addPageBreak();
-        r += 1;
+    /** Style 1 dòng header bảng — fill xám nhẹ, bold, border, center, wrap. */
+    styleHeaderRow(ws, rowNum, fromCol, toCol) {
+      const row = ws.getRow(rowNum);
+      for (let c = fromCol; c <= toCol; c++) {
+        const cell = row.getCell(c);
+        cell.font = { name: "Times New Roman", size: 11, bold: true };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F0F0" } };
+        cell.border = this.bThin();
       }
+      row.height = 32;
     },
+    /** Apply border + font size cho 1 dòng data trong bảng. */
+    styleDataRow(ws, rowNum, fromCol, toCol) {
+      const row = ws.getRow(rowNum);
+      for (let c = fromCol; c <= toCol; c++) {
+        const cell = row.getCell(c);
+        if (!cell.font) cell.font = { name: "Times New Roman", size: 11 };
+        cell.alignment = Object.assign({ vertical: "middle", wrapText: true }, cell.alignment || {});
+        cell.border = this.bThin();
+      }
+      row.height = 22;
+    },
+    /** Set tiêu đề lớn (title) cho phiếu — 13pt bold center, không fill. */
+    styleTitle(ws, addr, mergeTo, text) {
+      this.setCell(ws, addr, text, {
+        merge: mergeTo, bold: true, center: true, size: 13,
+      });
+      const m = addr.match(/\d+$/);
+      if (m) ws.getRow(+m[0]).height = 28;
+    },
+
+    /** Sheet "Gỗ xẻ" — bảng tổng hợp phẳng, mỗi dòng = 1 chi tiết quy cách */
+    buildSheetGoXe(wb, cfg) {
+      const ws = wb.addWorksheet("Gỗ xẻ", {
+        pageSetup: {
+          paperSize: 9, orientation: "landscape",
+          fitToPage: true, fitToWidth: 1,
+          margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4 },
+        },
+        views: [{ state: "frozen", ySplit: 3 }],
+      });
+
+      const cols = [
+        { key: "xuong",   header: "Xưởng xẻ",                  width: 16 },
+        { key: "ngay",    header: "Ngày nhập",                 width: 11 },
+        { key: "logo",    header: "Lô gỗ nhập",                width: 20 },
+        { key: "day",     header: "Dày",                       width: 7 },
+        { key: "rong",    header: "Rộng",                      width: 7 },
+        { key: "dai",     header: "Dài",                       width: 8 },
+        { key: "thanh",   header: "Số thanh",                  width: 10 },
+        { key: "kl",      header: "Khối lượng",                width: 12 },
+        { key: "kl_xe",   header: "Khối lượng\nxe gỗ",         width: 12 },
+        { key: "kho",     header: "Kho\nNhập",                 width: 9 },
+        { key: "ghichu",  header: "Ghi chú",                   width: 14 },
+        { key: "thang",   header: "Tháng\nnhập gỗ",            width: 12 },
+        { key: "heso",    header: "Hệ số\ntròn/xẻ",            width: 10 },
+        { key: "quydoi",  header: "Gỗ tròn\nquy đổi",          width: 13 },
+        { key: "nguon",   header: "Nguồn gốc\ngỗ tròn",        width: 18 },
+        { key: "loai",    header: "Loài gỗ",                   width: 9 },
+        { key: "diachi",  header: "Địa chỉ",                   width: 24 },
+        { key: "scc",     header: "Số chứng chỉ",              width: 18 },
+        { key: "nhomcc",  header: "Tên nhóm chứng chỉ",        width: 30 },
+      ];
+      ws.columns = cols.map(c => ({ key: c.key, width: c.width }));
+      const lastCol = String.fromCharCode(64 + cols.length); // 'S'
+
+      // Title row 1
+      ws.mergeCells(`A1:${lastCol}1`);
+      const t = ws.getCell("A1");
+      t.value = `BẢNG TỔNG HỢP GỖ XẺ — ${cfg.ten || ""} — Tháng ${this.thang}/${this.nam}`;
+      t.font = { name: "Times New Roman", size: 14, bold: true };
+      t.alignment = { horizontal: "center", vertical: "middle" };
+      t.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
+      ws.getRow(1).height = 26;
+
+      // Row 2: blank
+      ws.getRow(2).height = 6;
+
+      // Row 3: header
+      const hdr = ws.getRow(3);
+      cols.forEach((c, i) => {
+        const cell = hdr.getCell(i + 1);
+        cell.value = c.header;
+        cell.font = { name: "Times New Roman", size: 10, bold: true };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCE4D6" } };
+        cell.border = this.bThin();
+      });
+      hdr.height = 42;
+
+      // Data rows
+      const thangNhap = `Tháng ${String(this.thang).padStart(2, "0")}/${this.nam}`;
+      let r = 4;
+      let totalKL = 0, totalQuyDoi = 0, totalThanh = 0;
+
+      for (const p of this.phieuList) {
+        const chiTiet = p.chi_tiet || [];
+        let isFirstOfPhieu = true;
+        for (const d of chiTiet) {
+          const row = ws.getRow(r);
+          const kl = Number(d.kl_m3) || 0;
+          const heSo = Number(d.he_so) || 2;
+          const quyDoi = Math.round(kl * heSo * 10000) / 10000;
+          const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
+
+          const values = [
+            cfg.ten || "",
+            this.fmtDate(p.CREATED_AT),
+            d.lo_go_xe || "",
+            d.dt_day || "",
+            d.dt_rong || "",
+            d.dt_cao || "",
+            d.tong_thanh || 0,
+            kl,
+            isFirstOfPhieu ? (Number(p.tong_kl) || 0) : "",
+            p.MAKHO || "",
+            "Xẻ bán TQ",
+            thangNhap,
+            heSo,
+            quyDoi,
+            d.chu_rung || "",
+            "Am",
+            diaChi,
+            d.chung_chi_cr || "",
+            cfg.nhom_chung_chi || "",
+          ];
+          values.forEach((v, i) => {
+            const cell = row.getCell(i + 1);
+            cell.value = v;
+            cell.font = { name: "Times New Roman", size: 10 };
+            cell.alignment = { vertical: "middle", wrapText: true,
+              horizontal: [3, 4, 5, 6, 9, 11, 15].includes(i) ? "center" :
+                ([7, 8, 12, 13].includes(i) ? "right" : "left") };
+            cell.border = this.bThin();
+            if (i === 7 || i === 8 || i === 13) cell.numFmt = "#,##0.0000";
+            if (i === 6) cell.numFmt = "#,##0";
+            if (i === 12) cell.numFmt = "#,##0.0000";
+          });
+          row.height = 24;
+          totalKL += kl;
+          totalQuyDoi += quyDoi;
+          totalThanh += Number(d.tong_thanh) || 0;
+          isFirstOfPhieu = false;
+          r++;
+        }
+      }
+
+      // Total row
+      const totalRow = ws.getRow(r);
+      this.setCell(ws, `A${r}`, "TỔNG CỘNG",
+        { merge: `F${r}`, bold: true, center: true, border: true, fill: "FFFFF2CC" });
+      // Số thanh
+      const cT = totalRow.getCell(7);
+      cT.value = totalThanh;
+      cT.numFmt = "#,##0";
+      // KL
+      const cKL = totalRow.getCell(8);
+      cKL.value = Math.round(totalKL * 10000) / 10000;
+      cKL.numFmt = "#,##0.0000";
+      // Gỗ tròn quy đổi
+      const cQD = totalRow.getCell(14);
+      cQD.value = Math.round(totalQuyDoi * 10000) / 10000;
+      cQD.numFmt = "#,##0.0000";
+
+      for (let c = 1; c <= cols.length; c++) {
+        const cell = totalRow.getCell(c);
+        cell.font = { name: "Times New Roman", size: 10, bold: true };
+        cell.alignment = Object.assign({ vertical: "middle" }, cell.alignment || {});
+        cell.border = this.bThin();
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } };
+      }
+      // Center for thanh/kl/quydoi
+      [7, 8, 14].forEach(c => { totalRow.getCell(c).alignment = { horizontal: "right", vertical: "middle" }; });
+      totalRow.height = 24;
+
+      // Auto-filter on header
+      ws.autoFilter = `A3:${lastCol}3`;
+    },
+
+    /** NL — Biên bản nghiệm thu xẻ tươi (BM.COC.01-b). Render trong sheet phiếu. */
     buildBlockNL(ws, p, cfg, start) {
       let r = start;
       this.setCell(ws, `A${r}`, "SỔ TAY COC", { merge: `D${r}`, bold: true });
       this.setCell(ws, `E${r}`, "BM.COC.01-b", { merge: `I${r}`, right: true, italic: true });
       r++;
-      this.setCell(ws, `A${r}`, "BIÊN BẢN NGHIỆM THU XẺ TƯƠI (Kiêm phiếu nhập kho)",
-        { merge: `I${r}`, bold: true, center: true, size: 13 });
+      this.styleTitle(ws, `A${r}`, `I${r}`, "BIÊN BẢN NGHIỆM THU XẺ TƯƠI (Kiêm phiếu nhập kho)");
       r += 2;
       this.setCell(ws, `A${r}`, `Đơn vị giao hàng: ${cfg.ten || ""}`, { merge: `E${r}` });
       this.setCell(ws, `F${r}`, `Số phiếu: ${p.SOPHIEU}`, { merge: `I${r}`, bold: true });
@@ -945,16 +1112,9 @@ export default {
       r += 2;
 
       // Header bảng
-      const hdr = ws.getRow(r);
-      ["STT", "Dày", "Rộng", "Dài", "Số bó", "Số thanh/bó", "Tổng thanh", "KL (m³)", "Ghi chú"]
-        .forEach((t, i) => {
-          const c = hdr.getCell(i + 1);
-          c.value = t;
-          c.font = { name: "Times New Roman", size: 10, bold: true };
-          c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-          c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E0E0" } };
-          c.border = this.bThin();
-        });
+      const hdrCols = ["STT", "Dày", "Rộng", "Dài", "Số bó", "Số thanh/bó", "Tổng thanh", "KL (m³)", "Ghi chú"];
+      hdrCols.forEach((t, i) => ws.getRow(r).getCell(i + 1).value = t);
+      this.styleHeaderRow(ws, r, 1, hdrCols.length);
       r++;
       (p.chi_tiet || []).forEach((d, i) => {
         const row = ws.getRow(r);
@@ -967,6 +1127,7 @@ export default {
             c.border = this.bThin();
             if (ci === 7) c.numFmt = "#,##0.0000";
           });
+        ws.getRow(r).height = 22;
         r++;
       });
       // Tổng
@@ -980,28 +1141,14 @@ export default {
       cTotal.alignment = { horizontal: "center", vertical: "middle" };
       totalRow.getCell(9).border = this.bThin();
       r += 2;
-      this.setCell(ws, `A${r}`, "Đại diện giao hàng", { merge: `C${r}`, center: true, bold: true });
-      this.setCell(ws, `D${r}`, "Thủ kho", { merge: `F${r}`, center: true, bold: true });
-      this.setCell(ws, `G${r}`, "QC kiểm tra", { merge: `I${r}`, center: true, bold: true });
-      r += 4;
+      this.setCell(ws, `A${r}`, "Đại diện giao hàng", { merge: `C${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `D${r}`, "Thủ kho", { merge: `F${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `G${r}`, "QC kiểm tra", { merge: `I${r}`, center: true, bold: true, italic: true });
+      r += 5;
       return r + 1;
     },
 
-    /** Sheet NKTP HKP */
-    buildSheetNKTP(wb, cfg) {
-      const ws = wb.addWorksheet("NKTP", {
-        pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1,
-          margins: { left: 0.4, right: 0.4, top: 0.4, bottom: 0.4 } },
-      });
-      ws.columns = [{ width: 5 }, { width: 16 }, { width: 16 }, { width: 14 }, { width: 16 },
-        { width: 7 }, { width: 7 }, { width: 7 }, { width: 9 }, { width: 11 }, { width: 11 }];
-      let r = 1;
-      for (const p of this.phieuList) {
-        r = this.buildBlockNKTP(ws, p, cfg, r);
-        ws.getRow(r - 1).addPageBreak();
-        r += 1;
-      }
-    },
+    /** NKTP — Phiếu nhập kho thành phẩm. */
     buildBlockNKTP(ws, p, cfg, start) {
       let r = start;
       this.setCell(ws, `A${r}`, cfg.ten || "", { merge: `H${r}`, bold: true });
@@ -1014,8 +1161,7 @@ export default {
       this.setCell(ws, `A${r}`, `Số chứng chỉ: ${cfg.chung_chi || ""}. Hiệu lực: ${cfg.hieu_luc_cc || ""}`,
         { merge: `K${r}` });
       r += 2;
-      this.setCell(ws, `A${r}`, "PHIẾU NHẬP KHO THÀNH PHẨM",
-        { merge: `K${r}`, bold: true, center: true, size: 14 });
+      this.styleTitle(ws, `A${r}`, `K${r}`, "PHIẾU NHẬP KHO THÀNH PHẨM");
       r += 2;
       this.setCell(ws, `A${r}`, `Số phiếu: ${p.SOPHIEU}`, { merge: `D${r}`, bold: true });
       this.setCell(ws, `E${r}`, "☑ P.Tươi   ☐ P.Khô   ☐ T/c", { merge: `K${r}`, right: true });
@@ -1032,15 +1178,8 @@ export default {
       // Header
       const hdrTexts = ["STT", "Tên TP", "Tên chủ rừng", "Số lô gỗ tròn", "Số lô gỗ xẻ",
         "Dày", "Rộng", "Dài", "Số thanh", "KL (m³)", "Ghi chú"];
-      const hdr = ws.getRow(r);
-      hdrTexts.forEach((t, i) => {
-        const c = hdr.getCell(i + 1);
-        c.value = t;
-        c.font = { name: "Times New Roman", size: 10, bold: true };
-        c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E0E0" } };
-        c.border = this.bThin();
-      });
+      hdrTexts.forEach((t, i) => ws.getRow(r).getCell(i + 1).value = t);
+      this.styleHeaderRow(ws, r, 1, hdrTexts.length);
       r++;
       (p.chi_tiet || []).forEach((d, i) => {
         const row = ws.getRow(r);
@@ -1054,6 +1193,7 @@ export default {
             c.border = this.bThin();
             if (ci === 9) c.numFmt = "#,##0.0000";
           });
+        ws.getRow(r).height = 22;
         r++;
       });
       this.setCell(ws, `A${r}`, "TỔNG", { merge: `I${r}`, bold: true, center: true, border: true });
@@ -1068,28 +1208,16 @@ export default {
       this.setCell(ws, `A${r}`, `Ngày nhập: ${this.fmtDate(p.CREATED_AT)}   Biển số xe: ${p.BIENSOXE || ""}`,
         { merge: `K${r}` });
       r += 2;
-      this.setCell(ws, `A${r}`, "Người giao hàng", { merge: `C${r}`, center: true, bold: true });
-      this.setCell(ws, `D${r}`, "Thủ kho", { merge: `G${r}`, center: true, bold: true });
-      this.setCell(ws, `H${r}`, "Giám đốc", { merge: `K${r}`, center: true, bold: true });
+      this.setCell(ws, `A${r}`, "Người giao hàng", { merge: `C${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `D${r}`, "Thủ kho", { merge: `G${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `H${r}`, "Giám đốc", { merge: `K${r}`, center: true, bold: true, italic: true });
       r += 4;
+      this.setCell(ws, `H${r}`, cfg.nguoi_dai_dien || "", { merge: `K${r}`, center: true, bold: true });
+      r++;
       return r + 1;
     },
 
-    /** Sheet XK — Phiếu xuất kho */
-    buildSheetXK(wb, cfg) {
-      const ws = wb.addWorksheet("XK", {
-        pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1,
-          margins: { left: 0.4, right: 0.4, top: 0.4, bottom: 0.4 } },
-      });
-      ws.columns = [{ width: 5 }, { width: 16 }, { width: 16 }, { width: 18 }, { width: 16 },
-        { width: 5 }, { width: 7 }, { width: 7 }, { width: 7 }, { width: 9 }, { width: 11 }, { width: 11 }];
-      let r = 1;
-      for (const p of this.phieuList) {
-        r = this.buildBlockXK(ws, p, cfg, r);
-        ws.getRow(r - 1).addPageBreak();
-        r += 1;
-      }
-    },
+    /** XK — Phiếu xuất kho gửi Woodsland. */
     buildBlockXK(ws, p, cfg, start) {
       let r = start;
       this.setCell(ws, `A${r}`, cfg.ten || "", { merge: `L${r}`, bold: true });
@@ -1099,8 +1227,7 @@ export default {
       this.setCell(ws, `A${r}`, `Số chứng chỉ: ${cfg.chung_chi || ""}. Hiệu lực: ${cfg.hieu_luc_cc || ""}`,
         { merge: `L${r}` });
       r += 2;
-      this.setCell(ws, `A${r}`, "PHIẾU XUẤT KHO",
-        { merge: `L${r}`, bold: true, center: true, size: 14 });
+      this.styleTitle(ws, `A${r}`, `L${r}`, "PHIẾU XUẤT KHO");
       r += 2;
       this.setCell(ws, `A${r}`, `Tên khách hàng: ${this.WL.ten}`, { merge: `L${r}` });
       r++;
@@ -1118,15 +1245,8 @@ export default {
 
       const hdrTexts = ["TT", "Tên chủ rừng", "Mã lô gỗ tròn", "Mã lô gỗ xẻ", "Tên sản phẩm",
         "ĐVT", "Dày", "Rộng", "Dài", "Số lượng (thanh)", "KL (m³)", "Ghi chú"];
-      const hdr = ws.getRow(r);
-      hdrTexts.forEach((t, i) => {
-        const c = hdr.getCell(i + 1);
-        c.value = t;
-        c.font = { name: "Times New Roman", size: 10, bold: true };
-        c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E0E0" } };
-        c.border = this.bThin();
-      });
+      hdrTexts.forEach((t, i) => ws.getRow(r).getCell(i + 1).value = t);
+      this.styleHeaderRow(ws, r, 1, hdrTexts.length);
       r++;
       (p.chi_tiet || []).forEach((d, i) => {
         const row = ws.getRow(r);
@@ -1140,6 +1260,7 @@ export default {
             c.border = this.bThin();
             if (ci === 10) c.numFmt = "#,##0.0000";
           });
+        ws.getRow(r).height = 22;
         r++;
       });
       this.setCell(ws, `A${r}`, "TỔNG", { merge: `J${r}`, bold: true, center: true, border: true });
@@ -1151,28 +1272,16 @@ export default {
       cT.alignment = { horizontal: "center", vertical: "middle" };
       ws.getRow(r).getCell(12).border = this.bThin();
       r += 2;
-      this.setCell(ws, `A${r}`, "Người lập phiếu", { merge: `D${r}`, center: true, bold: true });
-      this.setCell(ws, `E${r}`, "Thủ kho", { merge: `H${r}`, center: true, bold: true });
-      this.setCell(ws, `I${r}`, "Giám đốc", { merge: `L${r}`, center: true, bold: true });
+      this.setCell(ws, `A${r}`, "Người lập phiếu", { merge: `D${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `E${r}`, "Thủ kho", { merge: `H${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `I${r}`, "Giám đốc", { merge: `L${r}`, center: true, bold: true, italic: true });
       r += 4;
+      this.setCell(ws, `I${r}`, cfg.nguoi_dai_dien || "", { merge: `L${r}`, center: true, bold: true });
+      r++;
       return r + 1;
     },
 
-    /** Sheet BKLS */
-    buildSheetBKLS(wb, cfg) {
-      const ws = wb.addWorksheet("BKLS", {
-        pageSetup: { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1,
-          margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 } },
-      });
-      ws.columns = [{ width: 6 }, { width: 18 }, { width: 18 }, { width: 16 },
-        { width: 18 }, { width: 9 }, { width: 11 }];
-      let r = 1;
-      for (const p of this.phieuList) {
-        r = this.buildBlockBKLS(ws, p, cfg, r);
-        ws.getRow(r - 1).addPageBreak();
-        r += 1;
-      }
-    },
+    /** BKLS — Bảng kê lâm sản. */
     buildBlockBKLS(ws, p, cfg, start) {
       let r = start;
       const dt = p.CREATED_AT ? new Date(p.CREATED_AT) : new Date();
@@ -1211,12 +1320,13 @@ export default {
       this.setCell(ws, `A${r}`, `Số(1): ${p.SOPHIEU}/${this.nam}/BKLS`, { merge: `C${r}` });
       this.setCell(ws, `D${r}`, "Tờ số(2): 01    Tổng số tờ: 01", { merge: `G${r}`, right: true });
       r += 2;
-      this.setCell(ws, `A${r}`, "BẢNG KÊ LÂM SẢN",
-        { merge: `G${r}`, bold: true, center: true, size: 14 });
+      this.styleTitle(ws, `A${r}`, `G${r}`, "BẢNG KÊ LÂM SẢN");
       r += 2;
 
       // === Mục 1 ===
-      this.setCell(ws, `A${r}`, "1. Thông tin chủ lâm sản", { merge: `G${r}`, bold: true });
+      this.setCell(ws, `A${r}`, "1. Thông tin chủ lâm sản",
+        { merge: `G${r}`, bold: true, fill: "FFEAEAEA" });
+      ws.getRow(r).height = 20;
       r++;
       [
         `- Tên chủ lâm sản: ${cfg.ten || ""}`,
@@ -1228,7 +1338,9 @@ export default {
       r++;
 
       // === Mục 2 ===
-      this.setCell(ws, `A${r}`, "2. Thông tin tổ chức cá nhân mua:", { merge: `G${r}`, bold: true });
+      this.setCell(ws, `A${r}`, "2. Thông tin tổ chức cá nhân mua:",
+        { merge: `G${r}`, bold: true, fill: "FFEAEAEA" });
+      ws.getRow(r).height = 20;
       r++;
       [
         `- Tên: ${this.WL.ten}`,
@@ -1239,7 +1351,9 @@ export default {
       r++;
 
       // === Mục 3 ===
-      this.setCell(ws, `A${r}`, "3. Thông tin về lâm sản:", { merge: `G${r}`, bold: true });
+      this.setCell(ws, `A${r}`, "3. Thông tin về lâm sản:",
+        { merge: `G${r}`, bold: true, fill: "FFEAEAEA" });
+      ws.getRow(r).height = 20;
       r++;
       this.setCell(ws, `A${r}`, "- Tên loài: Gỗ keo xẻ FSC 100% Keo tai tượng (Acacia mangium)", { merge: `G${r}` });
       r++;
@@ -1281,7 +1395,9 @@ export default {
       r++;
 
       // === Mục 4 ===
-      this.setCell(ws, `A${r}`, "4. Thông tin chi tiết tại Bảng kê khai kèm theo:", { merge: `G${r}`, bold: true });
+      this.setCell(ws, `A${r}`, "4. Thông tin chi tiết tại Bảng kê khai kèm theo:",
+        { merge: `G${r}`, bold: true, fill: "FFEAEAEA" });
+      ws.getRow(r).height = 20;
       r++;
       this.setCell(ws, `A${r}`,
         "(Áp dụng đối với gỗ nguyên liệu, sản phẩm gỗ: khai thác từ rừng tự nhiên trong nước, gỗ và sản phẩm gỗ nhập khẩu, gỗ và sản phẩm gỗ sau xử lý tịch thu)",
@@ -1289,7 +1405,9 @@ export default {
       r++;
 
       // === Mục 5 ===
-      this.setCell(ws, `A${r}`, "5. Thông tin vận chuyển", { merge: `G${r}`, bold: true });
+      this.setCell(ws, `A${r}`, "5. Thông tin vận chuyển",
+        { merge: `G${r}`, bold: true, fill: "FFEAEAEA" });
+      ws.getRow(r).height = 20;
       r++;
       this.setCell(ws, `A${r}`, `Phương tiện vận chuyển, biển số xe: ${p.BIENSOXE || ""}`, { merge: `G${r}` });
       r++;
@@ -1303,7 +1421,9 @@ export default {
       r++;
 
       // === Mục 6 ===
-      this.setCell(ws, `A${r}`, "6. Hồ sơ kèm theo (nếu có):", { merge: `G${r}`, bold: true });
+      this.setCell(ws, `A${r}`, "6. Hồ sơ kèm theo (nếu có):",
+        { merge: `G${r}`, bold: true, fill: "FFEAEAEA" });
+      ws.getRow(r).height = 20;
       r += 2;
 
       this.setCell(ws, `A${r}`,
@@ -1339,10 +1459,46 @@ export default {
       try {
         const cfg = this.cfg;
         const wb = new ExcelJS.Workbook();
-        this.buildSheetNL(wb, cfg);
-        this.buildSheetNKTP(wb, cfg);
-        this.buildSheetXK(wb, cfg);
-        this.buildSheetBKLS(wb, cfg);
+
+        // Sheet 1: Tổng hợp gỗ xẻ (bảng phẳng)
+        this.buildSheetGoXe(wb, cfg);
+
+        // Mỗi phiếu = 1 sheet, gồm 4 sections (NL → NKTP → XK → BKLS) với page-break
+        for (let i = 0; i < this.phieuList.length; i++) {
+          const p = this.phieuList[i];
+          const sName = String(p.SOPHIEU || `P${i + 1}`)
+            .replace(/[\\/?*[\]:]/g, "-").slice(0, 31);
+          const ws = wb.addWorksheet(sName, {
+            pageSetup: {
+              paperSize: 9, orientation: "portrait",
+              fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+              margins: { left: 0.4, right: 0.4, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
+            },
+          });
+          // 12 cột A-L đồng nhất cho cả 4 sections
+          ws.columns = [
+            { width: 6 },   // A: STT
+            { width: 14 },  // B
+            { width: 16 },  // C
+            { width: 14 },  // D
+            { width: 14 },  // E
+            { width: 7 },   // F: Dày
+            { width: 7 },   // G: Rộng
+            { width: 8 },   // H: Dài
+            { width: 10 },  // I: Số thanh
+            { width: 12 },  // J: KL
+            { width: 14 },  // K
+            { width: 14 },  // L
+          ];
+          let row = 1;
+          row = this.buildBlockNL(ws, p, cfg, row);
+          ws.getRow(row - 1).addPageBreak();
+          row = this.buildBlockNKTP(ws, p, cfg, row);
+          ws.getRow(row - 1).addPageBreak();
+          row = this.buildBlockXK(ws, p, cfg, row);
+          ws.getRow(row - 1).addPageBreak();
+          row = this.buildBlockBKLS(ws, p, cfg, row);
+        }
 
         const buf = await wb.xlsx.writeBuffer();
         const fname = `PhieuGoXe_${(this.mancc || "XX").replace(/[^\p{L}\p{N}]+/gu, "_")}_T${this.thang}_${this.nam}.xlsx`;
@@ -1352,7 +1508,7 @@ export default {
         );
         this.$q.notify({
           type: "positive",
-          message: `Đã xuất Excel 4 sheet (NL, NKTP, XK, BKLS) cho ${this.phieuList.length} phiếu`,
+          message: `Đã xuất ${this.phieuList.length + 1} sheet (1 tổng hợp + ${this.phieuList.length} phiếu × 4 mẫu)`,
           timeout: 5000,
         });
       } catch (err) {

@@ -150,7 +150,7 @@
                 <div>Các nội dung làm việc với nhà cung cấp:</div>
                 <div class="q-mt-xs">- Hộ gia đình thuộc nhóm chứng chỉ rừng: <b>{{ lo.nhom_chung_chi || 'Nam Phát – Định Hóa' }}</b></div>
                 <div>- Số chứng nhận chứng chỉ: <b>{{ lo.chung_chi || '…………' }}</b></div>
-                <div>- CCCD: <b>{{ lo.cccd || '………………' }}</b> cấp ngày ……/……/…… tại ………………</div>
+                <div>- CCCD: <b>{{ lo.cccd || '………………' }}</b></div>
               </td>
               <td>Sau khi trao đổi và kiểm tra thông tin, nhà cung cấp đáp ứng các điều kiện về nguồn gốc gỗ hợp pháp, có chứng chỉ FSC còn hiệu lực.</td>
             </tr>
@@ -653,7 +653,7 @@ export default {
               Các nội dung làm việc với nhà cung cấp:<br/>
               - Hộ gia đình thuộc nhóm chứng chỉ rừng: <b>${e(lo.nhom_chung_chi || "Nam Phát – Định Hóa")}</b><br/>
               - Số chứng nhận chứng chỉ: <b>${e(lo.chung_chi || "…………")}</b><br/>
-              - CCCD: <b>${e(lo.cccd || "………………")}</b> cấp ngày ……/……/…… tại ………………
+              - CCCD: <b>${e(lo.cccd || "………………")}</b>
             </td>
             <td>Sau khi trao đổi và kiểm tra thông tin, nhà cung cấp đáp ứng các điều kiện về nguồn gốc gỗ hợp pháp, có chứng chỉ FSC còn hiệu lực.</td>
           </tr>
@@ -929,7 +929,7 @@ export default {
       r++;
       // Row 1
       this.setCell(ws, `A${r}`, 1, { center: true, border: true });
-      const noiDung1 = `Các nội dung làm việc với nhà cung cấp:\n- Hộ gia đình thuộc nhóm chứng chỉ rừng: ${lo.nhom_chung_chi || "Nam Phát – Định Hóa"}\n- Số chứng nhận chứng chỉ: ${lo.chung_chi || "…………"}\n- CCCD: ${lo.cccd || "………………"} cấp ngày ……/……/…… tại ………………`;
+      const noiDung1 = `Các nội dung làm việc với nhà cung cấp:\n- Hộ gia đình thuộc nhóm chứng chỉ rừng: ${lo.nhom_chung_chi || "Nam Phát – Định Hóa"}\n- Số chứng nhận chứng chỉ: ${lo.chung_chi || "…………"}\n- CCCD: ${lo.cccd || "………………"}`;
       this.setCell(ws, `B${r}`, noiDung1, { merge: `F${r}`, border: true, wrap: true });
       this.setCell(ws, `G${r}`, "Sau khi trao đổi và kiểm tra thông tin, nhà cung cấp đáp ứng các điều kiện về nguồn gốc gỗ hợp pháp, có chứng chỉ FSC còn hiệu lực.",
         { merge: `J${r}`, border: true, wrap: true });

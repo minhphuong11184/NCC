@@ -100,6 +100,7 @@ router.get('/list', async (req, res) => {
                 so_bkls: d.so_bkls ? d.so_bkls.trim() : null,
                 kd: d.kd ? String(d.kd).trim() : null,
                 vd: d.vd ? String(d.vd).trim() : null,
+                he_so: d.saved_he_so || null,
             })
             phieuMap[d.SOPHIEU].tong_kl += (d.kl_m3 || 0)
         })
