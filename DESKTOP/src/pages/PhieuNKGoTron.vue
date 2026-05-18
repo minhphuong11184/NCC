@@ -971,22 +971,22 @@ export default {
         cur++;
       };
 
-      // 1. Thông tin chủ lâm sản
+      // 1. Thông tin chủ lâm sản = Chủ rừng (người sở hữu gỗ tròn)
       line("1. Thông tin chủ lâm sản:", { bold: true });
-      line(`- Tên chủ lâm sản(4): ${cfg.TEN_CTY}`);
-      line(`- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): ${cfg.MA_SO_THUE}`);
-      line(`- Địa chỉ(6): ${cfg.DIA_CHI_CTY}`);
-      line(`- Số điện thoại: ${cfg.SDT_CTY}, Địa chỉ Email: ………………………`);
-      line(`- Số chứng chỉ FM/COC: ${cfg.CHUNG_CHI_CTY}. Hiệu lực chứng chỉ: ${cfg.HIEU_LUC_CTY}.`);
-      cur++;
-
-      // 2. Thông tin tổ chức, cá nhân mua/nhận = Chủ rừng
-      line("2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:", { bold: true });
-      line(`- Tên tổ chức, cá nhân(4): ${p.Chu_rung || ""}`);
+      line(`- Tên chủ lâm sản(4): ${p.Chu_rung || ""}`);
       line(`- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): ${p.cccd || ""}`);
       line(`- Địa chỉ(6): ${p.dia_chi_cccd || diaChiCR}`);
       line(`- Số điện thoại: ………………, Địa chỉ Email: …………………………`);
       line(`- Số chứng chỉ FM/COC: ${p.So_chung_chi || ""}`);
+      cur++;
+
+      // 2. Thông tin tổ chức, cá nhân mua/nhận = Xưởng xẻ (bên mua gỗ tròn)
+      line("2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:", { bold: true });
+      line(`- Tên tổ chức, cá nhân(4): ${cfg.TEN_CTY}`);
+      line(`- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): ${cfg.MA_SO_THUE}`);
+      line(`- Địa chỉ(6): ${cfg.DIA_CHI_CTY}`);
+      line(`- Số điện thoại: ${cfg.SDT_CTY}, Địa chỉ Email: ………………………`);
+      line(`- Số chứng chỉ FM/COC: ${cfg.CHUNG_CHI_CTY}. Hiệu lực chứng chỉ: ${cfg.HIEU_LUC_CTY}.`);
       cur++;
 
       // 3. Thông tin về lâm sản
@@ -1367,17 +1367,17 @@ export default {
         </tr></table>
         <p class="title">BẢNG KÊ LÂM SẢN</p>
         <p class="bold">1. Thông tin chủ lâm sản:</p>
-        <p>- Tên chủ lâm sản(4): <b>${e(cfg.TEN_CTY)}</b></p>
-        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>${e(cfg.MA_SO_THUE)}</b></p>
-        <p>- Địa chỉ(6): <b>${e(cfg.DIA_CHI_CTY)}</b></p>
-        <p>- Số điện thoại: ${e(cfg.SDT_CTY)}, Địa chỉ Email: ………………………</p>
-        <p>- Số chứng chỉ FM/COC: <b>${e(cfg.CHUNG_CHI_CTY)}</b>. Hiệu lực chứng chỉ: <b>${e(cfg.HIEU_LUC_CTY)}</b>.</p>
-        <p class="bold">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</p>
-        <p>- Tên tổ chức, cá nhân(4): <b>${e(p.Chu_rung || "")}</b></p>
+        <p>- Tên chủ lâm sản(4): <b>${e(p.Chu_rung || "")}</b></p>
         <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>${e(p.cccd || "")}</b></p>
         <p>- Địa chỉ(6): <b>${e(p.dia_chi_cccd || diaChiCR)}</b></p>
         <p>- Số điện thoại: ………………, Địa chỉ Email: …………………………</p>
         <p>- Số chứng chỉ FM/COC: <b>${e(p.So_chung_chi || "")}</b></p>
+        <p class="bold">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</p>
+        <p>- Tên tổ chức, cá nhân(4): <b>${e(cfg.TEN_CTY)}</b></p>
+        <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>${e(cfg.MA_SO_THUE)}</b></p>
+        <p>- Địa chỉ(6): <b>${e(cfg.DIA_CHI_CTY)}</b></p>
+        <p>- Số điện thoại: ${e(cfg.SDT_CTY)}, Địa chỉ Email: ………………………</p>
+        <p>- Số chứng chỉ FM/COC: <b>${e(cfg.CHUNG_CHI_CTY)}</b>. Hiệu lực chứng chỉ: <b>${e(cfg.HIEU_LUC_CTY)}</b>.</p>
         <p class="bold">3. Thông tin về lâm sản:</p>
         <p>- Tên loài: Gỗ tròn Keo tai tượng FSC 100% (Acacia Mangium)</p>
         <p>- Nhóm loài: Thông thường</p>

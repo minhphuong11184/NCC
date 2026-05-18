@@ -40,21 +40,21 @@
 
         <div class="title">BẢNG KÊ LÂM SẢN</div>
 
-        <!-- 1. Thông tin chủ lâm sản (= Xưởng xẻ / Cty mua đang vận chuyển) -->
+        <!-- 1. Thông tin chủ lâm sản = Chủ rừng (người sở hữu lâm sản gỗ tròn) -->
         <div class="section-title">1. Thông tin chủ lâm sản:</div>
-        <div class="info-line">- Tên chủ lâm sản(4): <b>{{ TEN_CTY || '………………………………………………..' }}</b></div>
-        <div class="info-line">- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>{{ MA_SO_THUE || '…………………' }}</b></div>
-        <div class="info-line">- Địa chỉ(6): <b>{{ DIA_CHI_CTY || '………………………………………………………………' }}</b></div>
-        <div class="info-line">- Số điện thoại: <b>{{ SDT_CTY || '………………' }}</b>, Địa chỉ Email: …………………………</div>
-        <div class="info-line">- Số chứng chỉ FM/COC: <b>{{ CHUNG_CHI_CTY || '…………………………' }}</b>. Hiệu lực chứng chỉ: <b>{{ HIEU_LUC_CTY || '……………………….' }}</b>.</div>
-
-        <!-- 2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao = Chủ rừng -->
-        <div class="section-title">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</div>
-        <div class="info-line">- Tên tổ chức, cá nhân(4): <b>{{ phieu.Chu_rung || '………………………………………………..' }}</b></div>
+        <div class="info-line">- Tên chủ lâm sản(4): <b>{{ phieu.Chu_rung || '………………………………………………..' }}</b></div>
         <div class="info-line">- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>{{ phieu.cccd || '…………………' }}</b></div>
         <div class="info-line">- Địa chỉ(6): <b>{{ phieu.dia_chi_cccd || diaChiChuRung || '………………………………………………………………' }}</b></div>
         <div class="info-line">- Số điện thoại: ………………, Địa chỉ Email: …………………………</div>
         <div class="info-line">- Số chứng chỉ FM/COC: <b>{{ phieu.So_chung_chi || '…………………………' }}</b></div>
+
+        <!-- 2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao = Xưởng xẻ (bên mua gỗ tròn) -->
+        <div class="section-title">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</div>
+        <div class="info-line">- Tên tổ chức, cá nhân(4): <b>{{ TEN_CTY || '………………………………………………..' }}</b></div>
+        <div class="info-line">- Số GCN/MSDN/GPTL/ĐKHĐ/CCCD/CMND/HC(5): <b>{{ MA_SO_THUE || '…………………' }}</b></div>
+        <div class="info-line">- Địa chỉ(6): <b>{{ DIA_CHI_CTY || '………………………………………………………………' }}</b></div>
+        <div class="info-line">- Số điện thoại: <b>{{ SDT_CTY || '………………' }}</b>, Địa chỉ Email: …………………………</div>
+        <div class="info-line">- Số chứng chỉ FM/COC: <b>{{ CHUNG_CHI_CTY || '…………………………' }}</b>. Hiệu lực chứng chỉ: <b>{{ HIEU_LUC_CTY || '……………………….' }}</b>.</div>
 
         <!-- 3. Thông tin về lâm sản -->
         <div class="section-title">3. Thông tin về lâm sản:</div>
