@@ -297,13 +297,13 @@
               <div class="sign-title">Người lập bảng kê</div>
               <div class="sign-sub">(Ký, ghi rõ họ tên)</div>
               <div class="sign-space"></div>
-              <div class="sign-name">{{ UQ }}</div>
+              <div class="sign-name"></div>
             </div>
             <div class="sign-col">
               <div class="sign-title">Người đại diện hoặc người được<br/>ủy quyền của doanh nghiệp</div>
               <div class="sign-sub">(Ký tên, đóng dấu)</div>
               <div class="sign-space"></div>
-              <div class="sign-name">{{ NGUOI_NHAN }}</div>
+              <div class="sign-name">{{ UQ }}</div>
             </div>
           </div>
         </div>
@@ -1194,8 +1194,10 @@ export default {
       this.setCell(ws, `F${cur}`, "(Ký tên, đóng dấu)",
         { merge: `J${cur}`, italic: true, size: 9, center: true });
       cur += 4;
-      this.setCell(ws, `A${cur}`, cfg.UQ || "", { merge: `E${cur}`, bold: true, center: true });
-      this.setCell(ws, `F${cur}`, cfg.NGUOI_NHAN || "", { merge: `J${cur}`, bold: true, center: true });
+      // Người lập bảng kê: để trống cho người dùng ký tay
+      this.setCell(ws, `A${cur}`, "", { merge: `E${cur}` });
+      // Người đại diện doanh nghiệp: lấy người đại diện xưởng xẻ (cfg.UQ)
+      this.setCell(ws, `F${cur}`, cfg.UQ || "", { merge: `J${cur}`, bold: true, center: true });
       return cur + 2;
     },
 
@@ -1472,12 +1474,12 @@ export default {
           <td>
             <p class="bold italic">Người lập bảng kê</p>
             <p class="small italic">(Ký, ghi rõ họ tên)</p>
-            <p class="sign-name">${e(cfg.UQ)}</p>
+            <p class="sign-name"></p>
           </td>
           <td>
             <p class="bold italic">Người đại diện hoặc người được<br/>ủy quyền của doanh nghiệp</p>
             <p class="small italic">(Ký tên, đóng dấu)</p>
-            <p class="sign-name">${e(cfg.NGUOI_NHAN)}</p>
+            <p class="sign-name">${e(cfg.UQ)}</p>
           </td>
         </tr></table>`;
     },

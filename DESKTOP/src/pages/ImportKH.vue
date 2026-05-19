@@ -154,6 +154,29 @@ export default {
       const ws = this.workbook.Sheets[this.sheetName];
       const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
 
+      // Đọc cell date trực tiếp từ workbook → tránh nhầm M/D/Y vs D/M/Y do locale
+      // khi xlsx render qua cell.w. Trả về chuỗi "DD/MM/YYYY".
+      const pad = n => String(n).padStart(2, "0");
+      const parseDateCell = (rowIdx, colIdx) => {
+        const addr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+        const cell = ws[addr];
+        if (!cell) return null;
+        if (cell.v instanceof Date) {
+          const d = cell.v;
+          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+        }
+        if (cell.t === "n" && typeof cell.v === "number" && XLSX.SSF && XLSX.SSF.parse_date_code) {
+          const p = XLSX.SSF.parse_date_code(cell.v);
+          if (p && p.y) return `${pad(p.d)}/${pad(p.m)}/${p.y}`;
+        }
+        // Fallback: text — nếu là "DD/MM/YYYY" giữ nguyên; nếu "YYYY-MM-DD" convert
+        const s = String(cell.w || cell.v || "").trim();
+        if (!s) return null;
+        const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (iso) return `${pad(+iso[3])}/${pad(+iso[2])}/${iso[1]}`;
+        return s;
+      };
+
       /**
        * File Mẫu KH NGG mới (mau_20260428):
        * Row 0: title "KẾ HOẠCH NGG"
@@ -211,15 +234,15 @@ export default {
           kl_bang_ke: toFloat(r[13]),
           kl_go: toFloat(r[14]),
           so_bkls: toStr(r[15]),
-          ngay_bkls: toStr(r[16]),
+          ngay_bkls: parseDateCell(i, 16),
           KD: toStr(r[17]),
           VD: toStr(r[18]),
           don_gia: toFloat(r[19]),
           thanh_tien: toFloat(r[20]),
           so_hop_dong: toStr(r[21]),
-          ngay_hop_dong: toStr(r[22]),
+          ngay_hop_dong: parseDateCell(i, 22),
           so_phu_luc: toStr(r[23]),
-          ngay_phu_luc: toStr(r[24]),
+          ngay_phu_luc: parseDateCell(i, 24),
         });
       }
       this.rows = out;
