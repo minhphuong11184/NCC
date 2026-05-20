@@ -490,11 +490,12 @@ export default {
     /** Địa danh từ địa chỉ xưởng — lấy phần cuối (vd "tỉnh Phú Thọ") */
     diaDanhXuong() {
       const dc = this.cfg.dia_chi || "";
-      // Tách theo dấu phẩy/gạch, lấy phần cuối có "tỉnh" hoặc fallback toàn bộ
       const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
       if (!parts.length) return "";
       const tinh = parts.find(p => /tỉnh|TP|thành phố/i.test(p));
-      return tinh || parts[parts.length - 1];
+      const raw = tinh || parts[parts.length - 1];
+      // Bỏ tiền tố "tỉnh" / "TP" / "thành phố" → chỉ giữ tên địa danh
+      return raw.replace(/^(tỉnh|TP\.?|thành phố)\s+/i, "").trim();
     },
   },
   methods: {
@@ -867,7 +868,8 @@ export default {
       // Địa danh xưởng
       const dc = cfg.dia_chi || "";
       const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
-      const diaDanh = parts.find(s => /tỉnh|TP|thành phố/i.test(s)) || (parts[parts.length - 1] || "");
+      const diaDanhRaw = parts.find(s => /tỉnh|TP|thành phố/i.test(s)) || (parts[parts.length - 1] || "");
+      const diaDanh = diaDanhRaw.replace(/^(tỉnh|TP\.?|thành phố)\s+/i, "").trim();
       const ngayChu = `${diaDanh}, ngày ${String(dt.getDate()).padStart(2, "0")} tháng ${String(dt.getMonth() + 1).padStart(2, "0")} năm ${dt.getFullYear()}`;
 
       const ngRows = nguonGoc.map(g => `
@@ -1431,7 +1433,8 @@ export default {
       });
       const dc = cfg.dia_chi || "";
       const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
-      const diaDanh = parts.find(s => /tỉnh|TP|thành phố/i.test(s)) || (parts[parts.length - 1] || "");
+      const diaDanhRaw = parts.find(s => /tỉnh|TP|thành phố/i.test(s)) || (parts[parts.length - 1] || "");
+      const diaDanh = diaDanhRaw.replace(/^(tỉnh|TP\.?|thành phố)\s+/i, "").trim();
 
       // === Header 2 cột ===
       this.setCell(ws, `A${r}`, cfg.ten || "", { merge: `C${r}`, bold: true, center: true });
