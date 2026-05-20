@@ -121,7 +121,7 @@
             <div class="sign-col">
               <div class="sign-title">Đại diện nhận hàng</div>
               <div class="sign-space"></div>
-              <div class="sign-name">{{ UQ }}</div>
+              <div class="sign-name">{{ NGUOI_NHAN }}</div>
             </div>
           </div>
         </div>
@@ -143,7 +143,7 @@
           <div class="header-row small right">Lần ban hành: {{ LAN_BAN_HANH }}</div>
 
           <table class="info-table">
-            <tr><td class="lbl">Người giao hàng:</td><td class="val">{{ UQ }}</td><td class="lbl">Số phiếu:</td><td class="val">{{ phieu.So_phieu }}</td></tr>
+            <tr><td class="lbl">Người giao hàng:</td><td class="val">{{ NGUOI_NHAN }}</td><td class="lbl">Số phiếu:</td><td class="val">{{ phieu.So_phieu }}</td></tr>
             <tr><td class="lbl">Kho nhập:</td><td class="val">{{ TEN_CTY }}</td><td class="lbl">Biển số xe:</td><td class="val">{{ phieu.Xe }}</td></tr>
             <tr><td class="lbl">Địa chỉ:</td><td class="val">{{ DIA_CHI_CTY }}</td><td class="lbl">Ngày nhập:</td><td class="val">{{ formatDate(phieu.Ngay_nhap) }}</td></tr>
             <tr><td class="lbl">Trạng thái MT:</td><td class="val">FSC 100%</td><td class="lbl">Nhóm SP:</td><td class="val">W1.1</td></tr>
@@ -196,12 +196,12 @@
             <div class="sign-col">
               <div class="sign-title">Đại diện bên giao</div>
               <div class="sign-space"></div>
-              <div class="sign-name">{{ UQ }}</div>
+              <div class="sign-name">{{ NGUOI_NHAN }}</div>
             </div>
             <div class="sign-col">
               <div class="sign-title">Đại diện bên nhận</div>
               <div class="sign-space"></div>
-              <div class="sign-name">{{ NGUOI_NHAN }}</div>
+              <div class="sign-name">{{ UQ }}</div>
             </div>
           </div>
         </div>
@@ -442,6 +442,20 @@ export default {
     /**
      * Chuyển số tiền sang chữ tiếng Việt — viết hoa chữ đầu, kết thúc " đồng".
      */
+    /** Trích năm (4 chữ số) từ phiếu — thử nhiều nguồn, cuối cùng năm hiện tại. */
+    extractNamFromPhieu(p) {
+      if (!p) return new Date().getFullYear();
+      const candidates = [p.NGAY, p.Ngay_nhap, p.Ngay_BKLS];
+      for (const raw of candidates) {
+        if (!raw) continue;
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) return d.getFullYear();
+        const m = String(raw).match(/(20\d{2})/);
+        if (m) return +m[1];
+      }
+      return new Date().getFullYear();
+    },
+
     numberToWordsVN(num) {
       if (num == null || isNaN(num)) return "";
       const n = Math.round(Number(num));
@@ -857,7 +871,7 @@ export default {
       this.setCell(ws, `F${cur}`, "Đại diện nhận hàng", { merge: `J${cur}`, bold: true, italic: true, center: true });
       cur += 4;
       this.setCell(ws, `A${cur}`, p.Chu_rung || "", { merge: `E${cur}`, bold: true, center: true });
-      this.setCell(ws, `F${cur}`, cfg.UQ || "", { merge: `J${cur}`, bold: true, center: true });
+      this.setCell(ws, `F${cur}`, cfg.NGUOI_NHAN || "", { merge: `J${cur}`, bold: true, center: true });
       return cur + 2;
     },
 
@@ -874,7 +888,7 @@ export default {
       this.setCell(ws, `F${r + 4}`, `Lần ban hành: ${cfg.LAN_BAN_HANH || "02"}`, { merge: `J${r + 4}`, italic: true, size: 9, right: true });
 
       const info = [
-        ["Người giao hàng:", cfg.UQ, "Số phiếu:", p.So_phieu || ""],
+        ["Người giao hàng:", cfg.NGUOI_NHAN, "Số phiếu:", p.So_phieu || ""],
         ["Kho nhập:", cfg.TEN_CTY, "Biển số xe:", p.Xe || ""],
         ["Địa chỉ:", cfg.DIA_CHI_CTY, "Ngày nhập:", this.formatDate(p.Ngay_nhap)],
         ["Trạng thái MT:", "FSC 100%", "Nhóm SP:", "W1.1"],
@@ -924,8 +938,8 @@ export default {
       this.setCell(ws, `A${cur}`, "Đại diện bên giao", { merge: `E${cur}`, bold: true, italic: true, center: true });
       this.setCell(ws, `F${cur}`, "Đại diện bên nhận", { merge: `J${cur}`, bold: true, italic: true, center: true });
       cur += 4;
-      this.setCell(ws, `A${cur}`, cfg.UQ || "", { merge: `E${cur}`, bold: true, center: true });
-      this.setCell(ws, `F${cur}`, cfg.NGUOI_NHAN || "", { merge: `J${cur}`, bold: true, center: true });
+      this.setCell(ws, `A${cur}`, cfg.NGUOI_NHAN || "", { merge: `E${cur}`, bold: true, center: true });
+      this.setCell(ws, `F${cur}`, cfg.UQ || "", { merge: `J${cur}`, bold: true, center: true });
       return cur + 2;
     },
 
@@ -942,8 +956,8 @@ export default {
         : "Ngày … tháng … năm …";
       const klStr = (p.Khoi_luong || 0).toFixed(2);
 
-      // ---- Header 2 cột ----
-      this.setCell(ws, `A${r}`, cfg.TEN_CTY,
+      // ---- Header 2 cột ---- (Chủ lâm sản = chủ rừng → header trái = tên chủ rừng)
+      this.setCell(ws, `A${r}`, p.Chu_rung || cfg.TEN_CTY || "",
         { merge: `D${r}`, bold: true, center: true, size: 12 });
       this.setCell(ws, `E${r}`, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
         { merge: `J${r}`, bold: true, center: true, size: 11 });
@@ -952,8 +966,10 @@ export default {
         { merge: `J${r + 1}`, bold: true, center: true });
       this.setCell(ws, `E${r + 2}`, "---------------", { merge: `J${r + 2}`, center: true });
 
-      // ---- Số BKLS / Tờ số ----
-      this.setCell(ws, `A${r + 4}`, `Số(1): ${p.So_BKLS || "___"}-BKLS`,
+      // ---- Số BKLS / Tờ số ---- STT chạy theo chủ rừng + năm đầy đủ
+      const sttBkls = p.stt_chu_rung ? String(p.stt_chu_rung).padStart(2, "0") : "__";
+      const namBkls = this.extractNamFromPhieu(p);
+      this.setCell(ws, `A${r + 4}`, `Số(1): ${sttBkls}/${namBkls}/BKLS`,
         { merge: `D${r + 4}` });
       this.setCell(ws, `E${r + 4}`, "Tờ số(2): 01      Tổng số tờ: 01",
         { merge: `J${r + 4}`, right: true });
@@ -1047,7 +1063,9 @@ export default {
       this.setCell(ws, `A${cur}`, "(Người có thẩm quyền ký, ghi rõ họ tên, đóng dấu)",
         { merge: `E${cur}`, italic: true, size: 9, center: true });
       cur += 4;
-      this.setCell(ws, `F${cur}`, cfg.UQ || "", { merge: `J${cur}`, bold: true, center: true });
+      // Tổ chức/cá nhân lập BKLS = chủ rừng (sở hữu gỗ tròn)
+      this.setCell(ws, `F${cur}`, p.Chu_rung || cfg.UQ || "",
+        { merge: `J${cur}`, bold: true, center: true });
       return cur + 2;
     },
 
@@ -1296,7 +1314,7 @@ export default {
         </table>
         <table class="sign-2col"><tr>
           <td><p class="bold italic">Đại diện giao hàng</p><p class="sign-name">${e(p.Chu_rung)}</p></td>
-          <td><p class="bold italic">Đại diện nhận hàng</p><p class="sign-name">${e(cfg.UQ)}</p></td>
+          <td><p class="bold italic">Đại diện nhận hàng</p><p class="sign-name">${e(cfg.NGUOI_NHAN)}</p></td>
         </tr></table>`;
     },
 
@@ -1313,7 +1331,7 @@ export default {
         <p class="title">PHIẾU NHẬP KHO GỖ KEO TRÒN FSC 100%</p>
         <p class="right small italic">Lần ban hành: ${e(cfg.LAN_BAN_HANH || "02")}</p>
         <table class="info">
-          <tr><td class="lbl">Người giao hàng:</td><td class="val">${e(cfg.UQ)}</td><td class="lbl">Số phiếu:</td><td class="val bold">${e(p.So_phieu)}</td></tr>
+          <tr><td class="lbl">Người giao hàng:</td><td class="val">${e(cfg.NGUOI_NHAN)}</td><td class="lbl">Số phiếu:</td><td class="val bold">${e(p.So_phieu)}</td></tr>
           <tr><td class="lbl">Kho nhập:</td><td class="val">${e(cfg.TEN_CTY)}</td><td class="lbl">Biển số xe:</td><td class="val">${e(p.Xe)}</td></tr>
           <tr><td class="lbl">Địa chỉ:</td><td class="val">${e(cfg.DIA_CHI_CTY)}</td><td class="lbl">Ngày nhập:</td><td class="val">${e(this.formatDate(p.Ngay_nhap))}</td></tr>
           <tr><td class="lbl">Trạng thái MT:</td><td class="val">FSC 100%</td><td class="lbl">Nhóm SP:</td><td class="val">W1.1</td></tr>
@@ -1342,8 +1360,8 @@ export default {
           <tr><td colspan="3" class="center bold">TỔNG</td><td class="num bold">${f(p.Khoi_luong)}</td><td colspan="4"></td></tr>
         </table>
         <table class="sign-2col"><tr>
-          <td><p class="bold italic">Đại diện bên giao</p><p class="sign-name">${e(cfg.UQ)}</p></td>
-          <td><p class="bold italic">Đại diện bên nhận</p><p class="sign-name">${e(cfg.NGUOI_NHAN)}</p></td>
+          <td><p class="bold italic">Đại diện bên giao</p><p class="sign-name">${e(cfg.NGUOI_NHAN)}</p></td>
+          <td><p class="bold italic">Đại diện bên nhận</p><p class="sign-name">${e(cfg.UQ)}</p></td>
         </tr></table>`;
     },
 
@@ -1358,13 +1376,15 @@ export default {
         : "Ngày ... tháng ... năm ...";
       const klStr = (p.Khoi_luong || 0).toFixed(2);
       const dtStr = (p.Dien_tich || 0).toFixed(2);
+      const sttBkls = p.stt_chu_rung ? String(p.stt_chu_rung).padStart(2, "0") : "__";
+      const namBkls = this.extractNamFromPhieu(p);
       return `<div class="bkls">
         <table class="info"><tr>
-          <td class="bold center">${e(cfg.TEN_CTY || "")}<br/>-------</td>
+          <td class="bold center">${e(p.Chu_rung || cfg.TEN_CTY || "")}<br/>-------</td>
           <td class="bold center">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/><span class="italic">Độc lập - Tự do - Hạnh phúc</span><br/>---------------</td>
         </tr></table>
         <table class="info"><tr>
-          <td>Số(1): ${e(p.So_BKLS || "___")}-BKLS</td>
+          <td>Số(1): ${sttBkls}/${namBkls}/BKLS</td>
           <td class="right">Tờ số(2): 01    Tổng số tờ: 01</td>
         </tr></table>
         <p class="title">BẢNG KÊ LÂM SẢN</p>
@@ -1410,7 +1430,7 @@ export default {
           <td>
             <p class="bold">TỔ CHỨC/CÁ NHÂN LẬP BẢNG KÊ</p>
             <p class="small italic">(Ký, ghi rõ họ tên, đóng dấu đối với tổ chức)</p>
-            <p class="sign-name">${e(cfg.UQ)}</p>
+            <p class="sign-name">${e(p.Chu_rung || cfg.UQ)}</p>
           </td>
         </tr></table></div>`;
     },

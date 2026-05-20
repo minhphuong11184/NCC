@@ -33,9 +33,21 @@ router.get('/bien-ban-gio-go-tron', (req, res) => {
     new mssql.Request()
         .input('code', req.query.code)
         .query(
-            `SELECT *, CAST([Ngay_nhap] AS DATE) AS NGAY
-             FROM [prod].[NHAP_GO_TRON]
-             WHERE id = @code`,
+            `WITH ranked AS (
+                SELECT id,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY LTRIM(RTRIM(ISNULL(Chu_rung, ''))),
+                                     MONTH(Ngay_nhap),
+                                     YEAR(Ngay_nhap),
+                                     LTRIM(RTRIM(ISNULL(Xuong_xe, '')))
+                        ORDER BY Ngay_nhap, TT, id
+                    ) AS stt_chu_rung
+                FROM [prod].[NHAP_GO_TRON]
+             )
+             SELECT N.*, CAST(N.[Ngay_nhap] AS DATE) AS NGAY, R.stt_chu_rung
+             FROM [prod].[NHAP_GO_TRON] N
+             JOIN ranked R ON R.id = N.id
+             WHERE N.id = @code`,
             (err, record) => {
                 if (err) return res.api.sendFail(getErrorMessage(4907))
                 res.api.sendData(record.recordset)
@@ -50,10 +62,22 @@ router.get('/bien-ban-gio-go-tron', (req, res) => {
 router.get('/all-phieu-go-tron', (req, res) => {
     new mssql.Request()
         .query(
-            `SELECT *, CAST([Ngay_nhap] AS DATE) AS NGAY
-             FROM [prod].[NHAP_GO_TRON]
-             WHERE Khoi_luong IS NOT NULL AND Khoi_luong > 0
-             ORDER BY Ngay_nhap, So_phieu`,
+            `WITH ranked AS (
+                SELECT id,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY LTRIM(RTRIM(ISNULL(Chu_rung, ''))),
+                                     MONTH(Ngay_nhap),
+                                     YEAR(Ngay_nhap),
+                                     LTRIM(RTRIM(ISNULL(Xuong_xe, '')))
+                        ORDER BY Ngay_nhap, TT, id
+                    ) AS stt_chu_rung
+                FROM [prod].[NHAP_GO_TRON]
+             )
+             SELECT N.*, CAST(N.[Ngay_nhap] AS DATE) AS NGAY, R.stt_chu_rung
+             FROM [prod].[NHAP_GO_TRON] N
+             JOIN ranked R ON R.id = N.id
+             WHERE N.Khoi_luong IS NOT NULL AND N.Khoi_luong > 0
+             ORDER BY N.Ngay_nhap, N.So_phieu`,
             (err, record) => {
                 if (err) return res.api.sendFail(getErrorMessage(4907))
                 res.api.sendData(record.recordset)

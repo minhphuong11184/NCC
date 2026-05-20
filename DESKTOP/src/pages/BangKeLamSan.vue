@@ -22,7 +22,7 @@
         <!-- Header -->
         <div class="header-row">
           <div class="left-header">
-            <div class="company-name">{{ TEN_CTY }}</div>
+            <div class="company-name">{{ phieu.Chu_rung || TEN_CTY }}</div>
             <div class="separator">-------</div>
           </div>
           <div class="right-header">
@@ -34,7 +34,7 @@
 
         <!-- Số BKLS -->
         <div class="header-row q-mt-sm">
-          <div>Số(1): {{ phieu.So_BKLS || '___' }}-BKLS</div>
+          <div>Số(1): {{ phieu.stt_chu_rung ? String(phieu.stt_chu_rung).padStart(2, '0') : '__' }}/{{ nam }}/BKLS</div>
           <div>Tờ số(2): 01 Tổng số tờ: 01</div>
         </div>
 
@@ -100,7 +100,7 @@
             <div class="sign-title">TỔ CHỨC/CÁ NHÂN LẬP BẢNG KÊ</div>
             <div class="sign-sub">(Ký, ghi rõ họ tên, đóng dấu đối với tổ chức)</div>
             <div class="sign-space"></div>
-            <div class="sign-name">{{ NGUOI_LAP }}</div>
+            <div class="sign-name">{{ phieu.Chu_rung || NGUOI_LAP }}</div>
           </div>
         </div>
       </div>
@@ -134,19 +134,33 @@ export default {
       if (!this.phieu) return "";
       return [this.phieu.Thon, this.phieu.Xa, this.phieu.Huyen].filter(Boolean).join(", ");
     },
-    /** Ngày của BKLS: ưu tiên Ngay_BKLS từ KH, fallback Ngay_nhap */
+    /** Ngày của BKLS: thử nhiều nguồn (NGAY cast date, Ngay_nhap, Ngay_BKLS). */
     ngayBKLS() {
-      const raw = (this.phieu && this.phieu.Ngay_BKLS) || (this.phieu && this.phieu.Ngay_nhap) || null;
-      if (!raw) return null;
-      const d1 = new Date(raw);
-      if (!isNaN(d1.getTime())) return d1;
-      const m = String(raw).match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
-      if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+      if (!this.phieu) return null;
+      const candidates = [this.phieu.NGAY, this.phieu.Ngay_nhap, this.phieu.Ngay_BKLS];
+      for (const raw of candidates) {
+        if (!raw) continue;
+        const d1 = new Date(raw);
+        if (!isNaN(d1.getTime())) return d1;
+        // DD/MM/YYYY hoặc M/D/YYYY
+        const m1 = String(raw).match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+        if (m1) return new Date(+m1[3], +m1[2] - 1, +m1[1]);
+        // "ngày DD tháng MM năm YYYY"
+        const m2 = String(raw).match(/ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})/i);
+        if (m2) return new Date(+m2[3], +m2[2] - 1, +m2[1]);
+      }
       return null;
     },
     ngay() { return this.ngayBKLS ? this.ngayBKLS.getDate() : "___"; },
     thang() { return this.ngayBKLS ? this.ngayBKLS.getMonth() + 1 : "___"; },
-    nam() { return this.ngayBKLS ? this.ngayBKLS.getFullYear() : "____"; },
+    /** Năm BKLS: thử ngayBKLS, fallback parse từ chuỗi raw, cuối cùng năm hiện tại. */
+    nam() {
+      if (this.ngayBKLS) return this.ngayBKLS.getFullYear();
+      const raw = (this.phieu && (this.phieu.Ngay_nhap || this.phieu.Ngay_BKLS || this.phieu.NGAY)) || "";
+      const m = String(raw).match(/(20\d{2})/);
+      if (m) return +m[1];
+      return new Date().getFullYear();
+    },
     soThanhChu() {
       if (!this.phieu || !this.phieu.Khoi_luong) return "___";
       return volumeToWordsVN(this.phieu.Khoi_luong);

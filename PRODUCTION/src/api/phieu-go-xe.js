@@ -39,7 +39,8 @@ router.get('/list', async (req, res) => {
                     N.Khoang, N.Lo AS lo_kt, N.Dien_tich AS dien_tich,
                     N.Thon, N.Xa, N.Huyen, N.cccd, N.dia_chi_cccd,
                     N.So_BKLS AS so_bkls, N.KD AS kd, N.VD AS vd,
-                    H.he_so AS he_so_lo
+                    H.he_so AS he_so_lo,
+                    G.so_phieu_xe, G.so_bkls_xe
                 FROM [prod].[GHEP_LO_GO_RESULT] G
                 LEFT JOIN (
                     SELECT
@@ -80,6 +81,8 @@ router.get('/list', async (req, res) => {
                     BIENSOXE: d.BIENSOXE ? d.BIENSOXE.trim() : null,
                     CREATED_AT: d.CREATED_AT,
                     MANCC: d.MANCC ? d.MANCC.trim() : null,
+                    so_phieu_xe: d.so_phieu_xe ? d.so_phieu_xe.trim() : null,
+                    so_bkls_xe: d.so_bkls_xe ? d.so_bkls_xe.trim() : null,
                     chi_tiet: [],
                     tong_kl: 0,
                 }
@@ -121,6 +124,129 @@ router.get('/list', async (req, res) => {
         })
     } catch (err) {
         console.error('[phieu-go-xe/list]', err)
+        res.api.sendFail({ number: 4907, message: String(err.message || err) })
+    }
+})
+
+/**
+ * POST /save-so-phieu
+ * Body: { thang, nam, mancc, items: [{ SOPHIEU, so_phieu_xe, so_bkls_xe }] }
+ * Update so_phieu_xe + so_bkls_xe cho tất cả các dòng cùng (thang, nam, mancc, SOPHIEU).
+ */
+router.post('/save-so-phieu', async (req, res) => {
+    try {
+        const thang = parseInt(req.body.thang)
+        const nam = parseInt(req.body.nam)
+        const mancc = (req.body.mancc || '').toString().trim()
+        const items = Array.isArray(req.body.items) ? req.body.items : []
+        if (!thang || !nam || !mancc) {
+            return res.api.sendFail({ number: 4900, message: 'Thiếu tháng/năm/mã NCC' })
+        }
+        if (!items.length) {
+            return res.api.sendFail({ number: 4900, message: 'Không có dòng nào để lưu' })
+        }
+
+        const tx = new mssql.Transaction()
+        await tx.begin()
+        let updatedPhieu = 0
+        let updatedRows = 0
+        try {
+            for (const it of items) {
+                if (!it || !it.SOPHIEU) continue
+                const result = await new mssql.Request(tx)
+                    .input('thang', thang)
+                    .input('nam', nam)
+                    .input('mancc', mancc)
+                    .input('sophieu', String(it.SOPHIEU))
+                    .input('so_phieu_xe', it.so_phieu_xe || null)
+                    .input('so_bkls_xe', it.so_bkls_xe || null)
+                    .query(`
+                        UPDATE [prod].[GHEP_LO_GO_RESULT]
+                        SET so_phieu_xe = @so_phieu_xe,
+                            so_bkls_xe  = @so_bkls_xe
+                        WHERE thang = @thang AND nam = @nam
+                          AND LTRIM(RTRIM(mancc)) = @mancc
+                          AND SOPHIEU = @sophieu
+                    `)
+                const n = result.rowsAffected[0] || 0
+                if (n > 0) { updatedPhieu++; updatedRows += n }
+            }
+            await tx.commit()
+        } catch (err) {
+            await tx.rollback()
+            throw err
+        }
+
+        res.api.sendData({
+            updated_phieu: updatedPhieu,
+            updated_rows: updatedRows,
+            total_input: items.length,
+            thang, nam, mancc,
+        })
+    } catch (err) {
+        console.error('[phieu-go-xe/save-so-phieu]', err)
+        res.api.sendFail({ number: 4907, message: String(err.message || err) })
+    }
+})
+
+/**
+ * GET /last-bkls?thang=&nam=&mancc=
+ * Lấy số BKLS lớn nhất đã lưu (so_bkls_xe) cho (nam, mancc) ở các tháng < thang.
+ * Dùng để auto đề xuất bklsStart cho tháng đang xem (= max + 1).
+ *
+ * Số BKLS có format "<n>/<year>/BKLS" → parse "<n>" làm số nguyên.
+ */
+router.get('/last-bkls', async (req, res) => {
+    try {
+        const thang = parseInt(req.query.thang)
+        const nam = parseInt(req.query.nam)
+        const mancc = (req.query.mancc || '').toString().trim()
+        if (!thang || !nam || !mancc) {
+            return res.api.sendFail({ number: 4900, message: 'Thiếu tháng/năm/mã NCC' })
+        }
+        const { recordset } = await new mssql.Request()
+            .input('thang', thang).input('nam', nam).input('mancc', mancc)
+            .query(`
+                SELECT MAX(TRY_CAST(LEFT(so_bkls_xe, CHARINDEX('/', so_bkls_xe + '/') - 1) AS INT)) AS max_bkls
+                FROM [prod].[GHEP_LO_GO_RESULT]
+                WHERE nam = @nam AND thang < @thang
+                  AND LTRIM(RTRIM(mancc)) = @mancc
+                  AND so_bkls_xe IS NOT NULL
+                  AND so_bkls_xe LIKE '%/%'
+            `)
+        const maxBkls = (recordset[0] && recordset[0].max_bkls) || null
+        res.api.sendData({ max_bkls: maxBkls, thang, nam, mancc })
+    } catch (err) {
+        console.error('[phieu-go-xe/last-bkls]', err)
+        res.api.sendFail({ number: 4907, message: String(err.message || err) })
+    }
+})
+
+/**
+ * GET /count-prev?thang=&nam=&mancc=
+ * Đếm số phiếu (DISTINCT SOPHIEU) đã lưu trong GHEP_LO_GO_RESULT cho
+ * (nam, mancc) ở các tháng < thang. Dùng để tính tiếp số BKLS qua các tháng.
+ */
+router.get('/count-prev', async (req, res) => {
+    try {
+        const thang = parseInt(req.query.thang)
+        const nam = parseInt(req.query.nam)
+        const mancc = (req.query.mancc || '').toString().trim()
+        if (!thang || !nam || !mancc) {
+            return res.api.sendFail({ number: 4900, message: 'Thiếu tháng/năm/mã NCC' })
+        }
+        const { recordset } = await new mssql.Request()
+            .input('thang', thang).input('nam', nam).input('mancc', mancc)
+            .query(`
+                SELECT COUNT(DISTINCT SOPHIEU) AS so_phieu_truoc
+                FROM [prod].[GHEP_LO_GO_RESULT]
+                WHERE nam = @nam AND thang < @thang
+                  AND LTRIM(RTRIM(mancc)) = @mancc
+            `)
+        const count = (recordset[0] && recordset[0].so_phieu_truoc) || 0
+        res.api.sendData({ so_phieu_truoc: count, thang, nam, mancc })
+    } catch (err) {
+        console.error('[phieu-go-xe/count-prev]', err)
         res.api.sendFail({ number: 4907, message: String(err.message || err) })
     }
 })

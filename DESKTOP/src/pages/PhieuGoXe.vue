@@ -18,6 +18,10 @@
       <div class="col-auto">
         <q-btn color="primary" icon="search" label="Tải biên bản đã lưu" @click="load" :loading="loading" />
       </div>
+      <div class="col-auto">
+        <q-input v-model.number="bklsStart" type="number" label="Số BKLS bắt đầu" filled dense style="width:160px"
+          hint="Tự đề xuất từ BKLS lớn nhất tháng trước + 1 (chỉnh tay nếu cần)" />
+      </div>
     </div>
 
     <!-- Toolbar 2: chọn phiếu + nút in/xuất -->
@@ -45,6 +49,15 @@
         <q-btn color="green-7" icon="grid_on" label="Xuất Excel (mỗi phiếu 1 sheet)"
           :loading="exportingExcel" @click="exportAllExcel" />
       </div>
+      <div class="col-auto">
+        <q-btn color="deep-purple" icon="bookmark" label="Lưu số phiếu"
+          :loading="savingSoPhieu" @click="saveSoPhieu" />
+      </div>
+      <div v-if="hasSavedSoPhieu" class="col-auto">
+        <q-chip color="purple" text-color="white" icon="check_circle">
+          Đã lưu số phiếu / BKLS
+        </q-chip>
+      </div>
     </div>
 
     <!-- Tabs chọn mẫu -->
@@ -71,8 +84,12 @@
         <div class="title">PHIẾU NHẬP KHO THÀNH PHẨM</div>
         <table class="info-2col">
           <tr>
-            <td class="lbl">Số phiếu:</td><td class="val bold">{{ currentPhieu.SOPHIEU }}</td>
+            <td class="lbl">Số phiếu:</td><td class="val bold">{{ soPhieuByIdx(selectedIdx) }}</td>
             <td class="right">☑ P.Tươi   ☐ P.Khô   ☐ T/c</td>
+          </tr>
+          <tr>
+            <td class="lbl">Ngày nhập:</td><td class="val bold">{{ fmtDate(currentPhieu.CREATED_AT) }}</td>
+            <td></td>
           </tr>
           <tr>
             <td class="lbl">Tên thành phẩm:</td><td class="val">Gỗ keo xẻ FSC 100%</td>
@@ -123,12 +140,18 @@
             </tr>
           </tbody>
         </table>
-        <div class="info-bottom">
-          <div>Ngày nhập: <b>{{ fmtDate(currentPhieu.CREATED_AT) }}</b> &nbsp;&nbsp; Biển số xe: <b>{{ currentPhieu.BIENSOXE }}</b></div>
-        </div>
         <table class="sign-3col">
-          <tr><td class="sign-title">Người giao hàng</td><td class="sign-title">Thủ kho</td><td class="sign-title">Giám đốc</td></tr>
+          <tr>
+            <td class="sign-title">Người giao hàng</td>
+            <td class="sign-title">Thủ kho</td>
+            <td class="sign-title">Giám đốc</td>
+          </tr>
           <tr><td class="sign-space"></td><td class="sign-space"></td><td class="sign-space"></td></tr>
+          <tr>
+            <td class="sign-name">{{ cfg.nguoi_nhan || '' }}</td>
+            <td class="sign-name">{{ cfg.nguoi_nhan || '' }}</td>
+            <td class="sign-name">{{ cfg.nguoi_dai_dien || '' }}</td>
+          </tr>
         </table>
       </div>
 
@@ -153,7 +176,7 @@
           </tr>
           <tr>
             <td class="lbl">Loại gỗ:</td><td class="val">Keo tai tượng (Acacia mangium)</td>
-            <td class="right">Số phiếu: <b>{{ currentPhieu.SOPHIEU }}</b></td>
+            <td class="right">Số phiếu: <b>{{ soPhieuByIdx(selectedIdx) }}</b></td>
           </tr>
           <tr>
             <td class="lbl">Trạng thái MT:</td><td class="val">FSC 100%</td>
@@ -202,8 +225,17 @@
           </tbody>
         </table>
         <table class="sign-3col">
-          <tr><td class="sign-title">Người lập phiếu</td><td class="sign-title">Thủ kho</td><td class="sign-title">Giám đốc</td></tr>
+          <tr>
+            <td class="sign-title">Giám đốc</td>
+            <td class="sign-title">Thủ kho</td>
+            <td class="sign-title">Thủ kho / Đại diện bên nhận</td>
+          </tr>
           <tr><td class="sign-space"></td><td class="sign-space"></td><td class="sign-space"></td></tr>
+          <tr>
+            <td class="sign-name">{{ cfg.nguoi_dai_dien || '' }}</td>
+            <td class="sign-name">{{ cfg.nguoi_nhan || '' }}</td>
+            <td class="sign-name"></td>
+          </tr>
         </table>
       </div>
 
@@ -345,6 +377,10 @@ export default {
   async created() {
     await this.loadXuongXe();
     this.loadNcc();
+    this.applyBklsStart();
+  },
+  watch: {
+    mancc() { this.applyBklsStart(); },
   },
   data() {
     return {
@@ -352,6 +388,13 @@ export default {
       nam: new Date().getFullYear(),
       thangOptions: Array.from({ length: 12 }, (_, i) => ({ label: "Tháng " + (i + 1), value: i + 1 })),
       mancc: "",
+      // Số BKLS bắt đầu mặc định khi chọn xưởng (user vẫn chỉnh tay được).
+      // Trần Vũ đánh tiếp số cũ → 107. Các xưởng khác mặc định 1.
+      bklsStartByMancc: {
+        TV: 107,
+        // "HKP": 1, ...
+      },
+      bklsStart: 1,
       nccList: [],
       nccOptions: [],
       loading: false,
@@ -360,6 +403,7 @@ export default {
       currentTab: "NKTP",
       exportingWord: false,
       exportingExcel: false,
+      savingSoPhieu: false,
       WL: WOODSLAND_CFG,
     };
   },
@@ -373,6 +417,10 @@ export default {
     },
     tongChiTiet() { return this.phieuList.reduce((s, p) => s + (p.chi_tiet ? p.chi_tiet.length : 0), 0); },
     tongKL() { return this.phieuList.reduce((s, p) => s + (Number(p.tong_kl) || 0), 0); },
+    /** Có ít nhất 1 phiếu đã lưu số phiếu xẻ hoặc BKLS */
+    hasSavedSoPhieu() {
+      return this.phieuList.some(p => p.so_phieu_xe || p.so_bkls_xe);
+    },
     /** Config xưởng xẻ đang chọn — lookup theo mancc_woodsland */
     cfg() {
       const found = (this.danhSachXuong || []).find(
@@ -381,8 +429,8 @@ export default {
       return found || {};
     },
     soBKLS() {
-      if (!this.currentPhieu) return "___/___/____/BKLS";
-      return `${this.currentPhieu.SOPHIEU}/${this.nam}/BKLS`;
+      if (!this.currentPhieu) return "___/____/BKLS";
+      return this.soBKLSByIdx(this.selectedIdx);
     },
     ngayInfo() {
       const d = this.currentPhieu && this.currentPhieu.CREATED_AT
@@ -452,6 +500,32 @@ export default {
   methods: {
     host() { return window.location.hostname || "127.0.0.1"; },
 
+    /** Tự set bklsStart mặc định theo mã NCC (Trần Vũ=107, khác=1). User vẫn chỉnh tay được. */
+    applyBklsStart() {
+      const code = (this.mancc || "").toString().trim().toUpperCase();
+      this.bklsStart = this.bklsStartByMancc[code] || 1;
+    },
+
+    /**
+     * Gọi API lấy số BKLS lớn nhất đã lưu của (mancc, năm, tháng < thang).
+     * Nếu có → set bklsStart = max + 1 để tháng này chạy tiếp.
+     * Nếu không (tháng đầu tiên trong năm) → giữ giá trị mặc định theo mã NCC.
+     */
+    async autoBklsStartFromPrev() {
+      if (!this.mancc) return;
+      try {
+        const { data } = await axios.get(
+          `http://${this.host()}:2003/api/v1/phieu-go-xe/last-bkls`,
+          { params: { thang: this.thang, nam: this.nam, mancc: this.mancc } }
+        );
+        if (data && data.meta && data.meta.success && data.data && data.data.max_bkls) {
+          this.bklsStart = Number(data.data.max_bkls) + 1;
+        }
+      } catch (err) {
+        console.warn("[last-bkls] err:", err);
+      }
+    },
+
     fmtDate(dt) {
       if (!dt) return "";
       const d = new Date(dt);
@@ -464,6 +538,26 @@ export default {
       return Number(v).toFixed(4);
     },
     pad2(n) { return String(n).padStart(2, "0"); },
+
+    /**
+     * Số phiếu NKTP/XK. Nếu phiếu có so_phieu_xe đã lưu trong DB thì dùng giá trị đó,
+     * không thì tự sinh theo công thức (idx+1)/thang.
+     */
+    soPhieuByIdx(idx) {
+      const i = (Number(idx) >= 0 ? Number(idx) : 0);
+      const p = this.phieuList[i];
+      if (p && p.so_phieu_xe) return p.so_phieu_xe;
+      const stt = i + 1;
+      return `${String(stt).padStart(2, "0")}/${String(this.thang).padStart(2, "0")}`;
+    },
+    /** Số BKLS. Nếu phiếu có so_bkls_xe đã lưu thì dùng, không thì sinh từ bklsStart. */
+    soBKLSByIdx(idx) {
+      const i = (Number(idx) >= 0 ? Number(idx) : 0);
+      const p = this.phieuList[i];
+      if (p && p.so_bkls_xe) return p.so_bkls_xe;
+      const base = Number(this.bklsStart) || 0;
+      return `${base + i}/${this.nam}/BKLS`;
+    },
     fmtNum2(v) {
       if (v == null || v === "") return "";
       return Number(v).toFixed(2);
@@ -495,6 +589,9 @@ export default {
       }
       this.loading = true;
       try {
+        // Auto đề xuất bklsStart = max BKLS đã lưu của các tháng trước + 1
+        await this.autoBklsStartFromPrev();
+
         const { data } = await axios.get(
           `http://${this.host()}:2003/api/v1/phieu-go-xe/list`,
           { params: { thang: this.thang, nam: this.nam, mancc: this.mancc } }
@@ -587,7 +684,7 @@ export default {
     },
 
     /** Word: 1 phiếu NKTP (1 trang) */
-    wordNKTP(p, cfg) {
+    wordNKTP(p, cfg, idx) {
       const e = this.wordEsc.bind(this);
       const rows = (p.chi_tiet || []).map((d, i) => `
         <tr>
@@ -616,8 +713,12 @@ export default {
         <p class="title">PHIẾU NHẬP KHO THÀNH PHẨM</p>
         <table class="info">
           <tr>
-            <td class="lbl">Số phiếu:</td><td class="bold">${e(p.SOPHIEU)}</td>
+            <td class="lbl">Số phiếu:</td><td class="bold">${e(this.soPhieuByIdx(typeof idx === "number" ? idx : this.phieuList.indexOf(p)))}</td>
             <td class="right">☑ P.Tươi &nbsp; ☐ P.Khô &nbsp; ☐ T/c</td>
+          </tr>
+          <tr>
+            <td class="lbl">Ngày nhập:</td><td class="bold">${e(this.fmtDate(p.CREATED_AT))}</td>
+            <td></td>
           </tr>
           <tr>
             <td class="lbl">Tên thành phẩm:</td><td>Gỗ keo xẻ FSC 100%</td>
@@ -641,15 +742,23 @@ export default {
             <tr class="total-row"><td colspan="9">TỔNG</td><td class="num">${tong}</td><td></td></tr>
           </tbody>
         </table>
-        <p>Ngày nhập: <b>${e(this.fmtDate(p.CREATED_AT))}</b> &nbsp;&nbsp; Biển số xe: <b>${e(p.BIENSOXE || "")}</b></p>
         <table class="sign-3col">
-          <tr><td class="sign-title">Người giao hàng</td><td class="sign-title">Thủ kho</td><td class="sign-title">Giám đốc</td></tr>
+          <tr>
+            <td class="sign-title">Người giao hàng</td>
+            <td class="sign-title">Thủ kho</td>
+            <td class="sign-title">Giám đốc</td>
+          </tr>
           <tr><td class="sign-space"></td><td class="sign-space"></td><td class="sign-space"></td></tr>
+          <tr>
+            <td class="sign-name">${e(cfg.nguoi_nhan || "")}</td>
+            <td class="sign-name">${e(cfg.nguoi_nhan || "")}</td>
+            <td class="sign-name">${e(cfg.nguoi_dai_dien || "")}</td>
+          </tr>
         </table>`;
     },
 
     /** Word: 1 phiếu XK (1 trang) */
-    wordXK(p, cfg) {
+    wordXK(p, cfg, idx) {
       const e = this.wordEsc.bind(this);
       const rows = (p.chi_tiet || []).map((d, i) => `
         <tr>
@@ -679,7 +788,7 @@ export default {
           <tr><td class="lbl">Số chứng chỉ:</td><td colspan="2">${e(this.WL.chung_chi)} — Hiệu lực: ${e(this.WL.hieu_luc)}</td></tr>
           <tr>
             <td class="lbl">Loại gỗ:</td><td>Keo tai tượng (Acacia mangium)</td>
-            <td class="right">Số phiếu: <b>${e(p.SOPHIEU)}</b></td>
+            <td class="right">Số phiếu: <b>${e(this.soPhieuByIdx(typeof idx === "number" ? idx : this.phieuList.indexOf(p)))}</b></td>
           </tr>
           <tr>
             <td class="lbl">Trạng thái MT:</td><td>FSC 100%</td>
@@ -704,15 +813,25 @@ export default {
           </tbody>
         </table>
         <table class="sign-3col">
-          <tr><td class="sign-title">Người lập phiếu</td><td class="sign-title">Thủ kho</td><td class="sign-title">Giám đốc</td></tr>
+          <tr>
+            <td class="sign-title">Giám đốc</td>
+            <td class="sign-title">Thủ kho</td>
+            <td class="sign-title">Thủ kho / Đại diện bên nhận</td>
+          </tr>
           <tr><td class="sign-space"></td><td class="sign-space"></td><td class="sign-space"></td></tr>
+          <tr>
+            <td class="sign-name">${e(cfg.nguoi_dai_dien || "")}</td>
+            <td class="sign-name">${e(cfg.nguoi_nhan || "")}</td>
+            <td class="sign-name"></td>
+          </tr>
         </table>`;
     },
 
     /** Word: 1 phiếu BKLS (1 trang) — đúng mẫu file go_xe.xlsx sheet BKLS */
-    wordBKLS(p, cfg) {
+    wordBKLS(p, cfg, idx) {
       const e = this.wordEsc.bind(this);
-      const soBKLS = `${p.SOPHIEU}/${this.nam}/BKLS`;
+      const phIdx = typeof idx === "number" ? idx : this.phieuList.indexOf(p);
+      const soBKLS = this.soBKLSByIdx(Math.max(0, phIdx));
       const dt = p.CREATED_AT ? new Date(p.CREATED_AT) : new Date();
       const tong = this.fmtKL(p.tong_kl);
       const tongChu = volumeToWordsVN(p.tong_kl);
@@ -862,11 +981,11 @@ export default {
         const parts = [];
         this.phieuList.forEach((p, i) => {
           if (i > 0) parts.push('<br clear="all" class="pgbreak"/>');
-          parts.push(this.wordNKTP(p, cfg));
+          parts.push(this.wordNKTP(p, cfg, i));
           parts.push('<br clear="all" class="pgbreak"/>');
-          parts.push(this.wordXK(p, cfg));
+          parts.push(this.wordXK(p, cfg, i));
           parts.push('<br clear="all" class="pgbreak"/>');
-          parts.push(this.wordBKLS(p, cfg));
+          parts.push(this.wordBKLS(p, cfg, i));
         });
         const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"/>${this.wordCss()}</head><body><div class="Section1">${parts.join("")}</div></body></html>`;
         const blob = new Blob(["﻿" + html], { type: "application/msword;charset=utf-8" });
@@ -1149,7 +1268,7 @@ export default {
     },
 
     /** NKTP — Phiếu nhập kho thành phẩm. */
-    buildBlockNKTP(ws, p, cfg, start) {
+    buildBlockNKTP(ws, p, cfg, start, idx) {
       let r = start;
       this.setCell(ws, `A${r}`, cfg.ten || "", { merge: `H${r}`, bold: true });
       this.setCell(ws, `I${r}`, `BM: ${cfg.bm_nhap_kho || "CoC"}`, { merge: `K${r}`, right: true, italic: true });
@@ -1163,8 +1282,11 @@ export default {
       r += 2;
       this.styleTitle(ws, `A${r}`, `K${r}`, "PHIẾU NHẬP KHO THÀNH PHẨM");
       r += 2;
-      this.setCell(ws, `A${r}`, `Số phiếu: ${p.SOPHIEU}`, { merge: `D${r}`, bold: true });
+      const nktpIdx = typeof idx === "number" ? idx : this.phieuList.indexOf(p);
+      this.setCell(ws, `A${r}`, `Số phiếu: ${this.soPhieuByIdx(nktpIdx)}`, { merge: `D${r}`, bold: true });
       this.setCell(ws, `E${r}`, "☑ P.Tươi   ☐ P.Khô   ☐ T/c", { merge: `K${r}`, right: true });
+      r++;
+      this.setCell(ws, `A${r}`, `Ngày nhập: ${this.fmtDate(p.CREATED_AT)}`, { merge: `D${r}`, bold: true });
       r++;
       this.setCell(ws, `A${r}`, "Tên thành phẩm: Gỗ keo xẻ FSC 100%", { merge: `D${r}` });
       this.setCell(ws, `E${r}`, "☑ FSC 100%   ☐ Mix   ☐ Non FSC   ☐ CW   ☐ KLS",
@@ -1205,20 +1327,19 @@ export default {
       cT.alignment = { horizontal: "center", vertical: "middle" };
       ws.getRow(r).getCell(11).border = this.bThin();
       r += 2;
-      this.setCell(ws, `A${r}`, `Ngày nhập: ${this.fmtDate(p.CREATED_AT)}   Biển số xe: ${p.BIENSOXE || ""}`,
-        { merge: `K${r}` });
-      r += 2;
       this.setCell(ws, `A${r}`, "Người giao hàng", { merge: `C${r}`, center: true, bold: true, italic: true });
       this.setCell(ws, `D${r}`, "Thủ kho", { merge: `G${r}`, center: true, bold: true, italic: true });
       this.setCell(ws, `H${r}`, "Giám đốc", { merge: `K${r}`, center: true, bold: true, italic: true });
       r += 4;
+      this.setCell(ws, `A${r}`, cfg.nguoi_nhan || "", { merge: `C${r}`, center: true, bold: true });
+      this.setCell(ws, `D${r}`, cfg.nguoi_nhan || "", { merge: `G${r}`, center: true, bold: true });
       this.setCell(ws, `H${r}`, cfg.nguoi_dai_dien || "", { merge: `K${r}`, center: true, bold: true });
       r++;
       return r + 1;
     },
 
     /** XK — Phiếu xuất kho gửi Woodsland. */
-    buildBlockXK(ws, p, cfg, start) {
+    buildBlockXK(ws, p, cfg, start, idx) {
       let r = start;
       this.setCell(ws, `A${r}`, cfg.ten || "", { merge: `L${r}`, bold: true });
       r++;
@@ -1235,7 +1356,8 @@ export default {
         { merge: `L${r}` });
       r++;
       this.setCell(ws, `A${r}`, "Loại gỗ: Keo tai tượng (Acacia mangium)", { merge: `H${r}` });
-      this.setCell(ws, `I${r}`, `Số phiếu: ${p.SOPHIEU}`, { merge: `L${r}`, bold: true, right: true });
+      const xkIdx = typeof idx === "number" ? idx : this.phieuList.indexOf(p);
+      this.setCell(ws, `I${r}`, `Số phiếu: ${this.soPhieuByIdx(xkIdx)}`, { merge: `L${r}`, bold: true, right: true });
       r++;
       this.setCell(ws, `A${r}`, "Trạng thái MT: FSC 100%", { merge: `H${r}` });
       this.setCell(ws, `I${r}`, `Ngày xuất: ${this.fmtDate(p.CREATED_AT)}`, { merge: `L${r}`, right: true });
@@ -1272,20 +1394,23 @@ export default {
       cT.alignment = { horizontal: "center", vertical: "middle" };
       ws.getRow(r).getCell(12).border = this.bThin();
       r += 2;
-      this.setCell(ws, `A${r}`, "Người lập phiếu", { merge: `D${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `A${r}`, "Giám đốc", { merge: `D${r}`, center: true, bold: true, italic: true });
       this.setCell(ws, `E${r}`, "Thủ kho", { merge: `H${r}`, center: true, bold: true, italic: true });
-      this.setCell(ws, `I${r}`, "Giám đốc", { merge: `L${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `I${r}`, "Thủ kho / Đại diện bên nhận", { merge: `L${r}`, center: true, bold: true, italic: true });
       r += 4;
-      this.setCell(ws, `I${r}`, cfg.nguoi_dai_dien || "", { merge: `L${r}`, center: true, bold: true });
+      this.setCell(ws, `A${r}`, cfg.nguoi_dai_dien || "", { merge: `D${r}`, center: true, bold: true });
+      this.setCell(ws, `E${r}`, cfg.nguoi_nhan || "", { merge: `H${r}`, center: true, bold: true });
       r++;
       return r + 1;
     },
 
     /** BKLS — Bảng kê lâm sản. */
-    buildBlockBKLS(ws, p, cfg, start) {
+    buildBlockBKLS(ws, p, cfg, start, idx) {
       let r = start;
       const dt = p.CREATED_AT ? new Date(p.CREATED_AT) : new Date();
       const tongThanh = (p.chi_tiet || []).reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
+      const phIdx = typeof idx === "number" ? idx : this.phieuList.indexOf(p);
+      const soBKLSStr = this.soBKLSByIdx(Math.max(0, phIdx));
 
       // Group nguồn gốc, lô khai thác, lô gỗ xẻ
       const seenNG = new Set(); const nguonGoc = [];
@@ -1317,7 +1442,7 @@ export default {
       r++;
       this.setCell(ws, `D${r}`, "---------------", { merge: `G${r}`, center: true });
       r++;
-      this.setCell(ws, `A${r}`, `Số(1): ${p.SOPHIEU}/${this.nam}/BKLS`, { merge: `C${r}` });
+      this.setCell(ws, `A${r}`, `Số(1): ${soBKLSStr}`, { merge: `C${r}` });
       this.setCell(ws, `D${r}`, "Tờ số(2): 01    Tổng số tờ: 01", { merge: `G${r}`, right: true });
       r += 2;
       this.styleTitle(ws, `A${r}`, `G${r}`, "BẢNG KÊ LÂM SẢN");
@@ -1450,6 +1575,50 @@ export default {
       return r + 1;
     },
 
+    /* ===================== LƯU SỐ PHIẾU + BKLS VÀO DB ===================== */
+    async saveSoPhieu() {
+      if (!this.phieuList.length) {
+        this.$q.notify({ type: "warning", message: "Chưa có phiếu để lưu", timeout: 4000 });
+        return;
+      }
+      this.savingSoPhieu = true;
+      try {
+        // Build items theo idx hiện tại — dùng helper soPhieuByIdx/soBKLSByIdx
+        // (tự sinh nếu chưa lưu, hoặc giữ nguyên giá trị đã lưu)
+        const items = this.phieuList.map((p, i) => ({
+          SOPHIEU: p.SOPHIEU,
+          so_phieu_xe: this.soPhieuByIdx(i),
+          so_bkls_xe: this.soBKLSByIdx(i),
+        }));
+        const { data } = await axios.post(
+          `http://${this.host()}:2003/api/v1/phieu-go-xe/save-so-phieu`,
+          { thang: this.thang, nam: this.nam, mancc: this.mancc, items }
+        );
+        if (data && data.meta && data.meta.success) {
+          // Cập nhật phieuList với giá trị đã lưu để chip "Đã lưu" hiển thị + giữ số khi chỉnh bklsStart
+          items.forEach((it, i) => {
+            this.$set(this.phieuList[i], "so_phieu_xe", it.so_phieu_xe);
+            this.$set(this.phieuList[i], "so_bkls_xe", it.so_bkls_xe);
+          });
+          this.$q.notify({
+            type: "positive",
+            message: `Đã lưu ${data.data.updated_phieu}/${items.length} phiếu (${data.data.updated_rows} dòng)`,
+            timeout: 4000,
+          });
+        } else {
+          const msg = (data && data.meta && data.meta.message) || "Lỗi lưu số phiếu";
+          this.$q.notify({ type: "negative", message: msg, timeout: 6000 });
+        }
+      } catch (err) {
+        console.error("[save-so-phieu] error:", err);
+        const msg = (err.response && err.response.data && err.response.data.meta && err.response.data.meta.message)
+          || err.message || "Lỗi lưu số phiếu";
+        this.$q.notify({ type: "negative", message: String(msg), timeout: 6000 });
+      } finally {
+        this.savingSoPhieu = false;
+      }
+    },
+
     async exportAllExcel() {
       if (!this.phieuList.length) {
         this.$q.notify({ type: "warning", message: "Chưa có dữ liệu để xuất", timeout: 4000 });
@@ -1493,11 +1662,11 @@ export default {
           let row = 1;
           row = this.buildBlockNL(ws, p, cfg, row);
           ws.getRow(row - 1).addPageBreak();
-          row = this.buildBlockNKTP(ws, p, cfg, row);
+          row = this.buildBlockNKTP(ws, p, cfg, row, i);
           ws.getRow(row - 1).addPageBreak();
-          row = this.buildBlockXK(ws, p, cfg, row);
+          row = this.buildBlockXK(ws, p, cfg, row, i);
           ws.getRow(row - 1).addPageBreak();
-          row = this.buildBlockBKLS(ws, p, cfg, row);
+          row = this.buildBlockBKLS(ws, p, cfg, row, i);
         }
 
         const buf = await wb.xlsx.writeBuffer();
