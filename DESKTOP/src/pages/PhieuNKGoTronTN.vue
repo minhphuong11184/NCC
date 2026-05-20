@@ -337,10 +337,10 @@ import xuongXeMixin from "../mixins/xuongXeMixin";
  * (vd "22C-089.66" — chữ in hoa, có dấu gạch và chấm).
  */
 const LAI_XE_THAI_NGUYEN = {
-  "22C-089.66": "Nguyễn Văn Kiên",
-  "20C-198.09": "Phạm Tiến Đạo",
-  "20A-956.63": "Nguyễn Văn Minh",
-  "20B-201.59": "Bùi Cao Cường",
+  "22C-08966": "Nguyễn Văn Kiên",
+  "20C-19809": "Phạm Tiến Đạo",
+  "20A-95663": "Nguyễn Văn Minh",
+  "20B-20159": "Bùi Cao Cường",
 };
 
 /** Trả tên người giao = lái xe theo biển số xe. Fallback NGUOI_NHAN nếu chưa map. */
