@@ -1,5 +1,9 @@
 <template>
   <q-page padding>
+    <div class="text-h6 q-mb-sm no-print text-deep-purple">
+      Phiếu nhập kho gỗ tròn — Công ty TNHH Lâm Sản Thái Nguyên
+      <span class="text-caption text-grey-7">(người giao = lái xe theo biển số xe)</span>
+    </div>
     <!-- ===== Toolbar: chọn phiếu + in ===== -->
     <div class="row q-col-gutter-md items-center q-mb-md no-print">
       <div class="col-auto">
@@ -121,7 +125,7 @@
             <div class="sign-col">
               <div class="sign-title">Đại diện nhận hàng</div>
               <div class="sign-space"></div>
-              <div class="sign-name">{{ NGUOI_NHAN }}</div>
+              <div class="sign-name">{{ nguoiGiaoPNK }}</div>
             </div>
           </div>
         </div>
@@ -143,7 +147,7 @@
           <div class="header-row small right">Lần ban hành: {{ LAN_BAN_HANH }}</div>
 
           <table class="info-table">
-            <tr><td class="lbl">Người giao hàng:</td><td class="val">{{ NGUOI_NHAN }}</td><td class="lbl">Số phiếu:</td><td class="val">{{ phieu.So_phieu }}</td></tr>
+            <tr><td class="lbl">Người giao hàng:</td><td class="val">{{ nguoiGiaoPNK }}</td><td class="lbl">Số phiếu:</td><td class="val">{{ phieu.So_phieu }}</td></tr>
             <tr><td class="lbl">Kho nhập:</td><td class="val">{{ TEN_CTY }}</td><td class="lbl">Biển số xe:</td><td class="val">{{ phieu.Xe }}</td></tr>
             <tr><td class="lbl">Địa chỉ:</td><td class="val">{{ DIA_CHI_CTY }}</td><td class="lbl">Ngày nhập:</td><td class="val">{{ formatDate(phieu.Ngay_nhap) }}</td></tr>
             <tr><td class="lbl">Trạng thái MT:</td><td class="val">FSC 100%</td><td class="lbl">Nhóm SP:</td><td class="val">W1.1</td></tr>
@@ -196,12 +200,12 @@
             <div class="sign-col">
               <div class="sign-title">Đại diện bên giao</div>
               <div class="sign-space"></div>
-              <div class="sign-name">{{ NGUOI_NHAN }}</div>
+              <div class="sign-name">{{ nguoiGiaoPNK }}</div>
             </div>
             <div class="sign-col">
-              <div class="sign-title">Đại diện bên nhận</div>
+              <div class="sign-title">Thủ quỹ</div>
               <div class="sign-space"></div>
-              <div class="sign-name">{{ UQ }}</div>
+              <div class="sign-name">{{ NGUOI_NHAN }}</div>
             </div>
           </div>
         </div>
@@ -323,6 +327,28 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import xuongXeMixin from "../mixins/xuongXeMixin";
 
+/**
+ * Mapping biển số xe → tên lái xe.
+ * Trang này luôn dùng map (không check tên xưởng) — Người giao hàng,
+ * Đại diện bên giao, Đại diện nhận hàng đều lấy tên lái xe theo biển số xe.
+ * Fallback về NGUOI_NHAN của xưởng nếu biển không có trong map.
+ *
+ * THÊM/SỬA TẠI ĐÂY khi có lái xe mới. Biển số viết đúng format trong DB
+ * (vd "22C-089.66" — chữ in hoa, có dấu gạch và chấm).
+ */
+const LAI_XE_THAI_NGUYEN = {
+  "22C-089.66": "Nguyễn Văn Kiên",
+  "20C-198.09": "Phạm Tiến Đạo",
+  "20A-956.63": "Nguyễn Văn Minh",
+  "20B-201.59": "Bùi Cao Cường",
+};
+
+/** Trả tên người giao = lái xe theo biển số xe. Fallback NGUOI_NHAN nếu chưa map. */
+function laiXeOf(p, fallback) {
+  const xe = (p && p.Xe || "").trim();
+  return LAI_XE_THAI_NGUYEN[xe] || fallback || "";
+}
+
 export default {
   mixins: [xuongXeMixin],
   data() {
@@ -350,6 +376,11 @@ export default {
     };
   },
   computed: {
+    /** Tên người giao = lái xe theo biển số. Fallback NGUOI_NHAN nếu chưa có map. */
+    nguoiGiaoPNK() {
+      if (!this.phieu) return this.NGUOI_NHAN;
+      return laiXeOf(this.phieu, this.NGUOI_NHAN);
+    },
     diaChiChuRung() {
       if (!this.phieu) return "";
       return [this.phieu.Thon, this.phieu.Xa, this.phieu.Huyen]
@@ -444,6 +475,11 @@ export default {
     /**
      * Chuyển số tiền sang chữ tiếng Việt — viết hoa chữ đầu, kết thúc " đồng".
      */
+    /** Trả tên Người giao (lái xe theo biển số). Dùng trong Excel/Word build helpers. */
+    nguoiGiaoForPhieu(p, cfg) {
+      return laiXeOf(p, cfg && cfg.NGUOI_NHAN);
+    },
+
     /** Trích năm (4 chữ số) từ phiếu — thử nhiều nguồn, cuối cùng năm hiện tại. */
     extractNamFromPhieu(p) {
       if (!p) return new Date().getFullYear();
@@ -870,12 +906,12 @@ export default {
       this.setCell(ws, `E${cur}`, "", { merge: `J${cur}`, border: true });
       cur += 2;
 
-      // Sign area
+      // Sign area — TN: đại diện nhận hàng = lái xe theo biển số
       this.setCell(ws, `A${cur}`, "Đại diện giao hàng", { merge: `E${cur}`, bold: true, italic: true, center: true });
       this.setCell(ws, `F${cur}`, "Đại diện nhận hàng", { merge: `J${cur}`, bold: true, italic: true, center: true });
       cur += 4;
       this.setCell(ws, `A${cur}`, p.Chu_rung || "", { merge: `E${cur}`, bold: true, center: true });
-      this.setCell(ws, `F${cur}`, cfg.NGUOI_NHAN || "", { merge: `J${cur}`, bold: true, center: true });
+      this.setCell(ws, `F${cur}`, this.nguoiGiaoForPhieu(p, cfg), { merge: `J${cur}`, bold: true, center: true });
       return cur + 2;
     },
 
@@ -891,8 +927,9 @@ export default {
       ws.getRow(r + 3).height = 28;
       this.setCell(ws, `F${r + 4}`, `Lần ban hành: ${cfg.LAN_BAN_HANH || "02"}`, { merge: `J${r + 4}`, italic: true, size: 9, right: true });
 
+      const nguoiGiao = this.nguoiGiaoForPhieu(p, cfg);
       const info = [
-        ["Người giao hàng:", cfg.NGUOI_NHAN, "Số phiếu:", p.So_phieu || ""],
+        ["Người giao hàng:", nguoiGiao, "Số phiếu:", p.So_phieu || ""],
         ["Kho nhập:", cfg.TEN_CTY, "Biển số xe:", p.Xe || ""],
         ["Địa chỉ:", cfg.DIA_CHI_CTY, "Ngày nhập:", this.formatDate(p.Ngay_nhap)],
         ["Trạng thái MT:", "FSC 100%", "Nhóm SP:", "W1.1"],
@@ -940,10 +977,10 @@ export default {
       cur += 2;
 
       this.setCell(ws, `A${cur}`, "Đại diện bên giao", { merge: `E${cur}`, bold: true, italic: true, center: true });
-      this.setCell(ws, `F${cur}`, "Đại diện bên nhận", { merge: `J${cur}`, bold: true, italic: true, center: true });
+      this.setCell(ws, `F${cur}`, "Thủ quỹ", { merge: `J${cur}`, bold: true, italic: true, center: true });
       cur += 4;
-      this.setCell(ws, `A${cur}`, cfg.NGUOI_NHAN || "", { merge: `E${cur}`, bold: true, center: true });
-      this.setCell(ws, `F${cur}`, cfg.UQ || "", { merge: `J${cur}`, bold: true, center: true });
+      this.setCell(ws, `A${cur}`, nguoiGiao, { merge: `E${cur}`, bold: true, center: true });
+      this.setCell(ws, `F${cur}`, cfg.NGUOI_NHAN || "", { merge: `J${cur}`, bold: true, center: true });
       return cur + 2;
     },
 
@@ -1318,7 +1355,7 @@ export default {
         </table>
         <table class="sign-2col"><tr>
           <td><p class="bold italic">Đại diện giao hàng</p><p class="sign-name">${e(p.Chu_rung)}</p></td>
-          <td><p class="bold italic">Đại diện nhận hàng</p><p class="sign-name">${e(cfg.NGUOI_NHAN)}</p></td>
+          <td><p class="bold italic">Đại diện nhận hàng</p><p class="sign-name">${e(this.nguoiGiaoForPhieu(p, cfg))}</p></td>
         </tr></table>`;
     },
 
@@ -1326,6 +1363,7 @@ export default {
     wordSec01b(p, cfg) {
       const e = this.wordEsc.bind(this);
       const f = v => (v == null || v === "") ? "" : Number(v).toFixed(2);
+      const nguoiGiao = this.nguoiGiaoForPhieu(p, cfg);
       return `
         <table class="info"><tr>
           <td class="bold">${e(cfg.TEN_CTY || "")}</td>
@@ -1335,7 +1373,7 @@ export default {
         <p class="title">PHIẾU NHẬP KHO GỖ KEO TRÒN FSC 100%</p>
         <p class="right small italic">Lần ban hành: ${e(cfg.LAN_BAN_HANH || "02")}</p>
         <table class="info">
-          <tr><td class="lbl">Người giao hàng:</td><td class="val">${e(cfg.NGUOI_NHAN)}</td><td class="lbl">Số phiếu:</td><td class="val bold">${e(p.So_phieu)}</td></tr>
+          <tr><td class="lbl">Người giao hàng:</td><td class="val">${e(nguoiGiao)}</td><td class="lbl">Số phiếu:</td><td class="val bold">${e(p.So_phieu)}</td></tr>
           <tr><td class="lbl">Kho nhập:</td><td class="val">${e(cfg.TEN_CTY)}</td><td class="lbl">Biển số xe:</td><td class="val">${e(p.Xe)}</td></tr>
           <tr><td class="lbl">Địa chỉ:</td><td class="val">${e(cfg.DIA_CHI_CTY)}</td><td class="lbl">Ngày nhập:</td><td class="val">${e(this.formatDate(p.Ngay_nhap))}</td></tr>
           <tr><td class="lbl">Trạng thái MT:</td><td class="val">FSC 100%</td><td class="lbl">Nhóm SP:</td><td class="val">W1.1</td></tr>
@@ -1364,8 +1402,8 @@ export default {
           <tr><td colspan="3" class="center bold">TỔNG</td><td class="num bold">${f(p.Khoi_luong)}</td><td colspan="4"></td></tr>
         </table>
         <table class="sign-2col"><tr>
-          <td><p class="bold italic">Đại diện bên giao</p><p class="sign-name">${e(cfg.NGUOI_NHAN)}</p></td>
-          <td><p class="bold italic">Đại diện bên nhận</p><p class="sign-name">${e(cfg.UQ)}</p></td>
+          <td><p class="bold italic">Đại diện bên giao</p><p class="sign-name">${e(nguoiGiao)}</p></td>
+          <td><p class="bold italic">Thủ quỹ</p><p class="sign-name">${e(cfg.NGUOI_NHAN)}</p></td>
         </tr></table>`;
     },
 
@@ -1634,7 +1672,7 @@ export default {
 .sign-title {
   font-weight: bold;
   font-style: italic;
-  min-height: 2.6em;        /* đủ chỗ cho title 2 dòng → cân với cột chỉ 1 dòng */
+  min-height: 2.6em;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1681,7 +1719,7 @@ export default {
 .bktm-data .col-num th { font-weight: normal; font-style: italic; font-size: 9px; }
 .bktm-data .small-text { font-size: 9px; }
 .bktm-total-text { margin-top: 8px; font-size: 12px; }
-/* Dòng ngày BKTM: 2 cột (trống | ngày), cột phải căn giữa khớp với cột "Người đại diện" */
+/* Dòng ngày BKTM: 2 cột (trống | ngày), cột phải căn giữa khớp cột "Người đại diện" */
 .bktm-date-row {
   display: flex;
   justify-content: space-around;

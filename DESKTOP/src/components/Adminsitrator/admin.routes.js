@@ -63,6 +63,11 @@ export const adminRoutes = [
     meta: { requiresAuth: true }
   },
   {
+    path: "/phieu-nk-go-tron-tn",
+    component: () => import("pages/PhieuNKGoTronTN.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
     path: "/phan-tich-go-tron",
     component: () => import("pages/PhanTichGoTron.vue"),
     meta: { requiresAuth: true }

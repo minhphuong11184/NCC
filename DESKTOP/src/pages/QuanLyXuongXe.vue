@@ -62,6 +62,10 @@
             <div class="col-4"><q-input v-model="form.nguoi_nhan" label="Người nhận hàng" filled dense /></div>
           </div>
           <div class="row q-col-gutter-md">
+            <div class="col-6"><q-input v-model="form.nguoi_lap_bk" label="Người lập bảng kê (BKTM)" filled dense
+              hint="Tên ký 'Người lập bảng kê' ở cuối Bảng kê thu mua" /></div>
+          </div>
+          <div class="row q-col-gutter-md">
             <div class="col-3"><q-input v-model="form.bm_nghiem_thu" label="Mã BM Nghiệm thu" filled dense hint="vd: BM.COC.01-a" /></div>
             <div class="col-3"><q-input v-model="form.bm_nhap_kho" label="Mã BM Nhập kho" filled dense hint="vd: BM.COC.01-b" /></div>
             <div class="col-3"><q-input v-model="form.ngay_ban_hanh" label="Ngày ban hành" filled dense hint="vd: 10.2.2022" /></div>
@@ -89,7 +93,7 @@ export default {
       showDialog: false,
       editId: null,
       saving: false,
-      form: { ma: "", ten: "", dia_chi: "", mst: "", sdt: "", chung_chi: "", hieu_luc_cc: "", nguoi_dai_dien: "", chuc_vu: "", nguoi_nhan: "", mancc_woodsland: "", bm_nghiem_thu: "", bm_nhap_kho: "", ngay_ban_hanh: "", lan_ban_hanh: "" },
+      form: { ma: "", ten: "", dia_chi: "", mst: "", sdt: "", chung_chi: "", hieu_luc_cc: "", nguoi_dai_dien: "", chuc_vu: "", nguoi_nhan: "", mancc_woodsland: "", bm_nghiem_thu: "", bm_nhap_kho: "", ngay_ban_hanh: "", lan_ban_hanh: "", nguoi_lap_bk: "" },
     };
   },
   created() { this.load(); },
@@ -103,7 +107,7 @@ export default {
     },
     openAdd() {
       this.editId = null;
-      this.form = { ma: "", ten: "", dia_chi: "", mst: "", sdt: "", chung_chi: "", hieu_luc_cc: "", nguoi_dai_dien: "", chuc_vu: "", nguoi_nhan: "", mancc_woodsland: "" };
+      this.form = { ma: "", ten: "", dia_chi: "", mst: "", sdt: "", chung_chi: "", hieu_luc_cc: "", nguoi_dai_dien: "", chuc_vu: "", nguoi_nhan: "", mancc_woodsland: "", bm_nghiem_thu: "", bm_nhap_kho: "", ngay_ban_hanh: "", lan_ban_hanh: "", nguoi_lap_bk: "" };
       this.showDialog = true;
     },
     openEdit(row) {

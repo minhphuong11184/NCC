@@ -27,10 +27,11 @@ router.post('/', async (req, res) => {
             .input('bm_nhap_kho', d.bm_nhap_kho || null)
             .input('ngay_ban_hanh', d.ngay_ban_hanh || null)
             .input('lan_ban_hanh', d.lan_ban_hanh || null)
+            .input('nguoi_lap_bk', d.nguoi_lap_bk || null)
             .query(`INSERT INTO [prod].[XUONG_XE]
-                    (ma, ten, dia_chi, mst, sdt, chung_chi, hieu_luc_cc, nguoi_dai_dien, chuc_vu, nguoi_nhan, mancc_woodsland, bm_nghiem_thu, bm_nhap_kho, ngay_ban_hanh, lan_ban_hanh)
+                    (ma, ten, dia_chi, mst, sdt, chung_chi, hieu_luc_cc, nguoi_dai_dien, chuc_vu, nguoi_nhan, mancc_woodsland, bm_nghiem_thu, bm_nhap_kho, ngay_ban_hanh, lan_ban_hanh, nguoi_lap_bk)
                     OUTPUT INSERTED.*
-                    VALUES (@ma, @ten, @dia_chi, @mst, @sdt, @chung_chi, @hieu_luc_cc, @nguoi_dai_dien, @chuc_vu, @nguoi_nhan, @mancc_woodsland, @bm_nghiem_thu, @bm_nhap_kho, @ngay_ban_hanh, @lan_ban_hanh)`)
+                    VALUES (@ma, @ten, @dia_chi, @mst, @sdt, @chung_chi, @hieu_luc_cc, @nguoi_dai_dien, @chuc_vu, @nguoi_nhan, @mancc_woodsland, @bm_nghiem_thu, @bm_nhap_kho, @ngay_ban_hanh, @lan_ban_hanh, @nguoi_lap_bk)`)
         res.api.sendData(recordset[0])
     } catch (err) {
         res.api.sendFail({ number: 4907, message: err.message })
@@ -52,13 +53,15 @@ router.put('/:id', async (req, res) => {
             .input('bm_nhap_kho', d.bm_nhap_kho || null)
             .input('ngay_ban_hanh', d.ngay_ban_hanh || null)
             .input('lan_ban_hanh', d.lan_ban_hanh || null)
+            .input('nguoi_lap_bk', d.nguoi_lap_bk || null)
             .query(`UPDATE [prod].[XUONG_XE] SET
                     ma=@ma, ten=@ten, dia_chi=@dia_chi, mst=@mst, sdt=@sdt,
                     chung_chi=@chung_chi, hieu_luc_cc=@hieu_luc_cc,
                     nguoi_dai_dien=@nguoi_dai_dien, chuc_vu=@chuc_vu,
                     nguoi_nhan=@nguoi_nhan, mancc_woodsland=@mancc_woodsland,
                     bm_nghiem_thu=@bm_nghiem_thu, bm_nhap_kho=@bm_nhap_kho,
-                    ngay_ban_hanh=@ngay_ban_hanh, lan_ban_hanh=@lan_ban_hanh
+                    ngay_ban_hanh=@ngay_ban_hanh, lan_ban_hanh=@lan_ban_hanh,
+                    nguoi_lap_bk=@nguoi_lap_bk
                     OUTPUT INSERTED.*
                     WHERE id=@id`)
         res.api.sendData(recordset[0])
