@@ -78,7 +78,7 @@
         <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
         <div class="hd-text">Ông/Bà: <b>{{ tenHoUpper }}</b></div>
         <div class="hd-text">CCCD số: <b>{{ lo.cccd || '..............................' }}</b></div>
-        <div class="hd-text">Địa chỉ: {{ lo.dia_chi_cccd || diaChiBenB }}</div>
+        <div class="hd-text">Địa chỉ khai thác: {{ lo.dia_chi_cccd || diaChiBenB }}</div>
         <div class="hd-text">Mã chứng chỉ rừng: <b>{{ lo.chung_chi || '...............' }}</b></div>
         <div class="hd-text" v-if="lo.nhom_chung_chi">Thuộc nhóm chứng chỉ rừng FSC: <b>{{ lo.nhom_chung_chi }}</b></div>
 
@@ -221,7 +221,7 @@
         <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
         <div class="hd-text">Ông/Bà: <b>{{ tenHoUpper }}</b></div>
         <div class="hd-text">CCCD số: <b>{{ lo.cccd || '..............................' }}</b></div>
-        <div class="hd-text">Địa chỉ: {{ lo.dia_chi_cccd || diaChiBenB }}</div>
+        <div class="hd-text">Địa chỉ khai thác: {{ lo.dia_chi_cccd || diaChiBenB }}</div>
         <div class="hd-text">Mã chứng chỉ rừng: <b>{{ lo.chung_chi || '...............' }}</b></div>
         <div class="hd-text" v-if="lo.nhom_chung_chi">Thuộc nhóm chứng chỉ rừng FSC: <b>{{ lo.nhom_chung_chi }}</b></div>
 
@@ -252,14 +252,14 @@
               <td>1</td>
               <td class="left">Gỗ tròn keo tai tượng FSC 100%, đường kính từ 13cm trở lên</td>
               <td>m³</td>
-              <td class="num">{{ fmtNum(lo.tong_kl_go) }}</td>
+              <td class="num">{{ fmtNum(lo.tong_kl_bang_ke) }}</td>
               <td class="num">{{ fmtMoney(lo.don_gia) }}</td>
               <td class="num">{{ fmtMoney(thanhTien) }}</td>
               <td></td>
             </tr>
             <tr class="total-row">
               <td colspan="3" class="bold">TỔNG</td>
-              <td class="num bold">{{ fmtNum(lo.tong_kl_go) }}</td>
+              <td class="num bold">{{ fmtNum(lo.tong_kl_bang_ke) }}</td>
               <td></td>
               <td class="num bold">{{ fmtMoney(thanhTien) }}</td>
               <td></td>
@@ -271,7 +271,6 @@
         <div class="hd-text">Hai bên cùng nhau thống nhất cách đo cho từng lô gỗ, sau khi thống nhất xong sẽ lập thành biên bản bàn giao.</div>
 
         <div class="hd-section">Điều 2: Yêu cầu về chất lượng gỗ</div>
-        <div class="hd-text">Gỗ keo tròn FSC 100% bàn giao phải đảm bảo yêu cầu chung sau:</div>
         <div class="hd-text">- Có đường kính ≥ 13 cm, chiều dài ≥ 2m.</div>
         <div class="hd-text">- Không được mục ải, rỗng ruột hoặc cong vênh.</div>
 
@@ -352,8 +351,9 @@ export default {
     thanhTien() {
       if (!this.lo) return 0;
       if (this.lo.tong_thanh_tien) return Math.round(this.lo.tong_thanh_tien);
-      if (!this.lo.tong_kl_go || !this.lo.don_gia) return 0;
-      return Math.round(this.lo.tong_kl_go * this.lo.don_gia);
+      const kl = this.lo.tong_kl_bang_ke || this.lo.tong_kl_go;
+      if (!kl || !this.lo.don_gia) return 0;
+      return Math.round(kl * this.lo.don_gia);
     },
     /** Tên hộ in hoa, dùng khi hiển thị Bên B trong HĐ. */
     tenHoUpper() {
@@ -528,7 +528,7 @@ export default {
   <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
   <div class="hd-text">Ông/Bà: <b>${e(tenHoUpper)}</b></div>
   <div class="hd-text">CCCD số: <b>${e(lo.cccd || "..............................")}</b></div>
-  <div class="hd-text">Địa chỉ: ${e(diaChi)}</div>
+  <div class="hd-text">Địa chỉ khai thác: ${e(diaChi)}</div>
   <div class="hd-text">Mã chứng chỉ rừng: <b>${e(lo.chung_chi || "...............")}</b></div>
   ${lo.nhom_chung_chi ? `<div class="hd-text">Thuộc nhóm chứng chỉ rừng FSC: <b>${e(lo.nhom_chung_chi)}</b></div>` : ""}
   <div class="hd-text">Hai bên cùng trao đổi và thống nhất ký kết Hợp đồng nguyên tắc mua bán gỗ tròn keo tai tượng (Acacia mangium) rừng trồng có chứng chỉ FSC 100% với các nội dung sau:</div>
@@ -593,9 +593,10 @@ export default {
       const ng = this.ngayHD;
       const soHD = this.soHopDongOf(lo);
       const soPL = this.soPhuLucOf(lo);
-      const tongKl = Number(lo.tong_kl_go || 0).toFixed(2);
+      const klSoLuong = lo.tong_kl_bang_ke || lo.tong_kl_go || 0;
+      const tongKl = Number(klSoLuong).toFixed(2);
       const donGia = (lo.don_gia || 0).toLocaleString("vi-VN");
-      const tongTien = (lo.tong_thanh_tien || (lo.tong_kl_go || 0) * (lo.don_gia || 0));
+      const tongTien = klSoLuong * (lo.don_gia || 0);
       const tongTienStr = Math.round(tongTien).toLocaleString("vi-VN");
       const loList = (lo.lo_list || []).map(lot =>
         `<div class="hd-text">Khoảnh: <b>${e(lot.khoanh || "")}</b> &nbsp;&nbsp;&nbsp;&nbsp; Lô: <b>${e(lot.lo || "")}</b> &nbsp;&nbsp;&nbsp;&nbsp; Diện tích <b>${Number(lot.dien_tich || 0).toFixed(2)}</b> (ha)</div>`
@@ -621,7 +622,7 @@ export default {
   <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
   <div class="hd-text">Ông/Bà: <b>${e(tenHoUpper)}</b></div>
   <div class="hd-text">CCCD số: <b>${e(lo.cccd || "..............................")}</b></div>
-  <div class="hd-text">Địa chỉ: ${e(diaChi)}</div>
+  <div class="hd-text">Địa chỉ khai thác: ${e(diaChi)}</div>
   <div class="hd-text">Mã chứng chỉ rừng: <b>${e(lo.chung_chi || "...............")}</b></div>
   ${lo.nhom_chung_chi ? `<div class="hd-text">Thuộc nhóm chứng chỉ rừng FSC: <b>${e(lo.nhom_chung_chi)}</b></div>` : ""}
   ${loList}

@@ -255,9 +255,9 @@
                 <th>Số căn cước</th>
                 <th>Số điện thoại<br/>(nếu có)</th>
                 <th>Tên hàng hóa,<br/>dịch vụ</th>
-                <th>Số lượng,<br/>trọng lượng</th>
-                <th>Đơn giá</th>
-                <th>Tổng giá<br/>thanh toán</th>
+                <th>Số lượng,<br/>trọng lượng (m³)</th>
+                <th>Đơn giá<br/>(VNĐ)</th>
+                <th>Tổng giá<br/>thanh toán (VNĐ)</th>
               </tr>
               <tr class="col-num">
                 <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th>
@@ -865,11 +865,17 @@ export default {
         ["", "", "Mã lô gỗ nhập:", p.Lo_go_tron || ""],
       ];
       let cur = r + 6;
+      const estHeight = (...texts) => {
+        const max = texts.reduce((m, t) => Math.max(m, String(t || "").length), 0);
+        const lines = Math.max(1, Math.ceil(max / 35));
+        return Math.max(18, lines * 16);
+      };
       info.forEach(([la, va, lb, vb]) => {
         this.setCell(ws, `A${cur}`, la, { merge: `B${cur}`, bold: !!la });
         this.setCell(ws, `C${cur}`, va, { merge: `E${cur}` });
         this.setCell(ws, `F${cur}`, lb, { merge: `G${cur}`, bold: !!lb });
         this.setCell(ws, `H${cur}`, vb, { merge: `J${cur}`, bold: lb === "Số phiếu:" });
+        ws.getRow(cur).height = estHeight(va, vb);
         cur++;
       });
 
@@ -937,11 +943,17 @@ export default {
         ["Số chứng chỉ FM/COC:", cfg.CHUNG_CHI_CTY, "Hiệu lực đến:", cfg.HIEU_LUC_CTY],
       ];
       let cur = r + 6;
+      const estHeight = (...texts) => {
+        const max = texts.reduce((m, t) => Math.max(m, String(t || "").length), 0);
+        const lines = Math.max(1, Math.ceil(max / 35));
+        return Math.max(18, lines * 16);
+      };
       info.forEach(([la, va, lb, vb]) => {
         this.setCell(ws, `A${cur}`, la, { merge: `B${cur}`, bold: !!la });
         this.setCell(ws, `C${cur}`, va, { merge: `E${cur}` });
         this.setCell(ws, `F${cur}`, lb, { merge: `G${cur}`, bold: !!lb });
         this.setCell(ws, `H${cur}`, vb, { merge: `J${cur}`, bold: lb === "Số phiếu:" });
+        ws.getRow(cur).height = estHeight(va, vb);
         cur++;
       });
 
@@ -1185,9 +1197,9 @@ export default {
       this.setCell(ws, `D${cur}`, "Số căn cước", { center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
       this.setCell(ws, `E${cur}`, "Số điện thoại\n(nếu có)", { center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
       this.setCell(ws, `F${cur}`, "Tên hàng hóa, dịch vụ", { center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
-      this.setCell(ws, `G${cur}`, "Số lượng,\ntrọng lượng", { center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
-      this.setCell(ws, `H${cur}`, "Đơn giá", { center: true, bold: true, fill: "FFF0F0F0", border: true });
-      this.setCell(ws, `I${cur}`, "Tổng giá\nthanh toán", { center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
+      this.setCell(ws, `G${cur}`, "Số lượng,\ntrọng lượng (m³)", { center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
+      this.setCell(ws, `H${cur}`, "Đơn giá\n(VNĐ)", { center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
+      this.setCell(ws, `I${cur}`, "Tổng giá\nthanh toán (VNĐ)", { center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
       ws.getRow(cur).height = 50;
       cur++;
       // Số thứ tự cột (1-10)
@@ -1224,14 +1236,16 @@ export default {
       this.setCell(ws, `J${cur}`, "", { border: true });
       cur += 2;
 
-      // Tổng giá trị + (Số tiền bằng chữ)
+      // Tổng giá trị (1 dòng) + Số tiền bằng chữ (dòng riêng full-width để không bị cắt)
       this.setCell(ws, `A${cur}`, "- Tổng giá trị hàng hóa, dịch vụ mua vào:",
         { merge: `D${cur}`, bold: true });
       this.setCell(ws, `E${cur}`, tongTien ? tongTien.toLocaleString("vi-VN") + " VNĐ" : "",
-        { merge: `G${cur}`, bold: true });
-      this.setCell(ws, `H${cur}`,
+        { merge: `J${cur}`, bold: true });
+      cur++;
+      this.setCell(ws, `A${cur}`,
         tongTien ? `(Số tiền bằng chữ: ${this.numberToWordsVN(tongTien)})` : "(Số tiền bằng chữ: …)",
-        { merge: `J${cur}`, italic: true });
+        { merge: `J${cur}`, italic: true, wrap: true });
+      ws.getRow(cur).height = 24;
       cur += 2;
 
       // Date line
@@ -1514,7 +1528,7 @@ export default {
           </tr>
           <tr>
             <th>Tên người bán</th><th>Địa chỉ</th><th>Số căn cước</th><th>Số điện thoại (nếu có)</th>
-            <th>Tên hàng hóa, dịch vụ</th><th>Số lượng, trọng lượng</th><th>Đơn giá</th><th>Tổng giá thanh toán</th>
+            <th>Tên hàng hóa, dịch vụ</th><th>Số lượng, trọng lượng (m³)</th><th>Đơn giá (VNĐ)</th><th>Tổng giá thanh toán (VNĐ)</th>
           </tr>
           <tr>
             <td class="center">${e(this.formatDate(p.Ngay_nhap))}</td>

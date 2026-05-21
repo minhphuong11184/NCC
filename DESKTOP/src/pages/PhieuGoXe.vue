@@ -361,6 +361,7 @@ import axios from "axios";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import xuongXeMixin from "../mixins/xuongXeMixin";
+import khoMixin from "../mixins/khoMixin";
 import { volumeToWordsVN } from "../utils/numberToWordsVN";
 
 // Khách hàng Woodsland (cố định cho mẫu XK + BKLS)
@@ -373,7 +374,7 @@ const WOODSLAND_CFG = {
 };
 
 export default {
-  mixins: [xuongXeMixin],
+  mixins: [xuongXeMixin, khoMixin],
   async created() {
     await this.loadXuongXe();
     this.loadNcc();
@@ -563,7 +564,7 @@ export default {
       if (v == null || v === "") return "";
       return Number(v).toFixed(2);
     },
-    tongKLChu(v) { return volumeToWordsVN(v); },
+    tongKLChu(v) { return volumeToWordsVN(v, 4); },
 
     /** Build danh sách NCC = các xưởng có mancc_woodsland */
     loadNcc() {
@@ -835,7 +836,7 @@ export default {
       const soBKLS = this.soBKLSByIdx(Math.max(0, phIdx));
       const dt = p.CREATED_AT ? new Date(p.CREATED_AT) : new Date();
       const tong = this.fmtKL(p.tong_kl);
-      const tongChu = volumeToWordsVN(p.tong_kl);
+      const tongChu = volumeToWordsVN(p.tong_kl, 4);
       const tongThanh = (p.chi_tiet || []).reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
 
       // Group lo_go_tron + chu_rung
@@ -1159,7 +1160,7 @@ export default {
             "Am",
             diaChi,
             d.chung_chi_cr || "",
-            cfg.nhom_chung_chi || "",
+            d.nhom_chung_chi || cfg.nhom_chung_chi || "",
           ];
           values.forEach((v, i) => {
             const cell = row.getCell(i + 1);
@@ -1217,54 +1218,132 @@ export default {
     /** NL — Biên bản nghiệm thu xẻ tươi (BM.COC.01-b). Render trong sheet phiếu. */
     buildBlockNL(ws, p, cfg, start) {
       let r = start;
-      this.setCell(ws, `A${r}`, "SỔ TAY COC", { merge: `D${r}`, bold: true });
-      this.setCell(ws, `E${r}`, "BM.COC.01-b", { merge: `I${r}`, right: true, italic: true });
+
+      // === Header 3 dòng: SỔ TAY COC | BM.COC...01-b | Ngày BH | Lần BH ===
+      this.setCell(ws, `B${r}`, "SỔ TAY COC", { merge: `F${r}`, bold: true, center: true });
+      this.setCell(ws, `G${r}`, "BM.COC.01-b", { merge: `I${r}`, italic: true, right: true });
       r++;
-      this.styleTitle(ws, `A${r}`, `I${r}`, "BIÊN BẢN NGHIỆM THU XẺ TƯƠI (Kiêm phiếu nhập kho)");
-      r += 2;
-      this.setCell(ws, `A${r}`, `Đơn vị giao hàng: ${cfg.ten || ""}`, { merge: `E${r}` });
-      this.setCell(ws, `F${r}`, `Số phiếu: ${p.SOPHIEU}`, { merge: `I${r}`, bold: true });
+      this.setCell(ws, `B${r}`, "BIÊN BẢN NGHIỆM THU XẺ TƯƠI",
+        { merge: `F${r}`, bold: true, center: true, size: 13 });
+      this.setCell(ws, `G${r}`, `Ngày BH: ${cfg.ngay_ban_hanh || ""}`,
+        { merge: `I${r}`, italic: true, right: true });
+      ws.getRow(r).height = 22;
       r++;
-      this.setCell(ws, `A${r}`, `Địa chỉ: ${cfg.dia_chi || ""}`, { merge: `E${r}` });
-      this.setCell(ws, `F${r}`, `Biển số xe: ${p.BIENSOXE || ""}`, { merge: `I${r}` });
-      r++;
-      this.setCell(ws, `A${r}`, `Kho nhập: ${cfg.ten || ""}`, { merge: `E${r}` });
-      this.setCell(ws, `F${r}`, `Ngày nhập: ${this.fmtDate(p.CREATED_AT)}`, { merge: `I${r}` });
+      this.setCell(ws, `B${r}`, "(Kiêm phiếu nhập kho)",
+        { merge: `F${r}`, italic: true, center: true });
+      this.setCell(ws, `G${r}`, `Lần ban hành: ${cfg.lan_ban_hanh || ""}`,
+        { merge: `I${r}`, italic: true, right: true });
       r += 2;
 
-      // Header bảng
-      const hdrCols = ["STT", "Dày", "Rộng", "Dài", "Số bó", "Số thanh/bó", "Tổng thanh", "KL (m³)", "Ghi chú"];
-      hdrCols.forEach((t, i) => ws.getRow(r).getCell(i + 1).value = t);
-      this.styleHeaderRow(ws, r, 1, hdrCols.length);
+      // === Info section ===
+      // Đơn vị giao hàng | Số phiếu
+      this.setCell(ws, `A${r}`, `Đơn vị giao hàng: ${cfg.ten || ""}`,
+        { merge: `F${r}`, bold: true });
+      this.setCell(ws, `G${r}`, `Số phiếu: ${p.SOPHIEU || ""}`,
+        { merge: `I${r}`, bold: true });
       r++;
+      // Địa chỉ | Biển số xe
+      this.setCell(ws, `A${r}`, `Địa chỉ: ${cfg.dia_chi || ""}`, { merge: `F${r}` });
+      this.setCell(ws, `G${r}`, `Biển số xe: ${p.BIENSOXE || ""}`, { merge: `I${r}` });
+      r++;
+      // Kho nhập | Ngày nhập (kho lookup theo MAKHO Woodsland)
+      const khoCfg = this.getKhoConfig(p.MAKHO);
+      const khoStr = khoCfg.ten
+        ? `${khoCfg.ten}${khoCfg.dia_chi ? " - " + khoCfg.dia_chi : ""}`
+        : (p.MAKHO || "");
+      this.setCell(ws, `A${r}`, `Kho nhập: ${khoStr}`, { merge: `F${r}` });
+      this.setCell(ws, `G${r}`, `Ngày nhập: ${this.fmtDate(p.CREATED_AT)}`, { merge: `I${r}` });
+      r++;
+      // Trạng thái MT | Nhóm SP | Mã lô gỗ nhập (lô đầu tiên)
+      const loGoXeUnique = Array.from(new Set((p.chi_tiet || [])
+        .map(d => d.lo_go_xe).filter(Boolean)));
+      this.setCell(ws, `A${r}`, "Trạng thái MT: FSC 100%", { merge: `C${r}` });
+      this.setCell(ws, `D${r}`, "Nhóm SP", { merge: `E${r}`, center: true });
+      this.setCell(ws, `F${r}`, p.NHOMSP || "", { center: true, bold: true });
+      this.setCell(ws, `G${r}`, `Mã lô gỗ nhập: ${loGoXeUnique[0] || ""}`,
+        { merge: `I${r}`, bold: true });
+      r++;
+      // Loài gỗ | (lô gỗ thứ 2 nếu có)
+      this.setCell(ws, `A${r}`, "Loài gỗ: Keo tai tượng (Acacia Mangium)",
+        { merge: `F${r}` });
+      if (loGoXeUnique[1]) {
+        this.setCell(ws, `G${r}`, loGoXeUnique[1], { merge: `I${r}`, bold: true });
+      }
+      // Các lô gỗ tiếp theo (nếu > 2)
+      for (let k = 2; k < loGoXeUnique.length; k++) {
+        r++;
+        this.setCell(ws, `G${r}`, loGoXeUnique[k], { merge: `I${r}`, bold: true });
+      }
+      r += 2;
+
+      // === Header bảng — 2 dòng, "Quy cách (mm)" merge Dày|Rộng|Dài ===
+      this.setCell(ws, `A${r}`, "STT",
+        { merge: `A${r + 1}`, center: true, bold: true, fill: "FFF0F0F0", border: true });
+      this.setCell(ws, `B${r}`, "Quy cách (mm)",
+        { merge: `D${r}`, center: true, bold: true, fill: "FFF0F0F0", border: true });
+      this.setCell(ws, `E${r}`, "Số bó",
+        { merge: `E${r + 1}`, center: true, bold: true, fill: "FFF0F0F0", border: true });
+      this.setCell(ws, `F${r}`, "Số thanh/bó",
+        { merge: `F${r + 1}`, center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
+      this.setCell(ws, `G${r}`, "Tổng thanh",
+        { merge: `G${r + 1}`, center: true, bold: true, fill: "FFF0F0F0", border: true });
+      this.setCell(ws, `H${r}`, "Tổng khối lượng (m³)",
+        { merge: `H${r + 1}`, center: true, bold: true, fill: "FFF0F0F0", border: true, wrap: true });
+      this.setCell(ws, `I${r}`, "Ghi chú",
+        { merge: `I${r + 1}`, center: true, bold: true, fill: "FFF0F0F0", border: true });
+      ws.getRow(r).height = 22;
+      r++;
+      this.setCell(ws, `B${r}`, "Dày", { center: true, bold: true, fill: "FFF0F0F0", border: true });
+      this.setCell(ws, `C${r}`, "Rộng", { center: true, bold: true, fill: "FFF0F0F0", border: true });
+      this.setCell(ws, `D${r}`, "Dài", { center: true, bold: true, fill: "FFF0F0F0", border: true });
+      ws.getRow(r).height = 22;
+      r++;
+
+      // === Data rows ===
+      let totalThanh = 0;
       (p.chi_tiet || []).forEach((d, i) => {
         const row = ws.getRow(r);
-        [i + 1, d.dt_day, d.dt_rong, d.dt_cao, d.SOBO, d.SOTHANH_BO, d.tong_thanh,
-          d.kl_m3 ? Number(d.kl_m3) : 0, d.lo_go_xe || ""].forEach((v, ci) => {
-            const c = row.getCell(ci + 1);
-            c.value = v;
-            c.font = { name: "Times New Roman", size: 10 };
-            c.alignment = { horizontal: ci === 8 ? "left" : "center", vertical: "middle" };
-            c.border = this.bThin();
-            if (ci === 7) c.numFmt = "#,##0.0000";
-          });
-        ws.getRow(r).height = 22;
+        const vals = [i + 1, d.dt_day, d.dt_rong, d.dt_cao,
+          d.SOBO, d.SOTHANH_BO, d.tong_thanh,
+          d.kl_m3 ? Number(d.kl_m3) : 0, d.lo_go_xe || ""];
+        vals.forEach((v, ci) => {
+          const c = row.getCell(ci + 1);
+          c.value = v;
+          c.font = { name: "Times New Roman", size: 10 };
+          c.alignment = { horizontal: ci === 8 ? "left" : "center", vertical: "middle" };
+          c.border = this.bThin();
+          if (ci === 7) c.numFmt = "#,##0.0000";
+        });
+        totalThanh += Number(d.tong_thanh) || 0;
+        row.height = 22;
         r++;
       });
-      // Tổng
-      const totalRow = ws.getRow(r);
-      this.setCell(ws, `A${r}`, "TỔNG", { merge: `G${r}`, bold: true, center: true, border: true });
-      const cTotal = totalRow.getCell(8);
-      cTotal.value = Number(p.tong_kl) || 0;
-      cTotal.numFmt = "#,##0.0000";
-      cTotal.font = { name: "Times New Roman", size: 10, bold: true };
-      cTotal.border = this.bThin();
-      cTotal.alignment = { horizontal: "center", vertical: "middle" };
-      totalRow.getCell(9).border = this.bThin();
+
+      // === Tổng row ===
+      this.setCell(ws, `A${r}`, "Tổng khối lượng",
+        { merge: `F${r}`, bold: true, italic: true, center: true, border: true });
+      const cTotThanh = ws.getRow(r).getCell(7);
+      cTotThanh.value = totalThanh;
+      cTotThanh.numFmt = "#,##0";
+      cTotThanh.font = { name: "Times New Roman", size: 10, bold: true };
+      cTotThanh.border = this.bThin();
+      cTotThanh.alignment = { horizontal: "center", vertical: "middle" };
+      const cTotKl = ws.getRow(r).getCell(8);
+      cTotKl.value = Number(p.tong_kl) || 0;
+      cTotKl.numFmt = "#,##0.0000";
+      cTotKl.font = { name: "Times New Roman", size: 10, bold: true };
+      cTotKl.border = this.bThin();
+      cTotKl.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(r).getCell(9).border = this.bThin();
       r += 2;
-      this.setCell(ws, `A${r}`, "Đại diện giao hàng", { merge: `C${r}`, center: true, bold: true, italic: true });
-      this.setCell(ws, `D${r}`, "Thủ kho", { merge: `F${r}`, center: true, bold: true, italic: true });
-      this.setCell(ws, `G${r}`, "QC kiểm tra", { merge: `I${r}`, center: true, bold: true, italic: true });
+
+      // === Sign row ===
+      this.setCell(ws, `A${r}`, "Đại Diện Bên Giao",
+        { merge: `C${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `D${r}`, "Đại diện xưởng sản xuất",
+        { merge: `F${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `G${r}`, "Người lập biên bản",
+        { merge: `I${r}`, center: true, bold: true, italic: true });
       r += 5;
       return r + 1;
     },
@@ -1501,7 +1580,7 @@ export default {
       r++;
       this.setCell(ws, `A${r}`, "- Giá trị (nếu có): ……………………………………………………………", { merge: `G${r}` });
       r++;
-      this.setCell(ws, `A${r}`, `- Khối lượng/trọng lượng: ${this.fmtKL(p.tong_kl)} M³  Bằng chữ: ${volumeToWordsVN(p.tong_kl)}.`,
+      this.setCell(ws, `A${r}`, `- Khối lượng/trọng lượng: ${this.fmtKL(p.tong_kl)} M³  Bằng chữ: ${volumeToWordsVN(p.tong_kl, 4)}.`,
         { merge: `G${r}` });
       r++;
       this.setCell(ws, `A${r}`, `- Số lượng: ${tongThanh}  Đơn vị tính: Thanh`, { merge: `G${r}` });

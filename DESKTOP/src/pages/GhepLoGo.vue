@@ -124,22 +124,28 @@
           </tr>
           <tr>
             <td class="lbl">Kho nhập:</td>
-            <td class="val">{{ xuongNameOf(currentPhieu) }}</td>
-            <td class="lbl">Ngày nhập:</td><td class="val">{{ fmtDate(currentPhieu.CREATED_AT) }}</td>
-          </tr>
-          <tr v-if="xuongAddressOf(currentPhieu)">
-            <td class="lbl">Địa chỉ:</td>
-            <td class="val" colspan="3">{{ xuongAddressOf(currentPhieu) }}</td>
+            <td class="val" colspan="2">{{ khoNhapFull(currentPhieu) }}</td>
+            <td class="lbl"></td>
           </tr>
           <tr>
             <td class="lbl">Trạng thái MT: FSC 100%</td>
-            <td class="val">Nhóm SP: {{ currentPhieu.NHOMSP }}</td>
-            <td></td>
-            <td class="val">{{ loGoOfPhieu(currentPhieu) }}</td>
+            <td class="val">Nhóm SP: <b>{{ currentPhieu.NHOMSP }}</b></td>
+            <td class="lbl">Mã lô gỗ nhập:</td>
+            <td class="val bold">{{ (loGoListOf(currentPhieu)[0]) || '' }}</td>
           </tr>
           <tr>
-            <td class="lbl">Loại gỗ: Keo tai tượng (Acacia mangium)</td><td></td>
-            <td class="lbl">Mã lô gỗ nhập:</td><td class="val"></td>
+            <td class="lbl" colspan="2">Loại gỗ: Keo tai tượng (Acacia mangium)</td>
+            <td class="lbl"></td>
+            <td class="val bold">{{ (loGoListOf(currentPhieu)[1]) || '' }}</td>
+          </tr>
+          <tr v-for="(lx, lxi) in loGoListOf(currentPhieu).slice(2)" :key="'extralo-' + lxi">
+            <td colspan="3"></td>
+            <td class="val bold">{{ lx }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Ngày nhập:</td>
+            <td class="val">{{ fmtDate(currentPhieu.CREATED_AT) }}</td>
+            <td colspan="2"></td>
           </tr>
         </table>
 
@@ -151,7 +157,7 @@
               <th rowspan="2">Số bó</th>
               <th rowspan="2">Số<br/>thanh/bó</th>
               <th rowspan="2">Tổng thanh</th>
-              <th rowspan="2">Tổng khối<br/>lượng (m3)</th>
+              <th rowspan="2">Tổng khối lượng (m³)</th>
               <th rowspan="2">Ghi chú</th>
             </tr>
             <tr>
@@ -171,7 +177,8 @@
               <td class="small-text">{{ d.lo_go || '' }}</td>
             </tr>
             <tr class="total-row">
-              <td colspan="7">TỔNG</td>
+              <td colspan="6">Tổng khối lượng</td>
+              <td>{{ tongSoThanh(currentPhieu) }}</td>
               <td class="num">{{ currentPhieu.tong_kl ? currentPhieu.tong_kl.toFixed(4) : '' }}</td>
               <td></td>
             </tr>
@@ -180,15 +187,15 @@
 
         <div class="sign-area">
           <div class="sign-col">
-            <div class="sign-title">Đại diện giao hàng</div>
+            <div class="sign-title">Đại Diện Bên Giao</div>
             <div class="sign-space"></div>
           </div>
           <div class="sign-col">
-            <div class="sign-title">Thủ kho</div>
+            <div class="sign-title">Đại diện xưởng sản xuất</div>
             <div class="sign-space"></div>
           </div>
           <div class="sign-col">
-            <div class="sign-title">QC kiểm tra</div>
+            <div class="sign-title">Người lập biên bản</div>
             <div class="sign-space"></div>
           </div>
         </div>
@@ -218,21 +225,28 @@
           </tr>
           <tr>
             <td class="lbl">Kho nhập:</td>
-            <td class="val">{{ xuongNameOf(p) }}</td>
-            <td class="lbl">Ngày nhập:</td><td class="val">{{ fmtDate(p.CREATED_AT) }}</td>
-          </tr>
-          <tr v-if="xuongAddressOf(p)">
-            <td class="lbl">Địa chỉ:</td>
-            <td class="val" colspan="3">{{ xuongAddressOf(p) }}</td>
+            <td class="val" colspan="2">{{ khoNhapFull(p) }}</td>
+            <td class="lbl"></td>
           </tr>
           <tr>
             <td class="lbl">Trạng thái MT: FSC 100%</td>
-            <td class="val">Nhóm SP: {{ p.NHOMSP }}</td>
-            <td></td><td class="val">{{ loGoOfPhieu(p) }}</td>
+            <td class="val">Nhóm SP: <b>{{ p.NHOMSP }}</b></td>
+            <td class="lbl">Mã lô gỗ nhập:</td>
+            <td class="val bold">{{ (loGoListOf(p)[0]) || '' }}</td>
           </tr>
           <tr>
-            <td class="lbl">Loại gỗ: Keo tai tượng (Acacia mangium)</td><td></td>
-            <td class="lbl">Mã lô gỗ nhập:</td><td class="val"></td>
+            <td class="lbl" colspan="2">Loại gỗ: Keo tai tượng (Acacia mangium)</td>
+            <td class="lbl"></td>
+            <td class="val bold">{{ (loGoListOf(p)[1]) || '' }}</td>
+          </tr>
+          <tr v-for="(lx, lxi) in loGoListOf(p).slice(2)" :key="'all-extralo-'+pi+'-'+lxi">
+            <td colspan="3"></td>
+            <td class="val bold">{{ lx }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Ngày nhập:</td>
+            <td class="val">{{ fmtDate(p.CREATED_AT) }}</td>
+            <td colspan="2"></td>
           </tr>
         </table>
         <table class="data-table">
@@ -243,7 +257,7 @@
               <th rowspan="2">Số bó</th>
               <th rowspan="2">Số<br/>thanh/bó</th>
               <th rowspan="2">Tổng thanh</th>
-              <th rowspan="2">Tổng khối<br/>lượng (m3)</th>
+              <th rowspan="2">Tổng khối lượng (m³)</th>
               <th rowspan="2">Ghi chú</th>
             </tr>
             <tr><th>Dày</th><th>Rộng</th><th>Dài</th></tr>
@@ -261,16 +275,17 @@
               <td class="small-text">{{ d.lo_go || '' }}</td>
             </tr>
             <tr class="total-row">
-              <td colspan="7">TỔNG</td>
+              <td colspan="6">Tổng khối lượng</td>
+              <td>{{ tongSoThanh(p) }}</td>
               <td class="num">{{ p.tong_kl ? p.tong_kl.toFixed(4) : '' }}</td>
               <td></td>
             </tr>
           </tbody>
         </table>
         <div class="sign-area">
-          <div class="sign-col"><div class="sign-title">Đại diện giao hàng</div><div class="sign-space"></div></div>
-          <div class="sign-col"><div class="sign-title">Thủ kho</div><div class="sign-space"></div></div>
-          <div class="sign-col"><div class="sign-title">QC kiểm tra</div><div class="sign-space"></div></div>
+          <div class="sign-col"><div class="sign-title">Đại Diện Bên Giao</div><div class="sign-space"></div></div>
+          <div class="sign-col"><div class="sign-title">Đại diện xưởng sản xuất</div><div class="sign-space"></div></div>
+          <div class="sign-col"><div class="sign-title">Người lập biên bản</div><div class="sign-space"></div></div>
         </div>
       </div>
     </div>
@@ -376,6 +391,24 @@ export default {
     loGoOfPhieu(p) {
       const los = [...new Set(p.chi_tiet.map(d => d.lo_go).filter(Boolean))];
       return los.join(", ");
+    },
+    /** Trả về array các lô gỗ unique của 1 phiếu (mỗi mã lô 1 phần tử). */
+    loGoListOf(p) {
+      if (!p || !p.chi_tiet) return [];
+      return [...new Set(p.chi_tiet.map(d => d.lo_go).filter(Boolean))];
+    },
+    /** Tổng số thanh của 1 phiếu (sum tong_thanh các chi tiết). */
+    tongSoThanh(p) {
+      if (!p || !p.chi_tiet) return 0;
+      return p.chi_tiet.reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
+    },
+    /** Tên kho + địa chỉ (vd "Kho Yên Sơn - Xã Yên Sơn - Tỉnh Tuyên Quang"). */
+    khoNhapFull(p) {
+      const k = this.khoOf(p);
+      if (k && k.ten) return k.dia_chi ? `${k.ten} - ${k.dia_chi}` : k.ten;
+      const x = this.xuongOf(p);
+      if (x && x.ten) return x.dia_chi ? `${x.ten} - ${x.dia_chi}` : x.ten;
+      return p && p.MAKHO ? String(p.MAKHO).trim() : "";
     },
     /** Build danh sách NCC từ XUONG_XE local (chỉ xưởng có mancc_woodsland). */
     loadNcc() {
@@ -572,10 +605,10 @@ export default {
     wordOnePhieu(p, idx) {
       const e = this.wordEsc.bind(this);
       const firstBreak = idx === 0 ? "" : '<br clear="all" class="pgbreak"/>';
-      const xuongName = this.xuongNameOf(p) || "";
-      const xuongAddr = this.xuongAddressOf(p) || "";
-      const loGo = this.loGoOfPhieu(p) || "";
+      const khoFull = this.khoNhapFull(p) || "";
+      const loGoList = this.loGoListOf(p);
       const ngayStr = this.fmtDate(p.CREATED_AT);
+      const tongThanh = this.tongSoThanh(p);
 
       const rows = (p.chi_tiet || []).map((d, di) => `
         <tr>
@@ -592,6 +625,11 @@ export default {
       `).join("");
 
       const tongKl = p.tong_kl ? Number(p.tong_kl).toFixed(4) : "";
+
+      // Các lô gỗ thứ 3+ render mỗi lô 1 dòng riêng
+      const extraLoGoRows = loGoList.slice(2).map(lx => `
+        <tr><td colspan="3"></td><td class="val bold">${e(lx)}</td></tr>
+      `).join("");
 
       return `${firstBreak}
         <div class="header-bar">
@@ -613,18 +651,22 @@ export default {
             <td class="lbl">Biển số xe:</td><td class="val">${e(p.BIENSOXE || "")}</td>
           </tr>
           <tr>
-            <td class="lbl">Kho nhập:</td><td class="val">${e(xuongName)}</td>
-            <td class="lbl">Ngày nhập:</td><td class="val">${e(ngayStr)}</td>
+            <td class="lbl">Kho nhập:</td><td class="val" colspan="3">${e(khoFull)}</td>
           </tr>
-          ${xuongAddr ? `<tr><td class="lbl">Địa chỉ:</td><td class="val" colspan="3">${e(xuongAddr)}</td></tr>` : ""}
           <tr>
             <td class="lbl">Trạng thái MT: FSC 100%</td>
-            <td class="val">Nhóm SP: ${e(p.NHOMSP || "")}</td>
-            <td></td><td class="val">${e(loGo)}</td>
+            <td class="val">Nhóm SP: <b>${e(p.NHOMSP || "")}</b></td>
+            <td class="lbl">Mã lô gỗ nhập:</td>
+            <td class="val bold">${e(loGoList[0] || "")}</td>
           </tr>
           <tr>
-            <td class="lbl">Loại gỗ: Keo tai tượng (Acacia mangium)</td><td></td>
-            <td class="lbl">Mã lô gỗ nhập:</td><td class="val"></td>
+            <td class="lbl" colspan="2">Loại gỗ: Keo tai tượng (Acacia mangium)</td>
+            <td></td><td class="val bold">${e(loGoList[1] || "")}</td>
+          </tr>
+          ${extraLoGoRows}
+          <tr>
+            <td class="lbl">Ngày nhập:</td><td class="val">${e(ngayStr)}</td>
+            <td colspan="2"></td>
           </tr>
         </table>
         <table class="tbl">
@@ -635,21 +677,21 @@ export default {
               <th rowspan="2">Số bó</th>
               <th rowspan="2">Số<br/>thanh/bó</th>
               <th rowspan="2">Tổng thanh</th>
-              <th rowspan="2">Tổng khối<br/>lượng (m³)</th>
+              <th rowspan="2">Tổng khối lượng (m³)</th>
               <th rowspan="2">Ghi chú</th>
             </tr>
             <tr><th>Dày</th><th>Rộng</th><th>Dài</th></tr>
           </thead>
           <tbody>
             ${rows}
-            <tr class="total-row"><td colspan="7">TỔNG</td><td class="num">${tongKl}</td><td></td></tr>
+            <tr class="total-row"><td colspan="6">Tổng khối lượng</td><td>${tongThanh}</td><td class="num">${tongKl}</td><td></td></tr>
           </tbody>
         </table>
         <table class="sign-3col">
           <tr>
-            <td class="sign-title">Đại diện giao hàng</td>
-            <td class="sign-title">Thủ kho</td>
-            <td class="sign-title">QC kiểm tra</td>
+            <td class="sign-title">Đại Diện Bên Giao</td>
+            <td class="sign-title">Đại diện xưởng sản xuất</td>
+            <td class="sign-title">Người lập biên bản</td>
           </tr>
           <tr>
             <td class="sign-space"></td>

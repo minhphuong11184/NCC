@@ -39,6 +39,7 @@ router.get('/list', async (req, res) => {
                     N.Khoang, N.Lo AS lo_kt, N.Dien_tich AS dien_tich,
                     N.Thon, N.Xa, N.Huyen, N.cccd, N.dia_chi_cccd,
                     N.So_BKLS AS so_bkls, N.KD AS kd, N.VD AS vd,
+                    N.nhom_chung_chi,
                     H.he_so AS he_so_lo,
                     G.so_phieu_xe, G.so_bkls_xe
                 FROM [prod].[GHEP_LO_GO_RESULT] G
@@ -58,7 +59,8 @@ router.get('/list', async (req, res) => {
                         MIN(dia_chi_cccd) AS dia_chi_cccd,
                         MIN(So_BKLS) AS So_BKLS,
                         MIN(KD) AS KD,
-                        MIN(VD) AS VD
+                        MIN(VD) AS VD,
+                        MIN(nhom_chung_chi) AS nhom_chung_chi
                     FROM [prod].[NHAP_GO_TRON]
                     WHERE Lo_go IS NOT NULL
                     GROUP BY Lo_go
@@ -106,6 +108,7 @@ router.get('/list', async (req, res) => {
                 so_bkls: d.so_bkls ? d.so_bkls.trim() : null,
                 kd: d.kd ? String(d.kd).trim() : null,
                 vd: d.vd ? String(d.vd).trim() : null,
+                nhom_chung_chi: d.nhom_chung_chi ? d.nhom_chung_chi.trim() : null,
                 // Ưu tiên hệ số riêng theo lô (LO_GO_HE_SO);
                 // fallback saved_he_so (giá trị global lúc save biên bản)
                 he_so: d.he_so_lo != null ? d.he_so_lo : (d.saved_he_so || null),

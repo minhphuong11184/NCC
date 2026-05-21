@@ -76,21 +76,26 @@ export function numberToWordsVN(num) {
 /**
  * Chuyển khối lượng/thể tích (m³) sang chữ tiếng Việt — kết thúc " mét khối".
  * Phần thập phân đọc từng chữ số sau "phẩy", bỏ trailing zero.
- * Ví dụ: 29.52 → "Hai mươi chín phẩy năm hai mét khối".
- *         29.05 → "Hai mươi chín phẩy không năm mét khối".
- *         30.00 → "Ba mươi mét khối".
+ *   decimals  - số chữ số thập phân tối đa cần đọc (mặc định 2).
+ * Ví dụ:
+ *   volumeToWordsVN(29.52)         → "Hai mươi chín phẩy năm hai mét khối"
+ *   volumeToWordsVN(29.0524, 4)    → "Hai mươi chín phẩy không năm hai bốn mét khối"
+ *   volumeToWordsVN(29.5000, 4)    → "Hai mươi chín phẩy năm mét khối" (bỏ trailing zero)
+ *   volumeToWordsVN(30.00)         → "Ba mươi mét khối"
  */
-export function volumeToWordsVN(num) {
+export function volumeToWordsVN(num, decimals) {
   if (num == null || isNaN(num)) return "";
+  const dec = Math.max(0, Math.min(10, Number.isFinite(decimals) ? decimals : 2));
+  const factor = Math.pow(10, dec);
   const sign = Number(num) < 0 ? "Âm " : "";
   const abs = Math.abs(Number(num));
   const intPart = Math.floor(abs);
-  const decRaw = Math.round((abs - intPart) * 100);
+  const decRaw = Math.round((abs - intPart) * factor);
 
   let combined = readIntegerVN(intPart);
   if (decRaw > 0) {
-    // 2 chữ số thập phân, bỏ trailing zero (29.50 → "năm", 29.05 → "không năm")
-    let decStr = String(decRaw).padStart(2, "0").replace(/0+$/, "");
+    // pad đủ số chữ số thập phân, bỏ trailing zero
+    let decStr = String(decRaw).padStart(dec, "0").replace(/0+$/, "");
     if (!decStr) decStr = "0";
     const decText = decStr.split("").map(d => DIGITS[+d]).join(" ");
     combined += " phẩy " + decText;
