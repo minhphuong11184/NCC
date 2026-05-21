@@ -1337,12 +1337,10 @@ export default {
       ws.getRow(r).getCell(9).border = this.bThin();
       r += 2;
 
-      // === Sign row ===
+      // === Sign row — 2 cột: Đại Diện Bên Giao | Người lập biên bản ===
       this.setCell(ws, `A${r}`, "Đại Diện Bên Giao",
-        { merge: `C${r}`, center: true, bold: true, italic: true });
-      this.setCell(ws, `D${r}`, "Đại diện xưởng sản xuất",
-        { merge: `F${r}`, center: true, bold: true, italic: true });
-      this.setCell(ws, `G${r}`, "Người lập biên bản",
+        { merge: `D${r}`, center: true, bold: true, italic: true });
+      this.setCell(ws, `E${r}`, "Người lập biên bản",
         { merge: `I${r}`, center: true, bold: true, italic: true });
       r += 5;
       return r + 1;

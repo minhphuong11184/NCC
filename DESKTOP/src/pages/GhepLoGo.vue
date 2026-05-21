@@ -191,10 +191,6 @@
             <div class="sign-space"></div>
           </div>
           <div class="sign-col">
-            <div class="sign-title">Đại diện xưởng sản xuất</div>
-            <div class="sign-space"></div>
-          </div>
-          <div class="sign-col">
             <div class="sign-title">Người lập biên bản</div>
             <div class="sign-space"></div>
           </div>
@@ -284,7 +280,6 @@
         </table>
         <div class="sign-area">
           <div class="sign-col"><div class="sign-title">Đại Diện Bên Giao</div><div class="sign-space"></div></div>
-          <div class="sign-col"><div class="sign-title">Đại diện xưởng sản xuất</div><div class="sign-space"></div></div>
           <div class="sign-col"><div class="sign-title">Người lập biên bản</div><div class="sign-space"></div></div>
         </div>
       </div>
@@ -590,7 +585,7 @@ export default {
         table.tbl tr.total-row td { font-weight: bold; }
         table.sign-3col { width: 100%; margin-top: 14pt; border-collapse: collapse; }
         table.sign-3col td {
-          width: 33.3%;
+          width: 50%;
           text-align: center;
           vertical-align: top;
           padding: 0 4pt;
@@ -690,11 +685,9 @@ export default {
         <table class="sign-3col">
           <tr>
             <td class="sign-title">Đại Diện Bên Giao</td>
-            <td class="sign-title">Đại diện xưởng sản xuất</td>
             <td class="sign-title">Người lập biên bản</td>
           </tr>
           <tr>
-            <td class="sign-space"></td>
             <td class="sign-space"></td>
             <td class="sign-space"></td>
           </tr>
