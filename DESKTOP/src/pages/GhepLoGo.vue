@@ -104,14 +104,16 @@
     <div v-if="currentPhieu" class="print-area">
       <div class="phieu-form" :id="'phieu-' + selectedIdx">
         <div class="header-row">
-          <span>SỔ TAY COC</span>
+          <span></span>
+          <span class="bold">SỔ TAY COC</span>
           <span class="right italic">BM.COC.01-b</span>
         </div>
-        <div class="title">BIÊN BẢN NGHIỆM THU XẺ TƯƠI<br/>(Kiêm phiếu nhập kho)</div>
         <div class="header-row small">
+          <span></span>
           <span></span>
           <span class="right italic">Ngày BH: 30/03/2019<br/>Lần ban hành: 04</span>
         </div>
+        <div class="title">BIÊN BẢN NGHIỆM THU XẺ TƯƠI<br/>(Kiêm phiếu nhập kho)</div>
 
         <table class="info-table">
           <tr>
@@ -202,14 +204,16 @@
     <div class="print-all-area">
       <div v-for="(p, pi) in phieuList" :key="'all-'+p.SOPHIEU" class="phieu-form">
         <div class="header-row">
-          <span>SỔ TAY COC</span>
+          <span></span>
+          <span class="bold">SỔ TAY COC</span>
           <span class="right italic">BM.COC.01-b</span>
         </div>
-        <div class="title">BIÊN BẢN NGHIỆM THU XẺ TƯƠI<br/>(Kiêm phiếu nhập kho)</div>
         <div class="header-row small">
+          <span></span>
           <span></span>
           <span class="right italic">Ngày BH: 30/03/2019<br/>Lần ban hành: 04</span>
         </div>
+        <div class="title">BIÊN BẢN NGHIỆM THU XẺ TƯƠI<br/>(Kiêm phiếu nhập kho)</div>
         <table class="info-table">
           <tr>
             <td class="lbl">Đơn vị giao hàng:</td><td class="val">{{ nccName }}</td>
@@ -566,7 +570,8 @@ export default {
         .small { font-size: 10pt; }
         .title { font-size: 15pt; font-weight: bold; text-align: center; margin: 4pt 0 8pt 0; }
         .header-bar { display: table; width: 100%; margin-bottom: 4pt; }
-        .header-bar > div { display: table-cell; }
+        .header-bar > div { display: table-cell; width: 33.33%; }
+        .header-bar .h-center { text-align: center; font-weight: bold; font-size: 16pt; }
         .header-bar .h-right { text-align: right; font-style: italic; font-size: 10pt; }
         table.info { width: 100%; border-collapse: collapse; margin: 4pt 0 8pt 0; }
         table.info td { padding: 3pt 5pt; vertical-align: top; font-size: 12pt; }
@@ -628,14 +633,16 @@ export default {
 
       return `${firstBreak}
         <div class="header-bar">
-          <div class="bold">SỔ TAY COC</div>
+          <div></div>
+          <div class="h-center">SỔ TAY COC</div>
           <div class="h-right">BM.COC.01-b</div>
         </div>
-        <p class="title">BIÊN BẢN NGHIỆM THU XẺ TƯƠI<br/>(Kiêm phiếu nhập kho)</p>
         <div class="header-bar">
           <div></div>
-          <div class="h-right">Ngày BH: 30/03/2019 — Lần ban hành: 04</div>
+          <div></div>
+          <div class="h-right">Ngày BH: 30/03/2019<br/>Lần ban hành: 04</div>
         </div>
+        <p class="title">BIÊN BẢN NGHIỆM THU XẺ TƯƠI<br/>(Kiêm phiếu nhập kho)</p>
         <table class="info">
           <tr>
             <td class="lbl">Đơn vị giao hàng:</td><td class="val">${e(this.nccName)}</td>
@@ -735,6 +742,7 @@ export default {
 }
 .header-row { display: flex; justify-content: space-between; font-weight: bold; }
 .header-row .right { text-align: right; }
+.header-row > .bold { font-size: 16px; }
 .header-row.small { font-size: 10px; font-weight: normal; }
 .italic { font-style: italic; }
 .bold { font-weight: bold; }

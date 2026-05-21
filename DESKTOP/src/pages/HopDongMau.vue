@@ -78,7 +78,8 @@
         <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
         <div class="hd-text">Ông/Bà: <b>{{ tenHoUpper }}</b></div>
         <div class="hd-text">CCCD số: <b>{{ lo.cccd || '..............................' }}</b></div>
-        <div class="hd-text">Địa chỉ khai thác: {{ lo.dia_chi_cccd || diaChiBenB }}</div>
+        <div class="hd-text">Địa chỉ: {{ lo.dia_chi_cccd || '' }}</div>
+        <div class="hd-text">Địa chỉ khai thác: {{ diaChiBenB }}</div>
         <div class="hd-text">Mã chứng chỉ rừng: <b>{{ lo.chung_chi || '...............' }}</b></div>
         <div class="hd-text" v-if="lo.nhom_chung_chi">Thuộc nhóm chứng chỉ rừng FSC: <b>{{ lo.nhom_chung_chi }}</b></div>
 
@@ -221,7 +222,8 @@
         <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
         <div class="hd-text">Ông/Bà: <b>{{ tenHoUpper }}</b></div>
         <div class="hd-text">CCCD số: <b>{{ lo.cccd || '..............................' }}</b></div>
-        <div class="hd-text">Địa chỉ khai thác: {{ lo.dia_chi_cccd || diaChiBenB }}</div>
+        <div class="hd-text">Địa chỉ: {{ lo.dia_chi_cccd || '' }}</div>
+        <div class="hd-text">Địa chỉ khai thác: {{ diaChiBenB }}</div>
         <div class="hd-text">Mã chứng chỉ rừng: <b>{{ lo.chung_chi || '...............' }}</b></div>
         <div class="hd-text" v-if="lo.nhom_chung_chi">Thuộc nhóm chứng chỉ rừng FSC: <b>{{ lo.nhom_chung_chi }}</b></div>
 
@@ -501,7 +503,8 @@ export default {
       const e = s => String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const tenHoUpper = lo.ten_ho ? lo.ten_ho.toUpperCase() : "";
-      const diaChi = lo.dia_chi_cccd || lo.xa || "";
+      const diaChiCCCD = lo.dia_chi_cccd || "";
+      const diaChiKT = lo.xa || "";
       const ng = this.ngayHD;
       const soHD = this.soHopDongOf(lo);
       return `
@@ -528,7 +531,8 @@ export default {
   <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
   <div class="hd-text">Ông/Bà: <b>${e(tenHoUpper)}</b></div>
   <div class="hd-text">CCCD số: <b>${e(lo.cccd || "..............................")}</b></div>
-  <div class="hd-text">Địa chỉ khai thác: ${e(diaChi)}</div>
+  <div class="hd-text">Địa chỉ: ${e(diaChiCCCD)}</div>
+  <div class="hd-text">Địa chỉ khai thác: ${e(diaChiKT)}</div>
   <div class="hd-text">Mã chứng chỉ rừng: <b>${e(lo.chung_chi || "...............")}</b></div>
   ${lo.nhom_chung_chi ? `<div class="hd-text">Thuộc nhóm chứng chỉ rừng FSC: <b>${e(lo.nhom_chung_chi)}</b></div>` : ""}
   <div class="hd-text">Hai bên cùng trao đổi và thống nhất ký kết Hợp đồng nguyên tắc mua bán gỗ tròn keo tai tượng (Acacia mangium) rừng trồng có chứng chỉ FSC 100% với các nội dung sau:</div>
@@ -589,7 +593,8 @@ export default {
       const e = s => String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const tenHoUpper = lo.ten_ho ? lo.ten_ho.toUpperCase() : "";
-      const diaChi = lo.dia_chi_cccd || lo.xa || "";
+      const diaChiCCCD = lo.dia_chi_cccd || "";
+      const diaChiKT = lo.xa || "";
       const ng = this.ngayHD;
       const soHD = this.soHopDongOf(lo);
       const soPL = this.soPhuLucOf(lo);
@@ -622,7 +627,8 @@ export default {
   <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
   <div class="hd-text">Ông/Bà: <b>${e(tenHoUpper)}</b></div>
   <div class="hd-text">CCCD số: <b>${e(lo.cccd || "..............................")}</b></div>
-  <div class="hd-text">Địa chỉ khai thác: ${e(diaChi)}</div>
+  <div class="hd-text">Địa chỉ: ${e(diaChiCCCD)}</div>
+  <div class="hd-text">Địa chỉ khai thác: ${e(diaChiKT)}</div>
   <div class="hd-text">Mã chứng chỉ rừng: <b>${e(lo.chung_chi || "...............")}</b></div>
   ${lo.nhom_chung_chi ? `<div class="hd-text">Thuộc nhóm chứng chỉ rừng FSC: <b>${e(lo.nhom_chung_chi)}</b></div>` : ""}
   ${loList}

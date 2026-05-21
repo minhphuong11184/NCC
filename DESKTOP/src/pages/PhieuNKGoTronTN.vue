@@ -61,8 +61,11 @@
             <span></span>
             <span class="right">Ngày ban hành: {{ NGAY_BAN_HANH }}</span>
           </div>
+          <div class="header-row small">
+            <span></span>
+            <span class="right">Lần ban hành: {{ LAN_BAN_HANH }}</span>
+          </div>
           <div class="title">BIÊN BẢN NGHIỆM THU VÀ GIAO NHẬN<br/>GỖ KEO TRÒN FSC100%</div>
-          <div class="header-row small right">Lần ban hành: {{ LAN_BAN_HANH }}</div>
 
           <table class="info-table">
             <tr><td class="lbl">Đơn vị giao hàng:</td><td class="val">{{ phieu.Chu_rung }}</td><td class="lbl">Số phiếu:</td><td class="val">{{ phieu.So_phieu }}</td></tr>
@@ -143,8 +146,11 @@
             <span></span>
             <span class="right">Ngày ban hành: {{ NGAY_BAN_HANH }}</span>
           </div>
+          <div class="header-row small">
+            <span></span>
+            <span class="right">Lần ban hành: {{ LAN_BAN_HANH }}</span>
+          </div>
           <div class="title">PHIẾU NHẬP KHO GỖ KEO TRÒN FSC100%</div>
-          <div class="header-row small right">Lần ban hành: {{ LAN_BAN_HANH }}</div>
 
           <table class="info-table">
             <tr><td class="lbl">Người giao hàng:</td><td class="val">{{ nguoiGiaoPNK }}</td><td class="lbl">Số phiếu:</td><td class="val">{{ phieu.So_phieu }}</td></tr>
@@ -848,10 +854,10 @@ export default {
       this.setCell(ws, `A${r + 1}`, "SỔ TAY COC", { merge: `E${r + 1}`, bold: true });
       this.setCell(ws, `F${r + 1}`, cfg.BM_NGHIEM_THU || "BM.COC.01-a", { merge: `J${r + 1}`, bold: true, right: true });
       this.setCell(ws, `F${r + 2}`, `Ngày ban hành: ${cfg.NGAY_BAN_HANH || "10.2.2022"}`, { merge: `J${r + 2}`, italic: true, size: 9, right: true });
-      this.setCell(ws, `A${r + 3}`, "BIÊN BẢN NGHIỆM THU VÀ GIAO NHẬN GỖ KEO TRÒN FSC100%",
-        { merge: `J${r + 3}`, bold: true, center: true, size: 13 });
-      ws.getRow(r + 3).height = 28;
-      this.setCell(ws, `F${r + 4}`, `Lần ban hành: ${cfg.LAN_BAN_HANH || "02"}`, { merge: `J${r + 4}`, italic: true, size: 9, right: true });
+      this.setCell(ws, `F${r + 3}`, `Lần ban hành: ${cfg.LAN_BAN_HANH || "02"}`, { merge: `J${r + 3}`, italic: true, size: 9, right: true });
+      this.setCell(ws, `A${r + 4}`, "BIÊN BẢN NGHIỆM THU VÀ GIAO NHẬN GỖ KEO TRÒN FSC100%",
+        { merge: `J${r + 4}`, bold: true, center: true, size: 13 });
+      ws.getRow(r + 4).height = 28;
 
       // Info table — A-B label, C-E value, F-G label, H-J value (mở rộng A4)
       const info = [
@@ -928,10 +934,10 @@ export default {
       this.setCell(ws, `A${r + 1}`, "SỔ TAY COC", { merge: `E${r + 1}`, bold: true });
       this.setCell(ws, `F${r + 1}`, cfg.BM_NHAP_KHO || "BM.COC.01-b", { merge: `J${r + 1}`, bold: true, right: true });
       this.setCell(ws, `F${r + 2}`, `Ngày ban hành: ${cfg.NGAY_BAN_HANH || "10.2.2022"}`, { merge: `J${r + 2}`, italic: true, size: 9, right: true });
-      this.setCell(ws, `A${r + 3}`, "PHIẾU NHẬP KHO GỖ KEO TRÒN FSC100%",
-        { merge: `J${r + 3}`, bold: true, center: true, size: 13 });
-      ws.getRow(r + 3).height = 28;
-      this.setCell(ws, `F${r + 4}`, `Lần ban hành: ${cfg.LAN_BAN_HANH || "02"}`, { merge: `J${r + 4}`, italic: true, size: 9, right: true });
+      this.setCell(ws, `F${r + 3}`, `Lần ban hành: ${cfg.LAN_BAN_HANH || "02"}`, { merge: `J${r + 3}`, italic: true, size: 9, right: true });
+      this.setCell(ws, `A${r + 4}`, "PHIẾU NHẬP KHO GỖ KEO TRÒN FSC100%",
+        { merge: `J${r + 4}`, bold: true, center: true, size: 13 });
+      ws.getRow(r + 4).height = 28;
 
       const nguoiGiao = this.nguoiGiaoForPhieu(p, cfg);
       const info = [
@@ -1331,11 +1337,10 @@ export default {
       return `
         <table class="info"><tr>
           <td class="bold">${e(cfg.TEN_CTY || "")}</td>
-          <td class="right small italic">${e(cfg.BM_NGHIEM_THU || "BM.COC.01-a")}<br/>Ngày ban hành: ${e(cfg.NGAY_BAN_HANH || "10.2.2022")}</td>
+          <td class="right small italic">${e(cfg.BM_NGHIEM_THU || "BM.COC.01-a")}<br/>Ngày ban hành: ${e(cfg.NGAY_BAN_HANH || "10.2.2022")}<br/>Lần ban hành: ${e(cfg.LAN_BAN_HANH || "02")}</td>
         </tr></table>
         <p class="bold">SỔ TAY COC</p>
         <p class="title">BIÊN BẢN NGHIỆM THU VÀ GIAO NHẬN<br/>GỖ KEO TRÒN FSC 100%</p>
-        <p class="right small italic">Lần ban hành: ${e(cfg.LAN_BAN_HANH || "02")}</p>
         <table class="info">
           <tr><td class="lbl">Đơn vị giao hàng:</td><td class="val">${e(p.Chu_rung)}</td><td class="lbl">Số phiếu:</td><td class="val bold">${e(p.So_phieu)}</td></tr>
           <tr><td class="lbl">Địa chỉ:</td><td class="val">${e(diaChiCR)}</td><td class="lbl">Biển số xe:</td><td class="val">${e(p.Xe)}</td></tr>
@@ -1381,11 +1386,10 @@ export default {
       return `
         <table class="info"><tr>
           <td class="bold">${e(cfg.TEN_CTY || "")}</td>
-          <td class="right small italic">${e(cfg.BM_NHAP_KHO || "BM.COC.01-b")}<br/>Ngày ban hành: ${e(cfg.NGAY_BAN_HANH || "10.2.2022")}</td>
+          <td class="right small italic">${e(cfg.BM_NHAP_KHO || "BM.COC.01-b")}<br/>Ngày ban hành: ${e(cfg.NGAY_BAN_HANH || "10.2.2022")}<br/>Lần ban hành: ${e(cfg.LAN_BAN_HANH || "02")}</td>
         </tr></table>
         <p class="bold">SỔ TAY COC</p>
         <p class="title">PHIẾU NHẬP KHO GỖ KEO TRÒN FSC 100%</p>
-        <p class="right small italic">Lần ban hành: ${e(cfg.LAN_BAN_HANH || "02")}</p>
         <table class="info">
           <tr><td class="lbl">Người giao hàng:</td><td class="val">${e(nguoiGiao)}</td><td class="lbl">Số phiếu:</td><td class="val bold">${e(p.So_phieu)}</td></tr>
           <tr><td class="lbl">Kho nhập:</td><td class="val">${e(cfg.TEN_CTY)}</td><td class="lbl">Biển số xe:</td><td class="val">${e(p.Xe)}</td></tr>
