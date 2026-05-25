@@ -40,6 +40,7 @@ router.get('/list', async (req, res) => {
                     N.Thon, N.Xa, N.Huyen, N.cccd, N.dia_chi_cccd,
                     N.So_BKLS AS so_bkls, N.KD AS kd, N.VD AS vd,
                     N.nhom_chung_chi,
+                    N.Kl_tron_lo AS kl_tron_lo,
                     H.he_so AS he_so_lo,
                     G.so_phieu_xe, G.so_bkls_xe
                 FROM [prod].[GHEP_LO_GO_RESULT] G
@@ -60,7 +61,8 @@ router.get('/list', async (req, res) => {
                         MIN(So_BKLS) AS So_BKLS,
                         MIN(KD) AS KD,
                         MIN(VD) AS VD,
-                        MIN(nhom_chung_chi) AS nhom_chung_chi
+                        MIN(nhom_chung_chi) AS nhom_chung_chi,
+                        SUM(KL_M3) AS Kl_tron_lo
                     FROM [prod].[NHAP_GO_TRON]
                     WHERE Lo_go IS NOT NULL
                     GROUP BY Lo_go
@@ -112,6 +114,7 @@ router.get('/list', async (req, res) => {
                 // Ưu tiên hệ số riêng theo lô (LO_GO_HE_SO);
                 // fallback saved_he_so (giá trị global lúc save biên bản)
                 he_so: d.he_so_lo != null ? d.he_so_lo : (d.saved_he_so || null),
+                kl_tron_lo: d.kl_tron_lo != null ? Number(d.kl_tron_lo) : null,
             })
             phieuMap[d.SOPHIEU].tong_kl += (d.kl_m3 || 0)
         })

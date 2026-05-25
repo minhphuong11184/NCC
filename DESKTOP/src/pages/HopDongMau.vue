@@ -69,10 +69,7 @@
         <div class="hd-text">Mã số doanh nghiệp: <b>{{ xuongMST }}</b></div>
         <div class="hd-text">Trụ sở: {{ xuongDiaChi }}</div>
         <div class="hd-text">Mã chứng chỉ: <b>{{ xuongCCRaw }}</b> &nbsp;&nbsp;&nbsp;&nbsp; Hiệu lực: <b>{{ xuongHieuLuc }}</b></div>
-        <div class="hd-text">Người đại diện: {{ xuongNguoiDD }}</div>
-        <div class="hd-text" v-if="xuongUQNguoi">
-          Người đại diện thu mua gỗ keo tròn FSC100% theo ủy quyền: <b>{{ xuongUQNguoi }}</b>
-        </div>
+        <div class="hd-text">Người đại diện: {{ xuongUQNguoi || xuongNguoiDD }}</div>
 
         <!-- Bên B -->
         <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
@@ -213,10 +210,7 @@
         <div class="hd-text">Mã số doanh nghiệp: <b>{{ xuongMST }}</b></div>
         <div class="hd-text">Trụ sở: {{ xuongDiaChi }}</div>
         <div class="hd-text">Mã chứng chỉ: <b>{{ xuongCCRaw }}</b> &nbsp;&nbsp;&nbsp;&nbsp; Hiệu lực: <b>{{ xuongHieuLuc }}</b></div>
-        <div class="hd-text">Người đại diện: {{ xuongNguoiDD }}</div>
-        <div class="hd-text" v-if="xuongUQNguoi">
-          Người đại diện thu mua gỗ keo tròn FSC100% theo ủy quyền: <b>{{ xuongUQNguoi }}</b>
-        </div>
+        <div class="hd-text">Người đại diện: {{ xuongUQNguoi || xuongNguoiDD }}</div>
 
         <!-- Bên B -->
         <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
@@ -392,12 +386,8 @@ export default {
       const d = parsed || new Date();
       return { ngay: d.getDate(), thang: d.getMonth() + 1, nam: d.getFullYear() };
     },
-    /** Ngày ký PLHĐ — ưu tiên cột ngay_phu_luc, fallback dùng ngày HĐ. */
+    /** Ngày ký PLHĐ = ngày HĐ. */
     ngayPL() {
-      const parsed = this.parseDateString(this.lo && this.lo.ngay_phu_luc);
-      if (parsed) {
-        return { ngay: parsed.getDate(), thang: parsed.getMonth() + 1, nam: parsed.getFullYear() };
-      }
       return this.ngayHD;
     },
   },
@@ -489,13 +479,25 @@ export default {
         .map(w => w.charAt(0).toUpperCase()).join("");
     },
     soHopDongOf(lo) {
+      if (lo && lo.so_hop_dong) return lo.so_hop_dong;
       const yy = String(this.nam).slice(-2);
       const code = this.xuongCode || "XXX";
       return `001-${yy}/HĐMB-${code}-${this.benBInitialsOf(lo)}`;
     },
     soPhuLucOf(lo) {
+      if (lo && lo.so_phu_luc) return lo.so_phu_luc;
       const code = this.xuongCode || "XXX";
       return `01/PLHĐ - ${code}-${this.benBInitialsOf(lo)}`;
+    },
+    /** Ngày HĐ cho 1 lo cụ thể (dùng cho export nhiều chủ rừng). */
+    ngayHDOf(lo) {
+      const parsed = this.parseDateString(lo && lo.ngay_hop_dong);
+      const d = parsed || new Date();
+      return { ngay: d.getDate(), thang: d.getMonth() + 1, nam: d.getFullYear() };
+    },
+    /** Ngày PL = ngày HĐ. */
+    ngayPLOf(lo) {
+      return this.ngayHDOf(lo);
     },
 
     /* ===== Render HTML: HỢP ĐỒNG nguyên tắc ===== */
@@ -505,7 +507,7 @@ export default {
       const tenHoUpper = lo.ten_ho ? lo.ten_ho.toUpperCase() : "";
       const diaChiCCCD = lo.dia_chi_cccd || "";
       const diaChiKT = lo.xa || "";
-      const ng = this.ngayHD;
+      const ng = this.ngayHDOf(lo);
       const soHD = this.soHopDongOf(lo);
       return `
 <div class="hd-form">
@@ -526,8 +528,7 @@ export default {
   <div class="hd-text">Mã số doanh nghiệp: <b>${e(this.xuongMST)}</b></div>
   <div class="hd-text">Trụ sở: ${e(this.xuongDiaChi)}</div>
   <div class="hd-text">Mã chứng chỉ: <b>${e(this.xuongCCRaw)}</b> &nbsp;&nbsp;&nbsp;&nbsp; Hiệu lực: <b>${e(this.xuongHieuLuc)}</b></div>
-  <div class="hd-text">Người đại diện: ${e(this.xuongNguoiDD)}</div>
-  ${this.xuongUQNguoi ? `<div class="hd-text">Người đại diện thu mua gỗ keo tròn FSC100% theo ủy quyền: <b>${e(this.xuongUQNguoi)}</b></div>` : ""}
+  <div class="hd-text">Người đại diện: ${e(this.xuongUQNguoi || this.xuongNguoiDD)}</div>
   <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
   <div class="hd-text">Ông/Bà: <b>${e(tenHoUpper)}</b></div>
   <div class="hd-text">CCCD số: <b>${e(lo.cccd || "..............................")}</b></div>
@@ -595,7 +596,8 @@ export default {
       const tenHoUpper = lo.ten_ho ? lo.ten_ho.toUpperCase() : "";
       const diaChiCCCD = lo.dia_chi_cccd || "";
       const diaChiKT = lo.xa || "";
-      const ng = this.ngayHD;
+      const ngHD = this.ngayHDOf(lo);
+      const ng = this.ngayPLOf(lo);
       const soHD = this.soHopDongOf(lo);
       const soPL = this.soPhuLucOf(lo);
       const klSoLuong = lo.tong_kl_bang_ke || lo.tong_kl_go || 0;
@@ -614,7 +616,7 @@ export default {
   <div class="hd-title">PHỤ LỤC HỢP ĐỒNG</div>
   <div class="hd-center">Số: ${e(soPL)}</div>
   <div class="hd-text">- Căn cứ vào các văn bản quy phạm pháp luật hiện hành;</div>
-  <div class="hd-text">- Căn cứ vào Hợp đồng nguyên tắc mua bán gỗ số ${e(soHD)} ngày ${ng.ngay} tháng ${ng.thang} năm ${ng.nam};</div>
+  <div class="hd-text">- Căn cứ vào Hợp đồng nguyên tắc mua bán gỗ số ${e(soHD)} ngày ${ngHD.ngay} tháng ${ngHD.thang} năm ${ngHD.nam};</div>
   <div class="hd-text">- Căn cứ nhu cầu và khả năng của hai bên.</div>
   <div class="hd-text indent">Hôm nay, ngày <b>${ng.ngay}</b> tháng <b>${ng.thang}</b> năm <b>${ng.nam}</b>, tại trụ sở ${e(this.xuongTen)} - Địa chỉ: ${e(this.xuongDiaChi)}, chúng tôi gồm:</div>
   <div class="hd-section">I. BÊN MUA (Sau đây được gọi tắt là Bên A)</div>
@@ -622,8 +624,7 @@ export default {
   <div class="hd-text">Mã số doanh nghiệp: <b>${e(this.xuongMST)}</b></div>
   <div class="hd-text">Trụ sở: ${e(this.xuongDiaChi)}</div>
   <div class="hd-text">Mã chứng chỉ: <b>${e(this.xuongCCRaw)}</b> &nbsp;&nbsp;&nbsp;&nbsp; Hiệu lực: <b>${e(this.xuongHieuLuc)}</b></div>
-  <div class="hd-text">Người đại diện: ${e(this.xuongNguoiDD)}</div>
-  ${this.xuongUQNguoi ? `<div class="hd-text">Người đại diện thu mua gỗ keo tròn FSC100% theo ủy quyền: <b>${e(this.xuongUQNguoi)}</b></div>` : ""}
+  <div class="hd-text">Người đại diện: ${e(this.xuongUQNguoi || this.xuongNguoiDD)}</div>
   <div class="hd-section">II. BÊN BÁN (Sau đây được gọi tắt là Bên B)</div>
   <div class="hd-text">Ông/Bà: <b>${e(tenHoUpper)}</b></div>
   <div class="hd-text">CCCD số: <b>${e(lo.cccd || "..............................")}</b></div>
@@ -679,10 +680,11 @@ export default {
       this.exporting = true;
       try {
         const parts = [];
+        const pageBreak = '<br clear="all" style="mso-special-character:line-break;page-break-before:always" />';
         this.loList.forEach((lo, idx) => {
-          if (idx > 0) parts.push('<div style="page-break-before:always"></div>');
+          if (idx > 0) parts.push(pageBreak);
           parts.push(this.renderHopDongHtml(lo));
-          parts.push('<div style="page-break-before:always"></div>');
+          parts.push(pageBreak);
           parts.push(this.renderPhuLucHtml(lo));
         });
 
@@ -713,11 +715,7 @@ body { font-family: "Times New Roman", serif; font-size: 13pt; line-height: 1.5;
 .pgbreak { page-break-before: always; }
 </style>`;
 
-        // Thay <div style="page-break-before:always"> bằng class .pgbreak để Word xử lý nhất quán
-        const bodyHtml = parts.join("\n").replace(
-          /<div style="page-break-before:always"><\/div>/g,
-          '<div class="pgbreak"></div>'
-        );
+        const bodyHtml = parts.join("\n");
 
         const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
       xmlns:w="urn:schemas-microsoft-com:office:word"

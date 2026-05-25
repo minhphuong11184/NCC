@@ -143,34 +143,79 @@ router.get('/ghep', async (req, res) => {
             }
         })
 
+        // Ghép theo KL: khi QC vượt KL còn lại của lô → SPLIT QC ra theo
+        // tỉ lệ, phần 1 lấp đầy lô hiện tại, phần dư chuyển sang lô kế tiếp
+        // (lặp lại nếu QC dư vẫn còn lớn hơn 1 lô tiếp theo). Bảo đảm:
+        //   Σ kl_m3 ghép vào 1 lô  =  kl_tron(lô) / he_so(lô)
+        // → quy đổi ngược kl_xe × he_so chính xác bằng kl_tron của lô.
+        const EPS = 0.0001
         let loIdx = 0
-        const details = wsResult.recordset.map(row => {
-            const kl = Math.round((row.kl_m3 || 0) * 10000) / 10000
-            let lo_go = null
-            let chung_chi = null
-
-            // Tìm lô gỗ còn khối lượng
-            if (loIdx < loGos.length && kl > 0) {
-                lo_go = loGos[loIdx].lo_go
-                chung_chi = loGos[loIdx].chung_chi
-                loGos[loIdx].kl_con_lai -= kl
-                // Nếu lô này hết → sang lô tiếp
-                if (loGos[loIdx].kl_con_lai <= 0.01) {
-                    loIdx++
-                }
-            }
-
-            return {
+        const details = []
+        wsResult.recordset.forEach(row => {
+            const klRow = Math.round((row.kl_m3 || 0) * 10000) / 10000
+            const tongThanhRow = row.SOBO > 0 && row.SOTHANH_BO > 0
+                ? row.SOBO * row.SOTHANH_BO : 0
+            const trimmed = {
                 ...row,
                 SOPHIEU: row.SOPHIEU ? row.SOPHIEU.trim() : null,
                 MAKHO: row.MAKHO ? row.MAKHO.trim() : null,
                 NHOMSP: row.NHOMSP ? row.NHOMSP.trim() : null,
                 BIENSOXE: row.BIENSOXE ? row.BIENSOXE.trim() : null,
                 MANCC: row.MANCC ? row.MANCC.trim() : null,
-                kl_m3: kl,
-                lo_go: lo_go,
-                chung_chi: chung_chi,
-                tong_thanh: row.SOBO > 0 && row.SOTHANH_BO > 0 ? row.SOBO * row.SOTHANH_BO : 0,
+            }
+
+            // Không còn lô để gán hoặc QC = 0 → đẩy 1 dòng không gán
+            if (klRow <= 0 || loIdx >= loGos.length) {
+                details.push({
+                    ...trimmed,
+                    kl_m3: klRow,
+                    lo_go: null,
+                    chung_chi: null,
+                    tong_thanh: tongThanhRow,
+                })
+                return
+            }
+
+            // Tách QC: lặp đến khi KL của QC = 0 hoặc hết lô
+            let remaining = klRow
+            while (remaining > EPS && loIdx < loGos.length) {
+                const lo = loGos[loIdx]
+                if (lo.kl_con_lai <= EPS) { loIdx++; continue }
+
+                const klPart = Math.min(remaining, lo.kl_con_lai)
+                const ratio = klRow > 0 ? klPart / klRow : 1
+                const thanhPart = tongThanhRow > 0
+                    ? Math.round(tongThanhRow * ratio * 100) / 100
+                    : 0
+
+                details.push({
+                    ...trimmed,
+                    kl_m3: Math.round(klPart * 10000) / 10000,
+                    lo_go: lo.lo_go,
+                    chung_chi: lo.chung_chi,
+                    tong_thanh: thanhPart,
+                    is_split: klPart < klRow - EPS || remaining < klRow - EPS,
+                })
+
+                lo.kl_con_lai = Math.round((lo.kl_con_lai - klPart) * 10000) / 10000
+                remaining = Math.round((remaining - klPart) * 10000) / 10000
+                if (lo.kl_con_lai <= EPS) loIdx++
+            }
+
+            // Hết lô nhưng QC vẫn còn → đẩy phần dư không gán lô
+            if (remaining > EPS) {
+                const ratio = klRow > 0 ? remaining / klRow : 1
+                const thanhPart = tongThanhRow > 0
+                    ? Math.round(tongThanhRow * ratio * 100) / 100
+                    : 0
+                details.push({
+                    ...trimmed,
+                    kl_m3: Math.round(remaining * 10000) / 10000,
+                    lo_go: null,
+                    chung_chi: null,
+                    tong_thanh: thanhPart,
+                    is_split: true,
+                })
             }
         })
 
