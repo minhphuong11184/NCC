@@ -62,7 +62,7 @@ router.get('/list', async (req, res) => {
                         MIN(KD) AS KD,
                         MIN(VD) AS VD,
                         MIN(nhom_chung_chi) AS nhom_chung_chi,
-                        SUM(KL_M3) AS Kl_tron_lo
+                        SUM(Khoi_luong) AS Kl_tron_lo
                     FROM [prod].[NHAP_GO_TRON]
                     WHERE Lo_go IS NOT NULL
                     GROUP BY Lo_go
