@@ -18,6 +18,9 @@ router.get('/ghep', async (req, res) => {
     try {
         const thang = parseInt(req.query.thang)
         const nam = parseInt(req.query.nam)
+        // Tháng/năm gỗ xẻ tách riêng — nếu không truyền sẽ dùng cùng tháng gỗ tròn
+        const thangXe = parseInt(req.query.thang_xe) || thang
+        const namXe = parseInt(req.query.nam_xe) || nam
         const mancc = req.query.mancc || 'CTTT'
         const source = (req.query.source || 'woodsland').toLowerCase()
         const heSo = parseFloat(req.query.he_so) || 2  // KL gỗ tròn / heSo = KL gỗ xẻ tương đương
@@ -70,13 +73,13 @@ router.get('/ghep', async (req, res) => {
             })
         }
 
-        // 1. Lấy phiếu - từ Woodsland hoặc từ bảng import
+        // 1. Lấy phiếu - từ Woodsland hoặc từ bảng import (dùng thangXe/namXe)
         let wsResult
         if (source === 'import') {
             wsResult = await new mssql.Request()
                 .input('mancc', mancc)
-                .input('thang', thang)
-                .input('nam', nam)
+                .input('thang', thangXe)
+                .input('nam', namXe)
                 .query(`
                     SELECT
                         SOPHIEU, MAKHO, NHOMSP, BIENSOXE, CREATED_AT,
@@ -96,7 +99,7 @@ router.get('/ghep', async (req, res) => {
                 `)
         } else {
             // source=woodsland: lấy qua HTTP API
-            const rows = await goxeApi.getPhieuByMancc({ thang, nam, mancc })
+            const rows = await goxeApi.getPhieuByMancc({ thang: thangXe, nam: namXe, mancc })
             // Bù tính kl_m3 nếu API trả thiếu
             rows.forEach(r => {
                 if (r.kl_m3 === undefined || r.kl_m3 === null) {

@@ -5,10 +5,16 @@
     <!-- Filter -->
     <div class="row q-col-gutter-md items-end q-mb-md no-print">
       <div class="col-auto">
-        <q-select v-model="thang" :options="thangOptions" emit-value map-options label="Tháng" filled dense style="width:140px" />
+        <q-select v-model="thang" :options="thangOptions" emit-value map-options label="Tháng (gỗ tròn)" filled dense style="width:160px" />
       </div>
       <div class="col-auto">
-        <q-input v-model.number="nam" type="number" label="Năm" filled dense style="width:100px" />
+        <q-input v-model.number="nam" type="number" label="Năm (gỗ tròn)" filled dense style="width:120px" />
+      </div>
+      <div class="col-auto">
+        <q-select v-model="thangXe" :options="thangOptions" emit-value map-options label="Tháng gỗ xẻ" filled dense clearable style="width:160px" hint="Mặc định = Tháng gỗ tròn" />
+      </div>
+      <div class="col-auto">
+        <q-input v-model.number="namXe" type="number" label="Năm gỗ xẻ" filled dense clearable style="width:120px" />
       </div>
       <div class="col-auto">
         <q-select v-model="mancc" :options="nccOptions" option-value="code" option-label="label" emit-value map-options label="Xưởng xẻ" filled dense style="min-width:300px" use-input @filter="filterNcc" />
@@ -309,6 +315,8 @@ export default {
     return {
       thang: 1,
       nam: 2025,
+      thangXe: null,
+      namXe: null,
       mancc: "HKP",
       source: "woodsland",
       sourceOptions: [
@@ -444,7 +452,12 @@ export default {
         this.nccAddress = ncc && ncc.dia_chi ? ncc.dia_chi : "";
 
         const { data } = await axios.get(`http://${this.host()}:2003/api/v1/ghep-lo-go/ghep`, {
-          params: { thang: this.thang, nam: this.nam, mancc: this.mancc, source: this.source },
+          params: {
+            thang: this.thang, nam: this.nam,
+            thang_xe: this.thangXe || this.thang,
+            nam_xe: this.namXe || this.nam,
+            mancc: this.mancc, source: this.source,
+          },
         });
         if (data && data.meta && data.meta.success) {
           this.data = data.data;
