@@ -315,8 +315,8 @@ export default {
     return {
       thang: 1,
       nam: 2025,
-      thangXe: null,
-      namXe: null,
+      thangXe: new Date().getMonth() + 1,
+      namXe: new Date().getFullYear(),
       mancc: "HKP",
       source: "woodsland",
       sourceOptions: [
