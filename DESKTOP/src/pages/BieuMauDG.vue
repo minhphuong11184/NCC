@@ -171,7 +171,10 @@
           </tbody>
         </table>
 
-        <div class="bm-date q-mt-md italic">Ngày {{ ngayDGFmt.ngay }} tháng {{ ngayDGFmt.thang }} năm {{ ngayDGFmt.nam }}</div>
+        <div class="bm-date-row q-mt-md">
+          <div class="bm-date-spacer"></div>
+          <div class="bm-date-right italic">Ngày {{ ngayDGFmt.ngay }} tháng {{ ngayDGFmt.thang }} năm {{ ngayDGFmt.nam }}</div>
+        </div>
 
         <div class="sign-area q-mt-sm">
           <div class="sign-col">
@@ -204,7 +207,7 @@
         </div>
 
         <div class="bm-title">PHIẾU ĐÁNH GIÁ GIẤY TỜ NGUỒN GỐC GỖ</div>
-        <div class="bm-date center italic">Ngày {{ ngayDGFmt.ngay }} tháng {{ ngayDGFmt.thang }} năm {{ ngayDGFmt.nam }} (trước ngày ký hợp đồng)</div>
+        <div class="bm-date center italic">Ngày {{ ngayDGFmt.ngay }} tháng {{ ngayDGFmt.thang }} năm {{ ngayDGFmt.nam }}</div>
 
         <div class="bm-info q-mt-md">
           <div><b>Tên nhà cung cấp gỗ:</b> {{ lo.ten_ho }}</div>
@@ -272,7 +275,7 @@
         </div>
 
         <div class="bm-title">PHIẾU ĐÁNH GIÁ VÙNG RỦI RO NGUỒN GỐC GỖ</div>
-        <div class="bm-date center italic">Ngày {{ ngayDGFmt.ngay }} tháng {{ ngayDGFmt.thang }} năm {{ ngayDGFmt.nam }} (trước ngày ký hợp đồng)</div>
+        <div class="bm-date center italic">Ngày {{ ngayDGFmt.ngay }} tháng {{ ngayDGFmt.thang }} năm {{ ngayDGFmt.nam }}</div>
 
         <div class="bm-info q-mt-md">
           <div><b>Tên nhà cung cấp gỗ:</b> {{ lo.ten_ho }}</div>
@@ -667,7 +670,10 @@ export default {
             <td>Kết luận: Đây là nguồn nhập đủ điều kiện. Đề nghị triển khai ký hợp đồng &amp; nhập gỗ.</td>
           </tr>
         </table>
-        <p class="italic right">Ngày ${ngayDt.getDate()} tháng ${ngayDt.getMonth() + 1} năm ${ngayDt.getFullYear()}</p>
+        <table style="width:100%;margin-top:6pt"><tr>
+          <td style="width:50%"></td>
+          <td style="width:50%;text-align:center;font-style:italic">Ngày ${ngayDt.getDate()} tháng ${ngayDt.getMonth() + 1} năm ${ngayDt.getFullYear()}</td>
+        </tr></table>
         ${this.wordSign("Đại diện nhà cung cấp", lo.ten_ho || "", this.xuongTen, this.xuongNguoiDD || "………………………")}
       </div>`;
     },
@@ -686,7 +692,7 @@ export default {
       return `<div class="compact">
         ${this.wordHeader(this.bmCode("BM03"))}
         <p class="title">PHIẾU ĐÁNH GIÁ GIẤY TỜ NGUỒN GỐC GỖ</p>
-        <p class="subtitle">Ngày ${ngayDt.getDate()} tháng ${ngayDt.getMonth() + 1} năm ${ngayDt.getFullYear()} (trước ngày ký hợp đồng)</p>
+        <p class="subtitle">Ngày ${ngayDt.getDate()} tháng ${ngayDt.getMonth() + 1} năm ${ngayDt.getFullYear()}</p>
         ${this.wordInfoNCC(lo)}
         <p class="section">1. Kiểm tra các hồ sơ gồm:</p>
         <table class="tbl">
@@ -716,7 +722,7 @@ export default {
       return `
         ${this.wordHeader(this.bmCode("BM05"))}
         <p class="title">PHIẾU ĐÁNH GIÁ VÙNG RỦI RO NGUỒN GỐC GỖ</p>
-        <p class="subtitle">Ngày ${ngayDt.getDate()} tháng ${ngayDt.getMonth() + 1} năm ${ngayDt.getFullYear()} (trước ngày ký hợp đồng)</p>
+        <p class="subtitle">Ngày ${ngayDt.getDate()} tháng ${ngayDt.getMonth() + 1} năm ${ngayDt.getFullYear()}</p>
         ${this.wordInfoNCC(lo)}
         <p class="section">1. Kiểm tra hồ sơ nguồn gốc gỗ</p>
         <p class="indent"><b>Khu vực khai thác:</b> ${e(dc)}</p>
@@ -948,7 +954,8 @@ export default {
       ws.getRow(r).height = Math.max(80, lots.length * 18 + 40);
       r += 2;
       const dt = this.ngayDGForLo(lo);
-      this.setCell(ws, `A${r}`, `Ngày ${dt.getDate()} tháng ${dt.getMonth() + 1} năm ${dt.getFullYear()}`, { merge: `J${r}`, italic: true, right: true });
+      // Ngày căn giữa trên cột ký bên phải (F:J), khớp với cột công ty
+      this.setCell(ws, `F${r}`, `Ngày ${dt.getDate()} tháng ${dt.getMonth() + 1} năm ${dt.getFullYear()}`, { merge: `J${r}`, italic: true, center: true });
       r += 2;
       r = this.buildSign(ws, r, "Đại diện nhà cung cấp", lo.ten_ho || "", this.xuongTen, this.xuongNguoiDD || "………………………");
       return r;
@@ -961,7 +968,7 @@ export default {
       ws.getRow(r).height = 24;
       r++;
       const dt = this.ngayDGForLo(lo);
-      this.setCell(ws, `A${r}`, `Ngày ${dt.getDate()} tháng ${dt.getMonth() + 1} năm ${dt.getFullYear()} (trước ngày ký hợp đồng)`,
+      this.setCell(ws, `A${r}`, `Ngày ${dt.getDate()} tháng ${dt.getMonth() + 1} năm ${dt.getFullYear()}`,
         { merge: `J${r}`, italic: true, center: true });
       r += 2;
       r = this.buildInfoNCC(ws, r, lo);
@@ -1003,7 +1010,7 @@ export default {
       ws.getRow(r).height = 24;
       r++;
       const dt = this.ngayDGForLo(lo);
-      this.setCell(ws, `A${r}`, `Ngày ${dt.getDate()} tháng ${dt.getMonth() + 1} năm ${dt.getFullYear()} (trước ngày ký hợp đồng)`,
+      this.setCell(ws, `A${r}`, `Ngày ${dt.getDate()} tháng ${dt.getMonth() + 1} năm ${dt.getFullYear()}`,
         { merge: `J${r}`, italic: true, center: true });
       r += 2;
       r = this.buildInfoNCC(ws, r, lo);
@@ -1115,6 +1122,11 @@ export default {
 .bm-title { text-align: center; font-weight: bold; font-size: 16px; margin: 14px 0 6px; }
 .bm-date { text-align: center; font-size: 12px; margin-bottom: 6px; }
 .bm-date.italic { font-style: italic; }
+/* Ngày căn giữa trên cột ký bên phải (khớp sign-area) */
+.bm-date-row { display: flex; justify-content: space-around; }
+.bm-date-spacer { width: 45%; }
+.bm-date-right { width: 45%; text-align: center; font-size: 12px; }
+.bm-date-right.italic { font-style: italic; }
 .bm-section { font-weight: bold; margin-top: 10px; margin-bottom: 4px; }
 .bm-info > div { margin: 2px 0; }
 .bm-text { margin-left: 8px; }
