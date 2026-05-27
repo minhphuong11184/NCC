@@ -91,6 +91,8 @@ routers:
     endPoint: prod
   - path: /ghep-lo-go
     endPoint: prod
+  - path: /ton-lo-go
+    endPoint: prod
   - path: /xuong-xe
     endPoint: prod
   - path: /hop-dong

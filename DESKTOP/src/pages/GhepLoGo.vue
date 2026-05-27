@@ -541,12 +541,14 @@ export default {
             mancc: this.mancc,
             source: this.source,
             phieu: this.phieuList,
+            lo_go: (this.data && this.data.lo_go) || [],
           }
         );
         if (data && data.meta && data.meta.success) {
+          const tonMsg = data.data.ton_con_lai ? ` — ${data.data.ton_con_lai} lô còn tồn gỗ tròn` : "";
           this.$q.notify({
             type: "positive",
-            message: `Đã lưu ${data.data.so_phieu} phiếu / ${data.data.so_chi_tiet} chi tiết (xóa ${data.data.deleted} dòng cũ)`,
+            message: `Đã lưu ${data.data.so_phieu} phiếu / ${data.data.so_chi_tiet} chi tiết (xóa ${data.data.deleted} dòng cũ)${tonMsg}`,
             timeout: 5000,
           });
         } else {

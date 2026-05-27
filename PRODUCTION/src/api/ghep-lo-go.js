@@ -130,21 +130,66 @@ router.get('/ghep', async (req, res) => {
                 ORDER BY N.Lo_go
             `)
 
+        // 2b. Lấy TỒN gỗ tròn chuyển sang ĐÚNG kỳ này.
+        //     Tồn được lưu bởi kỳ trước với nhãn (thang+1) = chính kỳ này,
+        //     nên chỉ cần đọc đúng (thang, nam). Cộng vào gỗ tròn khả dụng.
+        const tonResult = await new mssql.Request()
+            .input('mancc', mancc)
+            .input('thang', thang)
+            .input('nam', nam)
+            .query(`
+                SELECT lo_go, kl_con_lai_tron, he_so,
+                       CAST(NULL AS NVARCHAR(255)) AS chung_chi
+                FROM [prod].[LO_GO_TON_TRON]
+                WHERE LTRIM(RTRIM(mancc)) = @mancc
+                  AND thang = @thang AND nam = @nam
+                  AND kl_con_lai_tron > 0.001
+            `)
+
         // 3. Ghép Lo_go vào chi tiết theo khối lượng
-        // Mỗi lô gỗ có kl_tong m3. Duyệt từng detail, trừ dần kl_tong.
-        // Khi hết lô này → sang lô tiếp theo.
-        // Hệ số quy đổi theo từng lô (nếu có) hoặc dùng heSo chung từ query
-        const loGos = loGoResult.recordset.map(l => {
-            const heSoLo = l.he_so_lo || heSo
-            return {
-                lo_go: l.Lo_go ? l.Lo_go.trim() : null,
-                kl_tron: l.kl_tong,
-                he_so: heSoLo,
-                kl_tong: Math.round(l.kl_tong / heSoLo * 10000) / 10000,
-                kl_con_lai: Math.round(l.kl_tong / heSoLo * 10000) / 10000,
+        // Mỗi lô gỗ có kl_tong m3 (tròn) khả dụng = NHAP kỳ này + TỒN kỳ trước.
+        // Duyệt từng detail, trừ dần (theo đơn vị xẻ = tròn / he_so).
+        // Hệ số quy đổi theo từng lô (nếu có) hoặc dùng heSo chung từ query.
+        const loMap = {}   // lo_go -> { kl_tron, he_so, chung_chi }
+        loGoResult.recordset.forEach(l => {
+            const key = l.Lo_go ? l.Lo_go.trim() : null
+            if (!key) return
+            loMap[key] = {
+                lo_go: key,
+                kl_tron: l.kl_tong || 0,
+                he_so: l.he_so_lo || heSo,
                 chung_chi: l.chung_chi ? l.chung_chi.trim() : null,
             }
         })
+        // Cộng tồn kỳ trước vào lô (tạo mới nếu lô không nhập kỳ này)
+        tonResult.recordset.forEach(t => {
+            const key = t.lo_go ? t.lo_go.trim() : null
+            if (!key) return
+            if (loMap[key]) {
+                loMap[key].kl_tron += (t.kl_con_lai_tron || 0)
+            } else {
+                loMap[key] = {
+                    lo_go: key,
+                    kl_tron: t.kl_con_lai_tron || 0,
+                    he_so: t.he_so || heSo,
+                    chung_chi: null,
+                }
+            }
+        })
+
+        const loGos = Object.values(loMap)
+            .sort((a, b) => (a.lo_go || '').localeCompare(b.lo_go || ''))
+            .map(l => {
+                const heSoLo = l.he_so || heSo
+                return {
+                    lo_go: l.lo_go,
+                    kl_tron: l.kl_tron,
+                    he_so: heSoLo,
+                    kl_tong: Math.round(l.kl_tron / heSoLo * 10000) / 10000,
+                    kl_con_lai: Math.round(l.kl_tron / heSoLo * 10000) / 10000,
+                    chung_chi: l.chung_chi,
+                }
+            })
 
         // Ghép theo KL: khi QC vượt KL còn lại của lô → SPLIT QC ra theo
         // tỉ lệ, phần 1 lấp đầy lô hiện tại, phần dư chuyển sang lô kế tiếp
@@ -244,7 +289,12 @@ router.get('/ghep', async (req, res) => {
 
         res.api.sendData({
             phieu: Object.values(phieuMap),
-            lo_go: loGos.map(l => ({ ...l, kl_con_lai: Math.round(l.kl_con_lai * 100) / 100 })),
+            lo_go: loGos.map(l => ({
+                ...l,
+                kl_con_lai: Math.round(l.kl_con_lai * 100) / 100,
+                // Tồn quy về m³ tròn = phần xẻ còn lại × he_so
+                kl_con_lai_tron: Math.round(l.kl_con_lai * (l.he_so || heSo) * 100) / 100,
+            })),
             tong_phieu: Object.keys(phieuMap).length,
             tong_detail: details.length,
             tong_lo: loGos.length,
@@ -436,6 +486,8 @@ router.post('/save-result', async (req, res) => {
         const sourceVal = req.body.source ? String(req.body.source).trim() : null
         const heSo = parseFloat(req.body.he_so) || null
         const phieu = Array.isArray(req.body.phieu) ? req.body.phieu : []
+        // Danh sách lô + tồn (gửi từ frontend, lấy từ kết quả ghép)
+        const loGoTon = Array.isArray(req.body.lo_go) ? req.body.lo_go : []
         if (!thang || !nam) return res.api.sendFail({ number: 4900, message: 'Thiếu tháng/năm' })
         if (!mancc) return res.api.sendFail({ number: 4900, message: 'Thiếu mã NCC' })
         if (!phieu.length) return res.api.sendFail({ number: 4900, message: 'Không có phiếu để lưu' })
@@ -509,9 +561,75 @@ router.post('/save-result', async (req, res) => {
         if (!totalDt) return res.api.sendFail({ number: 4900, message: 'Không có chi tiết để lưu' })
 
         const result = await new mssql.Request().bulk(table)
+
+        // 3. Lưu TỒN gỗ tròn → gắn nhãn KỲ SAU (thang+1) là kỳ sẽ tiêu thụ.
+        //    Kỳ sau ghép sẽ đọc đúng (thang, nam) này. Snapshot-replace theo
+        //    kỳ-sau để chạy lại ghép cùng kỳ là idempotent.
+        //    Bỏ qua nếu không có danh sách lô (vd load "Biên bản đã lưu" rồi
+        //    re-save) để tránh xóa nhầm tồn đã lưu trước đó.
+        let tonThang = thang + 1
+        let tonNam = nam
+        if (tonThang > 12) { tonThang = 1; tonNam = nam + 1 }
+
+        let tonSaved = 0
+        if (loGoTon.length) {
+        await new mssql.Request()
+            .input('thang', tonThang).input('nam', tonNam).input('mancc', mancc)
+            .query(`
+                DELETE FROM [prod].[LO_GO_TON_TRON]
+                WHERE thang = @thang AND nam = @nam
+                    AND LTRIM(RTRIM(mancc)) = @mancc
+            `)
+
+        const tonRows = loGoTon
+            .map(l => {
+                const heSoLo = parseFloat(l.he_so) || heSo || 2
+                // kl_con_lai từ frontend là đơn vị xẻ → quy về tròn
+                const conLaiTron = l.kl_con_lai_tron != null
+                    ? +l.kl_con_lai_tron
+                    : (l.kl_con_lai != null ? +l.kl_con_lai * heSoLo : 0)
+                return {
+                    lo_go: l.lo_go ? String(l.lo_go).trim() : null,
+                    kl_tron_goc: l.kl_tron != null ? +l.kl_tron : null,
+                    kl_con_lai_tron: Math.round((conLaiTron || 0) * 10000) / 10000,
+                    he_so: heSoLo,
+                }
+            })
+            // Chỉ lưu lô còn dư > 0.001 m³ tròn (đọc exact-month nên không cần
+            // ghi dòng 0 để đánh dấu).
+            .filter(l => l.lo_go && l.kl_con_lai_tron > 0.001)
+
+        if (tonRows.length) {
+            const tonTable = new mssql.Table('[prod].[LO_GO_TON_TRON]')
+            tonTable.create = false
+            tonTable.columns.add('lo_go', mssql.NVarChar(50), { nullable: false })
+            tonTable.columns.add('mancc', mssql.NVarChar(50), { nullable: false })
+            tonTable.columns.add('thang', mssql.Int, { nullable: false })
+            tonTable.columns.add('nam', mssql.Int, { nullable: false })
+            tonTable.columns.add('kl_tron_goc', mssql.Float, { nullable: true })
+            tonTable.columns.add('kl_con_lai_tron', mssql.Float, { nullable: false })
+            tonTable.columns.add('he_so', mssql.Float, { nullable: true })
+            tonRows.forEach(l => {
+                tonTable.rows.add(l.lo_go, mancc, tonThang, tonNam,
+                    l.kl_tron_goc, l.kl_con_lai_tron, l.he_so)
+            })
+            const tonResult = await new mssql.Request().bulk(tonTable)
+            tonSaved = tonResult.rowsAffected
+        }
+        }
+
+        // Số lô THỰC SỰ còn tồn (>0) — để hiển thị, không tính dòng tồn = 0
+        const tonConLai = loGoTon.filter(l => {
+            const v = l.kl_con_lai_tron != null ? +l.kl_con_lai_tron
+                : (l.kl_con_lai != null ? +l.kl_con_lai * (parseFloat(l.he_so) || heSo || 2) : 0)
+            return l.lo_go && v > 0.001
+        }).length
+
         res.api.sendData({
             inserted: result.rowsAffected,
             deleted: delResult.rowsAffected[0] || 0,
+            ton_saved: tonSaved,
+            ton_con_lai: tonConLai,
             so_phieu: phieu.length,
             so_chi_tiet: totalDt,
             thang, nam, mancc,

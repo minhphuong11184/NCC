@@ -45,6 +45,9 @@ api.use('/quan-ly-nguoi-dung', require('./quan-ly-nguoi-dung'))
 // Ghép lô gỗ vào phiếu Woodsland
 api.use('/ghep-lo-go', require('./ghep-lo-go'))
 
+// Tồn gỗ tròn theo lô (nhập tay / import Excel)
+api.use('/ton-lo-go', require('./ton-lo-go'))
+
 // Quản lý xưởng xẻ
 api.use('/xuong-xe', require('./xuong-xe'))
 

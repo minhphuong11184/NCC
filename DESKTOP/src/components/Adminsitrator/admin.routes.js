@@ -157,6 +157,11 @@ export const adminRoutes = [
     meta: { requiresAuth: true }
   },
   {
+    path: "/ton-lo-go",
+    component: () => import("pages/TonLoGo.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
     path: "/import-pnk-woodsland",
     component: () => import("pages/ImportPNKWoodsland.vue"),
     meta: { requiresAuth: true }
