@@ -74,8 +74,17 @@
       <dx-column data-field="he_so" caption="Hệ số (tròn/xẻ)"
         data-type="number" format="#,##0.##" :width="140" />
       <dx-column data-field="kl_tron_goc" caption="KL gốc lô (tham chiếu)"
-        data-type="number" format="#,##0.0000" :width="180" />
-      <dx-column data-field="ghi_chu" caption="Ghi chú" :min-width="160" />
+        data-type="number" format="#,##0.0000" :width="160" />
+      <dx-column data-field="so_bkls" caption="Số BKLS gốc" :width="130" />
+      <dx-column data-field="chu_rung" caption="Chủ rừng" :min-width="160" />
+      <dx-column data-field="khoang" caption="Khoảnh" :width="90" />
+      <dx-column data-field="lo" caption="Lô" :width="80" />
+      <dx-column data-field="dia_chi" caption="Địa chỉ" :min-width="180" />
+      <dx-column data-field="kd" caption="Kinh độ" :width="110" />
+      <dx-column data-field="vd" caption="Vĩ độ" :width="110" />
+      <dx-column data-field="chung_chi" caption="Số chứng chỉ" :width="140" />
+      <dx-column data-field="nhom_chung_chi" caption="Nhóm chứng chỉ" :width="160" />
+      <dx-column data-field="ghi_chu" caption="Ghi chú" :min-width="140" />
       <dx-summary>
         <dx-total-item column="_idx" summary-type="count" display-format="{0} lô" />
         <dx-total-item column="kl_con_lai_tron" summary-type="sum"
@@ -153,6 +162,15 @@ export default {
         kl_con_lai_tron: 0,
         he_so: 2,
         kl_tron_goc: null,
+        so_bkls: null,
+        chu_rung: null,
+        khoang: null,
+        lo: null,
+        dia_chi: null,
+        kd: null,
+        vd: null,
+        chung_chi: null,
+        nhom_chung_chi: null,
         ghi_chu: null,
       });
     },
@@ -175,7 +193,16 @@ export default {
           kl_con_lai_tron: toFloat(r[2]) || 0,
           he_so: toFloat(r[3]) || 2,
           kl_tron_goc: toFloat(r[4]),
-          ghi_chu: toStr(r[5]),
+          so_bkls: toStr(r[5]),
+          chu_rung: toStr(r[6]),
+          khoang: toStr(r[7]),
+          lo: toStr(r[8]),
+          dia_chi: toStr(r[9]),
+          kd: toStr(r[10]),
+          vd: toStr(r[11]),
+          chung_chi: toStr(r[12]),
+          nhom_chung_chi: toStr(r[13]),
+          ghi_chu: toStr(r[14]),
         });
       }
       this.rows = out;
@@ -184,20 +211,24 @@ export default {
     exportTemplate() {
       const aoa = [
         ["BẢNG NHẬP TỒN GỖ TRÒN THEO LÔ — Import vào hệ thống Ghép Lô Gỗ"],
-        ["Hướng dẫn: Điền Mã lô gỗ tròn + KL tồn gỗ tròn (m³) + Hệ số (mặc định 2). Tháng/Năm/Xưởng chọn trên giao diện khi import."],
+        ["Hướng dẫn: Điền Mã lô gỗ tròn + KL tồn (m³) + Hệ số (mặc định 2). Các cột nguồn gốc (Số BKLS gốc → Nhóm CC) chỉ cần điền với lô KHÔNG có sẵn trong hệ thống (để kê BKLS). Tháng/Năm/Xưởng chọn trên giao diện."],
         [],
-        ["STT", "Mã lô gỗ tròn", "KL tồn gỗ tròn (m³)", "Hệ số (tròn/xẻ)", "KL gốc lô (tham chiếu)", "Ghi chú"],
-        [1, "FSC100%26-006 S05", 40, 2, 100, "VD: lô còn 40 m³ tròn chưa xẻ"],
-        [2, "", 0, 2, null, ""],
-        [3, "", 0, 2, null, ""],
+        ["STT", "Mã lô gỗ tròn", "KL tồn gỗ tròn (m³)", "Hệ số (tròn/xẻ)", "KL gốc lô (tham chiếu)",
+          "Số BKLS gốc", "Chủ rừng", "Khoảnh", "Lô", "Địa chỉ", "Kinh độ", "Vĩ độ", "Số chứng chỉ", "Nhóm chứng chỉ", "Ghi chú"],
+        [1, "FSC100%26-006 S05", 40, 2, 100,
+          "12/2026/BKLS", "Nguyễn Văn A", "5", "12", "Thôn 1, Xã B, Huyện C", "105.123", "21.456", "FSC-C123456", "Nam Phát", "VD: lô còn 40 m³ tròn chưa xẻ"],
+        [2, "", 0, 2, null, "", "", "", "", "", "", "", "", "", ""],
+        [3, "", 0, 2, null, "", "", "", "", "", "", "", "", "", ""],
       ];
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws["!cols"] = [
-        { wch: 6 }, { wch: 26 }, { wch: 20 }, { wch: 16 }, { wch: 20 }, { wch: 30 },
+        { wch: 6 }, { wch: 26 }, { wch: 18 }, { wch: 14 }, { wch: 16 },
+        { wch: 16 }, { wch: 20 }, { wch: 9 }, { wch: 8 }, { wch: 28 },
+        { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 18 }, { wch: 24 },
       ];
       ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 14 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 14 } },
       ];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "TON_GO_TRON");
@@ -222,6 +253,15 @@ export default {
             kl_con_lai_tron: r.kl_con_lai_tron,
             he_so: r.he_so,
             kl_tron_goc: r.kl_tron_goc,
+            so_bkls: r.so_bkls,
+            chu_rung: r.chu_rung,
+            khoang: r.khoang,
+            lo: r.lo,
+            dia_chi: r.dia_chi,
+            kd: r.kd,
+            vd: r.vd,
+            chung_chi: r.chung_chi,
+            nhom_chung_chi: r.nhom_chung_chi,
             ghi_chu: null,
           }));
           this.fileName = "";
@@ -256,6 +296,15 @@ export default {
             kl_con_lai_tron: r.kl_con_lai_tron,
             he_so: r.he_so,
             kl_tron_goc: r.kl_tron_goc,
+            so_bkls: r.so_bkls,
+            chu_rung: r.chu_rung,
+            khoang: r.khoang,
+            lo: r.lo,
+            dia_chi: r.dia_chi,
+            kd: r.kd,
+            vd: r.vd,
+            chung_chi: r.chung_chi,
+            nhom_chung_chi: r.nhom_chung_chi,
           })),
         };
         const { data } = await axios.post(

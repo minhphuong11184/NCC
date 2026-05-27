@@ -297,10 +297,10 @@
         <p>- Thông tin về lô khai thác(8):</p>
         <table class="tbl tbl-source">
           <tr v-for="(g, gi) in loKhaiThacList" :key="'kt-'+gi">
+            <td>Khoảnh: <b>{{ g.khoang || '…' }}</b></td>
+            <td>Lô: <b>{{ g.lo || '…' }}</b></td>
             <td>KĐ: <b>{{ g.kd || '………' }}</b></td>
             <td>VĐ: <b>{{ g.vd || '………' }}</b></td>
-            <td></td>
-            <td></td>
           </tr>
         </table>
         <p>- Thông tin khác có liên quan (nếu có): Số lô gỗ xẻ</p>
@@ -453,7 +453,8 @@ export default {
         const key = (d.lo_go_tron || "") + "|" + (d.chu_rung || "");
         if (seen.has(key)) return;
         seen.add(key);
-        const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
+        const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ")
+          || d.ton_dia_chi || "";
         out.push({
           so_bkls: d.so_bkls,
           chu_rung: d.chu_rung,
@@ -465,17 +466,21 @@ export default {
       });
       return out;
     },
-    /** Mục 3 — Lô khai thác: list (KĐ, VĐ) unique theo lo_go_tron */
+    /**
+     * Mục 8 — Lô khai thác: group theo (khoảnh, lô), kèm KĐ/VĐ.
+     * Chỉ đưa tọa độ vào BKLS khi lô khai thác CÓ khoảnh (yêu cầu nghiệp vụ:
+     * tọa độ phải gắn với khoảnh/lô cụ thể).
+     */
     loKhaiThacList() {
       if (!this.currentPhieu) return [];
       const seen = new Set();
       const out = [];
       (this.currentPhieu.chi_tiet || []).forEach(d => {
-        const key = (d.kd || "") + "|" + (d.vd || "");
-        if (!d.kd && !d.vd) return;
+        if (!d.khoang) return;                 // phải có khoảnh mới kê
+        const key = (d.khoang || "") + "|" + (d.lo || "");
         if (seen.has(key)) return;
         seen.add(key);
-        out.push({ kd: d.kd, vd: d.vd });
+        out.push({ khoang: d.khoang, lo: d.lo, kd: d.kd, vd: d.vd });
       });
       return out;
     },
@@ -846,17 +851,19 @@ export default {
         const k = (d.lo_go_tron || "") + "|" + (d.chu_rung || "");
         if (seenNG.has(k)) return;
         seenNG.add(k);
-        const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
+        const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ")
+          || d.ton_dia_chi || "";
         nguonGoc.push({ so_bkls: d.so_bkls, chu_rung: d.chu_rung, lo: d.lo, khoang: d.khoang, dia_chi: diaChi });
       });
+      // Mục 8: chỉ kê lô khai thác CÓ khoảnh, gắn KĐ/VĐ theo (khoảnh, lô)
       const seenKT = new Set();
       const loKT = [];
       (p.chi_tiet || []).forEach(d => {
-        if (!d.kd && !d.vd) return;
-        const k = (d.kd || "") + "|" + (d.vd || "");
+        if (!d.khoang) return;
+        const k = (d.khoang || "") + "|" + (d.lo || "");
         if (seenKT.has(k)) return;
         seenKT.add(k);
-        loKT.push({ kd: d.kd, vd: d.vd });
+        loKT.push({ khoang: d.khoang, lo: d.lo, kd: d.kd, vd: d.vd });
       });
       const seenLX = new Set();
       const loGoXe = [];
@@ -882,9 +889,10 @@ export default {
         </tr>`).join("");
       const ktRows = loKT.map(g => `
         <tr>
+          <td>Khoảnh: <b>${e(g.khoang || "…")}</b></td>
+          <td>Lô: <b>${e(g.lo || "…")}</b></td>
           <td>KĐ: <b>${e(g.kd || "………")}</b></td>
           <td>VĐ: <b>${e(g.vd || "………")}</b></td>
-          <td></td><td></td>
         </tr>`).join("");
       const lxLines = loGoXe.map(lx => `<p class="indent"><b>${e(lx)}</b></p>`).join("");
 

@@ -139,7 +139,8 @@ router.get('/ghep', async (req, res) => {
             .input('nam', nam)
             .query(`
                 SELECT lo_go, kl_con_lai_tron, he_so,
-                       CAST(NULL AS NVARCHAR(255)) AS chung_chi
+                       chung_chi, so_bkls, chu_rung, khoang, lo,
+                       dia_chi, kd, vd, nhom_chung_chi
                 FROM [prod].[LO_GO_TON_TRON]
                 WHERE LTRIM(RTRIM(mancc)) = @mancc
                   AND thang = @thang AND nam = @nam
@@ -150,7 +151,8 @@ router.get('/ghep', async (req, res) => {
         // Mỗi lô gỗ có kl_tong m3 (tròn) khả dụng = NHAP kỳ này + TỒN kỳ trước.
         // Duyệt từng detail, trừ dần (theo đơn vị xẻ = tròn / he_so).
         // Hệ số quy đổi theo từng lô (nếu có) hoặc dùng heSo chung từ query.
-        const loMap = {}   // lo_go -> { kl_tron, he_so, chung_chi }
+        const tr = v => (v == null ? null : String(v).trim() || null)
+        const loMap = {}   // lo_go -> { kl_tron, he_so, chung_chi, nguon_goc... }
         loGoResult.recordset.forEach(l => {
             const key = l.Lo_go ? l.Lo_go.trim() : null
             if (!key) return
@@ -158,21 +160,32 @@ router.get('/ghep', async (req, res) => {
                 lo_go: key,
                 kl_tron: l.kl_tong || 0,
                 he_so: l.he_so_lo || heSo,
-                chung_chi: l.chung_chi ? l.chung_chi.trim() : null,
+                chung_chi: tr(l.chung_chi),
+                // Nguồn gốc rỗng — lô có trong NHAP_GO_TRON, BKLS tự JOIN khi /list
+                nguon_goc: null,
             }
         })
-        // Cộng tồn kỳ trước vào lô (tạo mới nếu lô không nhập kỳ này)
+        // Cộng tồn kỳ trước vào lô (tạo mới nếu lô không nhập kỳ này).
+        // Tồn nhập tay mang theo nguồn gốc → giữ lại để carry sang kỳ sau.
         tonResult.recordset.forEach(t => {
             const key = t.lo_go ? t.lo_go.trim() : null
             if (!key) return
+            const ng = {
+                so_bkls: tr(t.so_bkls), chu_rung: tr(t.chu_rung),
+                khoang: tr(t.khoang), lo: tr(t.lo), dia_chi: tr(t.dia_chi),
+                kd: tr(t.kd), vd: tr(t.vd),
+                chung_chi: tr(t.chung_chi), nhom_chung_chi: tr(t.nhom_chung_chi),
+            }
             if (loMap[key]) {
                 loMap[key].kl_tron += (t.kl_con_lai_tron || 0)
+                if (!loMap[key].nguon_goc) loMap[key].nguon_goc = ng
             } else {
                 loMap[key] = {
                     lo_go: key,
                     kl_tron: t.kl_con_lai_tron || 0,
                     he_so: t.he_so || heSo,
-                    chung_chi: null,
+                    chung_chi: tr(t.chung_chi),
+                    nguon_goc: ng,
                 }
             }
         })
@@ -188,6 +201,7 @@ router.get('/ghep', async (req, res) => {
                     kl_tong: Math.round(l.kl_tron / heSoLo * 10000) / 10000,
                     kl_con_lai: Math.round(l.kl_tron / heSoLo * 10000) / 10000,
                     chung_chi: l.chung_chi,
+                    nguon_goc: l.nguon_goc,
                 }
             })
 
@@ -581,6 +595,7 @@ router.post('/save-result', async (req, res) => {
                     AND LTRIM(RTRIM(mancc)) = @mancc
             `)
 
+        const ts = v => (v == null ? null : String(v).trim() || null)
         const tonRows = loGoTon
             .map(l => {
                 const heSoLo = parseFloat(l.he_so) || heSo || 2
@@ -588,11 +603,22 @@ router.post('/save-result', async (req, res) => {
                 const conLaiTron = l.kl_con_lai_tron != null
                     ? +l.kl_con_lai_tron
                     : (l.kl_con_lai != null ? +l.kl_con_lai * heSoLo : 0)
+                const ng = l.nguon_goc || {}
                 return {
-                    lo_go: l.lo_go ? String(l.lo_go).trim() : null,
+                    lo_go: ts(l.lo_go),
                     kl_tron_goc: l.kl_tron != null ? +l.kl_tron : null,
                     kl_con_lai_tron: Math.round((conLaiTron || 0) * 10000) / 10000,
                     he_so: heSoLo,
+                    // Carry nguồn gốc (chỉ có với lô tồn nhập tay)
+                    so_bkls: ts(ng.so_bkls),
+                    chu_rung: ts(ng.chu_rung),
+                    khoang: ts(ng.khoang),
+                    lo: ts(ng.lo),
+                    dia_chi: ts(ng.dia_chi),
+                    kd: ts(ng.kd),
+                    vd: ts(ng.vd),
+                    chung_chi: ts(ng.chung_chi),
+                    nhom_chung_chi: ts(ng.nhom_chung_chi),
                 }
             })
             // Chỉ lưu lô còn dư > 0.001 m³ tròn (đọc exact-month nên không cần
@@ -609,9 +635,20 @@ router.post('/save-result', async (req, res) => {
             tonTable.columns.add('kl_tron_goc', mssql.Float, { nullable: true })
             tonTable.columns.add('kl_con_lai_tron', mssql.Float, { nullable: false })
             tonTable.columns.add('he_so', mssql.Float, { nullable: true })
+            tonTable.columns.add('so_bkls', mssql.NVarChar(100), { nullable: true })
+            tonTable.columns.add('chu_rung', mssql.NVarChar(200), { nullable: true })
+            tonTable.columns.add('khoang', mssql.NVarChar(50), { nullable: true })
+            tonTable.columns.add('lo', mssql.NVarChar(50), { nullable: true })
+            tonTable.columns.add('dia_chi', mssql.NVarChar(500), { nullable: true })
+            tonTable.columns.add('kd', mssql.NVarChar(50), { nullable: true })
+            tonTable.columns.add('vd', mssql.NVarChar(50), { nullable: true })
+            tonTable.columns.add('chung_chi', mssql.NVarChar(255), { nullable: true })
+            tonTable.columns.add('nhom_chung_chi', mssql.NVarChar(255), { nullable: true })
             tonRows.forEach(l => {
                 tonTable.rows.add(l.lo_go, mancc, tonThang, tonNam,
-                    l.kl_tron_goc, l.kl_con_lai_tron, l.he_so)
+                    l.kl_tron_goc, l.kl_con_lai_tron, l.he_so,
+                    l.so_bkls, l.chu_rung, l.khoang, l.lo, l.dia_chi,
+                    l.kd, l.vd, l.chung_chi, l.nhom_chung_chi)
             })
             const tonResult = await new mssql.Request().bulk(tonTable)
             tonSaved = tonResult.rowsAffected

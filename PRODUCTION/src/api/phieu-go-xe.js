@@ -34,13 +34,18 @@ router.get('/list', async (req, res) => {
                     G.CHUNG_CHI_GAN AS chung_chi_gan,
                     G.saved_at, G.source AS saved_source, G.he_so AS saved_he_so,
                     N.Lo_go_tron AS lo_go_tron,
-                    N.Chu_rung AS chu_rung,
-                    N.So_chung_chi AS chung_chi_cr,
-                    N.Khoang, N.Lo AS lo_kt, N.Dien_tich AS dien_tich,
+                    COALESCE(N.Chu_rung, T.chu_rung) AS chu_rung,
+                    COALESCE(N.So_chung_chi, T.chung_chi) AS chung_chi_cr,
+                    COALESCE(N.Khoang, T.khoang) AS Khoang,
+                    COALESCE(N.Lo, T.lo) AS lo_kt,
+                    N.Dien_tich AS dien_tich,
                     N.Thon, N.Xa, N.Huyen, N.cccd, N.dia_chi_cccd,
-                    N.So_BKLS AS so_bkls, N.KD AS kd, N.VD AS vd,
-                    N.nhom_chung_chi,
-                    N.Kl_tron_lo AS kl_tron_lo,
+                    T.dia_chi AS ton_dia_chi,
+                    COALESCE(N.So_BKLS, T.so_bkls) AS so_bkls,
+                    COALESCE(N.KD, T.kd) AS kd,
+                    COALESCE(N.VD, T.vd) AS vd,
+                    COALESCE(N.nhom_chung_chi, T.nhom_chung_chi) AS nhom_chung_chi,
+                    COALESCE(N.Kl_tron_lo, T.kl_tron_goc) AS kl_tron_lo,
                     H.he_so AS he_so_lo,
                     G.so_phieu_xe, G.so_bkls_xe
                 FROM [prod].[GHEP_LO_GO_RESULT] G
@@ -69,6 +74,10 @@ router.get('/list', async (req, res) => {
                 ) N ON LTRIM(RTRIM(G.LO_GO_GAN)) = LTRIM(RTRIM(N.Lo_go))
                 LEFT JOIN [prod].[LO_GO_HE_SO] H
                     ON LTRIM(RTRIM(G.LO_GO_GAN)) = LTRIM(RTRIM(H.lo_go))
+                LEFT JOIN [prod].[LO_GO_TON_TRON] T
+                    ON LTRIM(RTRIM(G.LO_GO_GAN)) = LTRIM(RTRIM(T.lo_go))
+                    AND T.thang = @thang AND T.nam = @nam
+                    AND LTRIM(RTRIM(T.mancc)) = @mancc
                 WHERE G.thang = @thang AND G.nam = @nam
                     AND LTRIM(RTRIM(G.mancc)) = @mancc
                 ORDER BY G.CREATED_AT, G.SOPHIEU, G.id
@@ -106,6 +115,7 @@ router.get('/list', async (req, res) => {
                 chung_chi_gan: d.chung_chi_gan ? d.chung_chi_gan.trim() : null,
                 khoang: d.Khoang, lo: d.lo_kt, dien_tich: d.dien_tich,
                 thon: d.Thon, xa: d.Xa, huyen: d.Huyen,
+                ton_dia_chi: d.ton_dia_chi ? String(d.ton_dia_chi).trim() : null,
                 cccd: d.cccd, dia_chi_cccd: d.dia_chi_cccd,
                 so_bkls: d.so_bkls ? d.so_bkls.trim() : null,
                 kd: d.kd ? String(d.kd).trim() : null,
