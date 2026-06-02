@@ -85,7 +85,9 @@ router.post('/phan-bo', async (req, res) => {
         let daDuChuyen = false // đã đạt giới hạn số chuyến
 
         for (const ho of recordset) {
-            const klTong = ho.kl_go || ho.kl_bang_ke || 0
+            // Chia theo KHỐI LƯỢNG THỰC TẾ về xưởng (kl_go), KHÔNG dùng bảng kê.
+            // Hộ chưa có KL thực tế (kl_go = 0) sẽ bỏ qua, chờ cân xong mới chia.
+            const klTong = ho.kl_go || 0
             if (klTong <= 0) continue
 
             if (daDuChuyen) {
@@ -725,7 +727,8 @@ router.post('/phan-bo-dot', async (req, res) => {
         let sttPhieu = sttOffset
 
         for (const ho of recordset) {
-            const klTong = ho.kl_go || ho.kl_bang_ke || 0
+            // Chia theo KHỐI LƯỢNG THỰC TẾ về xưởng (kl_go), KHÔNG dùng bảng kê.
+            const klTong = ho.kl_go || 0
             if (klTong <= 0) continue
 
             let klCacChuyen = []
