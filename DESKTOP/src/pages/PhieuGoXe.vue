@@ -1158,7 +1158,8 @@ export default {
           const row = ws.getRow(r);
           const kl = Number(d.kl_m3) || 0;
           const heSo = Number(d.he_so) || 2;
-          const quyDoi = Math.round(kl * heSo * 10000) / 10000;
+          // Giữ độ chính xác đầy đủ — không làm tròn 4 chữ số
+          const quyDoi = kl * heSo;
           const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
 
           const values = [
@@ -1194,9 +1195,10 @@ export default {
               horizontal: [1, 2, 5, 6, 7, 8, 11, 13, 17].includes(i) ? "center" :
                 ([9, 10, 14, 15].includes(i) ? "right" : "left") };
             cell.border = this.bThin();
-            if (i === 9 || i === 10 || i === 15) cell.numFmt = "#,##0.0000";
+            // KL (9), KL xe (10): giữ 4 số. Hệ số (14) + Gỗ tròn quy đổi (15): hiện đủ phần thập phân
+            if (i === 9 || i === 10) cell.numFmt = "#,##0.0000";
+            if (i === 14 || i === 15) cell.numFmt = "#,##0.##########";
             if (i === 8) cell.numFmt = "#,##0";
-            if (i === 14) cell.numFmt = "#,##0.0000";
           });
           row.height = 24;
           totalKL += kl;
@@ -1219,10 +1221,10 @@ export default {
       const cKL = totalRow.getCell(10);
       cKL.value = Math.round(totalKL * 10000) / 10000;
       cKL.numFmt = "#,##0.0000";
-      // Gỗ tròn quy đổi
+      // Gỗ tròn quy đổi — hiện đủ phần thập phân, không làm tròn 4 chữ số
       const cQD = totalRow.getCell(16);
-      cQD.value = Math.round(totalQuyDoi * 10000) / 10000;
-      cQD.numFmt = "#,##0.0000";
+      cQD.value = totalQuyDoi;
+      cQD.numFmt = "#,##0.##########";
 
       for (let c = 1; c <= cols.length; c++) {
         const cell = totalRow.getCell(c);
