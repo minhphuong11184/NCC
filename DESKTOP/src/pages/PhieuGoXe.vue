@@ -1098,6 +1098,8 @@ export default {
 
       const cols = [
         { key: "xuong",   header: "Xưởng xẻ",                  width: 16 },
+        { key: "sophieu", header: "Số phiếu",                  width: 14 },
+        { key: "bienso",  header: "Biển số xe",                width: 12 },
         { key: "ngay",    header: "Ngày nhập",                 width: 11 },
         { key: "logo",    header: "Lô gỗ nhập",                width: 20 },
         { key: "day",     header: "Dày",                       width: 7 },
@@ -1161,6 +1163,8 @@ export default {
 
           const values = [
             cfg.ten || "",
+            p.SOPHIEU || "",
+            p.BIENSOXE || "",
             this.fmtDate(p.CREATED_AT),
             d.lo_go_xe || "",
             d.dt_day || "",
@@ -1184,13 +1188,15 @@ export default {
             const cell = row.getCell(i + 1);
             cell.value = v;
             cell.font = { name: "Times New Roman", size: 10 };
+            // Center: sophieu(1), bienso(2), day(5), rong(6), dai(7), thanh(8), kho(11), thang(13), loai(17)
+            // Right:  kl(9), kl_xe(10), heso(14), quydoi(15)
             cell.alignment = { vertical: "middle", wrapText: true,
-              horizontal: [3, 4, 5, 6, 9, 11, 15].includes(i) ? "center" :
-                ([7, 8, 12, 13].includes(i) ? "right" : "left") };
+              horizontal: [1, 2, 5, 6, 7, 8, 11, 13, 17].includes(i) ? "center" :
+                ([9, 10, 14, 15].includes(i) ? "right" : "left") };
             cell.border = this.bThin();
-            if (i === 7 || i === 8 || i === 13) cell.numFmt = "#,##0.0000";
-            if (i === 6) cell.numFmt = "#,##0";
-            if (i === 12) cell.numFmt = "#,##0.0000";
+            if (i === 9 || i === 10 || i === 15) cell.numFmt = "#,##0.0000";
+            if (i === 8) cell.numFmt = "#,##0";
+            if (i === 14) cell.numFmt = "#,##0.0000";
           });
           row.height = 24;
           totalKL += kl;
@@ -1201,20 +1207,20 @@ export default {
         }
       }
 
-      // Total row
+      // Total row (sau khi thêm 2 cột sophieu/bienso, số thanh ở cột 9, kl cột 10, quy đổi cột 16)
       const totalRow = ws.getRow(r);
       this.setCell(ws, `A${r}`, "TỔNG CỘNG",
-        { merge: `F${r}`, bold: true, center: true, border: true, fill: "FFFFF2CC" });
+        { merge: `H${r}`, bold: true, center: true, border: true, fill: "FFFFF2CC" });
       // Số thanh
-      const cT = totalRow.getCell(7);
+      const cT = totalRow.getCell(9);
       cT.value = totalThanh;
       cT.numFmt = "#,##0";
       // KL
-      const cKL = totalRow.getCell(8);
+      const cKL = totalRow.getCell(10);
       cKL.value = Math.round(totalKL * 10000) / 10000;
       cKL.numFmt = "#,##0.0000";
       // Gỗ tròn quy đổi
-      const cQD = totalRow.getCell(14);
+      const cQD = totalRow.getCell(16);
       cQD.value = Math.round(totalQuyDoi * 10000) / 10000;
       cQD.numFmt = "#,##0.0000";
 
@@ -1225,8 +1231,8 @@ export default {
         cell.border = this.bThin();
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } };
       }
-      // Center for thanh/kl/quydoi
-      [7, 8, 14].forEach(c => { totalRow.getCell(c).alignment = { horizontal: "right", vertical: "middle" }; });
+      // Right-align for thanh/kl/quydoi
+      [9, 10, 16].forEach(c => { totalRow.getCell(c).alignment = { horizontal: "right", vertical: "middle" }; });
       totalRow.height = 24;
 
       // Auto-filter on header
