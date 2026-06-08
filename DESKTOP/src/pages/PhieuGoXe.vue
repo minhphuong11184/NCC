@@ -1164,18 +1164,22 @@ export default {
           loStats[lo].rows.push(d);
         }
       }
+      // Làm tròn giá trị thực sự đến 4 chữ số (không chỉ hiển thị) để cộng
+      // nhẩm các dòng trong lô bằng đúng tổng kl_tron_lo (cũng 4 chữ số).
+      const round4 = v => Math.round(v * 10000) / 10000;
       for (const lo in loStats) {
         const info = loStats[lo];
         if (info.kl_tron_lo > 0) {
+          const target = round4(info.kl_tron_lo);
           let assigned = 0;
           info.rows.forEach((d, i) => {
             const klRow = Number(d.kl_m3) || 0;
             const heSoRow = Number(d.he_so) || 2;
             if (i === info.rows.length - 1) {
-              d._quy_doi = info.kl_tron_lo - assigned;
+              d._quy_doi = round4(target - assigned);
             } else {
-              d._quy_doi = klRow * heSoRow;
-              assigned += d._quy_doi;
+              d._quy_doi = round4(klRow * heSoRow);
+              assigned = round4(assigned + d._quy_doi);
             }
           });
         }
@@ -1230,9 +1234,9 @@ export default {
               horizontal: [1, 2, 5, 6, 7, 8, 11, 13, 17].includes(i) ? "center" :
                 ([9, 10, 14, 15].includes(i) ? "right" : "left") };
             cell.border = this.bThin();
-            // KL (9), KL xe (10): giữ 4 số. Hệ số (14) + Gỗ tròn quy đổi (15): hiện đủ phần thập phân
-            if (i === 9 || i === 10) cell.numFmt = "#,##0.0000";
-            if (i === 14 || i === 15) cell.numFmt = "#,##0.##########";
+            // KL (9), KL xe (10), Gỗ tròn quy đổi (15): giữ 4 số. Hệ số (14): hiện đủ phần thập phân
+            if (i === 9 || i === 10 || i === 15) cell.numFmt = "#,##0.0000";
+            if (i === 14) cell.numFmt = "#,##0.##########";
             if (i === 8) cell.numFmt = "#,##0";
           });
           row.height = 24;
@@ -1256,10 +1260,10 @@ export default {
       const cKL = totalRow.getCell(10);
       cKL.value = Math.round(totalKL * 10000) / 10000;
       cKL.numFmt = "#,##0.0000";
-      // Gỗ tròn quy đổi — hiện đủ phần thập phân, không làm tròn 4 chữ số
+      // Gỗ tròn quy đổi — 4 chữ số sau dấu phẩy
       const cQD = totalRow.getCell(16);
       cQD.value = totalQuyDoi;
-      cQD.numFmt = "#,##0.##########";
+      cQD.numFmt = "#,##0.0000";
 
       for (let c = 1; c <= cols.length; c++) {
         const cell = totalRow.getCell(c);
