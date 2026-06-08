@@ -1146,6 +1146,41 @@ export default {
       });
       hdr.height = 42;
 
+      // Pre-pass: nhóm chi tiết theo lô gỗ. Giữ nguyên HỆ SỐ do người dùng nhập
+      // (d.he_so). Để Σ quy_đổi của lô khớp đúng kl_tron_lo, dòng CUỐI của mỗi
+      // lô được điều chỉnh = kl_tron_lo - tổng các dòng trước (hấp thụ sai số
+      // làm tròn float). Các dòng còn lại: quy_đổi = kl × he_so bình thường.
+      const loStats = {};
+      for (const p of this.phieuList) {
+        for (const d of (p.chi_tiet || [])) {
+          const lo = (d.lo_go_xe || "").trim();
+          if (!lo) continue;
+          if (!loStats[lo]) {
+            loStats[lo] = {
+              kl_tron_lo: Number(d.kl_tron_lo) || 0,
+              rows: [],
+            };
+          }
+          loStats[lo].rows.push(d);
+        }
+      }
+      for (const lo in loStats) {
+        const info = loStats[lo];
+        if (info.kl_tron_lo > 0) {
+          let assigned = 0;
+          info.rows.forEach((d, i) => {
+            const klRow = Number(d.kl_m3) || 0;
+            const heSoRow = Number(d.he_so) || 2;
+            if (i === info.rows.length - 1) {
+              d._quy_doi = info.kl_tron_lo - assigned;
+            } else {
+              d._quy_doi = klRow * heSoRow;
+              assigned += d._quy_doi;
+            }
+          });
+        }
+      }
+
       // Data rows
       const thangNhap = `Tháng ${String(this.thang).padStart(2, "0")}/${this.nam}`;
       let r = 4;
@@ -1158,8 +1193,8 @@ export default {
           const row = ws.getRow(r);
           const kl = Number(d.kl_m3) || 0;
           const heSo = Number(d.he_so) || 2;
-          // Giữ độ chính xác đầy đủ — không làm tròn 4 chữ số
-          const quyDoi = kl * heSo;
+          // Ưu tiên _quy_doi đã điều chỉnh (dòng cuối lô hấp thụ sai số float)
+          const quyDoi = d._quy_doi != null ? d._quy_doi : kl * heSo;
           const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
 
           const values = [
