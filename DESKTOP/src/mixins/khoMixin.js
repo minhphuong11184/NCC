@@ -3,9 +3,9 @@
  * Dùng chung cho GhepLoGo, ImportPNKWoodsland, v.v.
  */
 const KHO_MAP = {
-  YS:  { ten: "Kho Yên Sơn",   dia_chi: "Xã Yên Sơn - Tỉnh Tuyên Quang" },
-  YS1: { ten: "Kho Yên Sơn",   dia_chi: "Xã Yên Sơn - Tỉnh Tuyên Quang" },
-  TB:  { ten: "Kho Thái Bình", dia_chi: "Xã Thái Bình - Tỉnh Tuyên Quang" },
+  YS:  { ten: "Kho Yên Sơn",   dia_chi: "Cụm CN Thắng Quân, Xã Yên Sơn, Tỉnh Tuyên Quang" },
+  YS1: { ten: "Kho Yên Sơn",   dia_chi: "Cụm CN Thắng Quân, Xã Yên Sơn, Tỉnh Tuyên Quang" },
+  TB:  { ten: "Kho Thái Bình", dia_chi: "Thôn Chanh 1, Phường Nông Tiến, Tỉnh Tuyên Quang" },
 };
 
 export default {

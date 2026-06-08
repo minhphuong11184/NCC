@@ -274,7 +274,7 @@
         <div class="section-title">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</div>
         <p>- Tên tổ chức, cá nhân(4): <b>{{ WL.ten }}</b></p>
         <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CMND/HC(5): <b>{{ WL.mst }}</b></p>
-        <p>- Địa chỉ(6): <b>{{ WL.dia_chi }}</b></p>
+        <p>- Địa chỉ(6): <b>{{ noiDenDiaChi }}</b></p>
         <p>- Số chứng chỉ: <b>{{ WL.chung_chi }}</b>. Hiệu lực chứng chỉ: <b>{{ WL.hieu_luc }}</b>.</p>
 
         <!-- 3. Thông tin lâm sản -->
@@ -316,8 +316,8 @@
         <div class="section-title">5. Thông tin vận chuyển:</div>
         <p>Phương tiện vận chuyển, biển số xe: <b>{{ currentPhieu.BIENSOXE }}</b></p>
         <p>Thời gian vận chuyển: <b>01 ngày</b>; Từ ngày: <b>{{ fmtDate(currentPhieu.CREATED_AT) }}</b> &nbsp;&nbsp; Đến ngày: <b>{{ fmtDate(currentPhieu.CREATED_AT) }}</b></p>
-        <p>Vận chuyển từ: <b>{{ cfg.ten }}</b> &nbsp;&nbsp; Đến: <b>{{ WL.ten }}</b></p>
-        <p>Địa chỉ: <b>{{ cfg.dia_chi }}</b> &nbsp;&nbsp; <b>{{ WL.dia_chi }}</b></p>
+        <p>Vận chuyển từ: <b>{{ cfg.ten }}</b> &nbsp;&nbsp; - &nbsp;&nbsp; Đến: <b>{{ WL.ten }}</b></p>
+        <p>Địa chỉ: <b>{{ cfg.dia_chi }}</b> &nbsp;&nbsp; - &nbsp;&nbsp; <b>{{ noiDenDiaChi }}</b></p>
 
         <!-- 6. Hồ sơ -->
         <div class="section-title">6. Hồ sơ kèm theo (nếu có):</div>
@@ -428,6 +428,13 @@ export default {
         x => x.mancc_woodsland && String(x.mancc_woodsland).trim() === this.mancc
       );
       return found || {};
+    },
+    /** Địa chỉ nơi đến (Woodsland) — ăn theo MAKHO của phiếu hiện tại,
+     *  fallback Woodsland HQ nếu MAKHO không khớp kho nào. */
+    noiDenDiaChi() {
+      const ma = this.currentPhieu && this.currentPhieu.MAKHO;
+      const kho = this.getKhoConfig(ma);
+      return (kho && kho.dia_chi) || this.WL.dia_chi;
     },
     soBKLS() {
       if (!this.currentPhieu) return "___/____/BKLS";
@@ -895,6 +902,9 @@ export default {
           <td>VĐ: <b>${e(g.vd || "………")}</b></td>
         </tr>`).join("");
       const lxLines = loGoXe.map(lx => `<p class="indent"><b>${e(lx)}</b></p>`).join("");
+      // Địa chỉ nơi đến (Woodsland) — ăn theo MAKHO của phiếu
+      const khoNhanCfg = this.getKhoConfig(p.MAKHO);
+      const noiDenDc = (khoNhanCfg && khoNhanCfg.dia_chi) || this.WL.dia_chi;
 
       return `
         <table class="head head-2col">
@@ -927,7 +937,7 @@ export default {
         <p class="section-title">2. Thông tin tổ chức, cá nhân mua/nhận chuyển giao quyền sở hữu:</p>
         <p>- Tên tổ chức, cá nhân(4): <b>${e(this.WL.ten)}</b></p>
         <p>- Số GCN/MSDN/GPTL/ĐKHĐ/CMND/HC(5): <b>${e(this.WL.mst)}</b></p>
-        <p>- Địa chỉ(6): <b>${e(this.WL.dia_chi)}</b></p>
+        <p>- Địa chỉ(6): <b>${e(noiDenDc)}</b></p>
         <p>- Số chứng chỉ: <b>${e(this.WL.chung_chi)}</b>. Hiệu lực chứng chỉ: <b>${e(this.WL.hieu_luc)}</b>.</p>
 
         <p class="section-title">3. Thông tin về lâm sản:</p>
@@ -950,8 +960,8 @@ export default {
         <p class="section-title">5. Thông tin vận chuyển:</p>
         <p>Phương tiện vận chuyển, biển số xe: <b>${e(p.BIENSOXE || "")}</b></p>
         <p>Thời gian vận chuyển: <b>01 ngày</b>; Từ ngày: <b>${e(this.fmtDate(p.CREATED_AT))}</b> &nbsp; Đến ngày: <b>${e(this.fmtDate(p.CREATED_AT))}</b></p>
-        <p>Vận chuyển từ: <b>${e(cfg.ten || "")}</b> &nbsp; Đến: <b>${e(this.WL.ten)}</b></p>
-        <p>Địa chỉ: <b>${e(cfg.dia_chi || "")}</b> &nbsp; <b>${e(this.WL.dia_chi)}</b></p>
+        <p>Vận chuyển từ: <b>${e(cfg.ten || "")}</b> &nbsp; - &nbsp; Đến: <b>${e(this.WL.ten)}</b></p>
+        <p>Địa chỉ: <b>${e(cfg.dia_chi || "")}</b> &nbsp; - &nbsp; <b>${e(noiDenDc)}</b></p>
 
         <p class="section-title">6. Hồ sơ kèm theo (nếu có):</p>
 
@@ -1498,6 +1508,9 @@ export default {
       const tongThanh = (p.chi_tiet || []).reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
       const phIdx = typeof idx === "number" ? idx : this.phieuList.indexOf(p);
       const soBKLSStr = this.soBKLSByIdx(Math.max(0, phIdx));
+      // Địa chỉ nơi đến (Woodsland) — ăn theo MAKHO của phiếu
+      const khoNhanCfg = this.getKhoConfig(p.MAKHO);
+      const noiDenDc = (khoNhanCfg && khoNhanCfg.dia_chi) || this.WL.dia_chi;
 
       // Group nguồn gốc, lô khai thác, lô gỗ xẻ
       const seenNG = new Set(); const nguonGoc = [];
@@ -1558,7 +1571,7 @@ export default {
       [
         `- Tên: ${this.WL.ten}`,
         `- Số GCN/MSDN/GPTL/ĐKHĐ/CMND/HC: ${this.WL.mst}`,
-        `- Địa chỉ: ${this.WL.dia_chi}`,
+        `- Địa chỉ: ${noiDenDc}`,
         `- Số chứng chỉ: ${this.WL.chung_chi}. Hiệu lực chứng chỉ: ${this.WL.hieu_luc}.`,
       ].forEach(line => { this.setCell(ws, `A${r}`, line, { merge: `G${r}` }); r++; });
       r++;
@@ -1628,9 +1641,9 @@ export default {
         `Thời gian vận chuyển: 01 ngày;  Từ ngày: ${this.fmtDate(p.CREATED_AT)}  Đến ngày: ${this.fmtDate(p.CREATED_AT)}`,
         { merge: `G${r}` });
       r++;
-      this.setCell(ws, `A${r}`, `Vận chuyển từ: ${cfg.ten || ""}  Đến: ${this.WL.ten}`, { merge: `G${r}` });
+      this.setCell(ws, `A${r}`, `Vận chuyển từ: ${cfg.ten || ""}  -  Đến: ${this.WL.ten}`, { merge: `G${r}` });
       r++;
-      this.setCell(ws, `A${r}`, `Địa chỉ: ${cfg.dia_chi || ""}   ${this.WL.dia_chi}`, { merge: `G${r}` });
+      this.setCell(ws, `A${r}`, `Địa chỉ: ${cfg.dia_chi || ""}  -  ${noiDenDc}`, { merge: `G${r}` });
       r++;
 
       // === Mục 6 ===
