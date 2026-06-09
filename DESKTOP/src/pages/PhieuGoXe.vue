@@ -286,7 +286,7 @@
           <tr v-for="(g, gi) in nguonGocList" :key="'ng-'+gi">
             <td>Số BKLS: <b>{{ g.so_bkls || '………' }}</b></td>
             <td>Chủ rừng: <b>{{ g.chu_rung || '………' }}</b></td>
-            <td>Lô <b>{{ g.lo || '…' }}</b> khoảng <b>{{ g.khoang || '…' }}</b></td>
+            <td>Lô <b>{{ g.lo || '…' }}</b> khoảnh <b>{{ g.khoang || '…' }}</b></td>
             <td>Địa chỉ: <b>{{ g.dia_chi || '………' }}</b></td>
           </tr>
         </table>
@@ -891,7 +891,7 @@ export default {
         <tr>
           <td>Số BKLS: <b>${e(g.so_bkls || "………")}</b></td>
           <td>Chủ rừng: <b>${e(g.chu_rung || "………")}</b></td>
-          <td>Lô <b>${e(g.lo || "…")}</b> khoảng <b>${e(g.khoang || "…")}</b></td>
+          <td>Lô <b>${e(g.lo || "…")}</b> khoảnh <b>${e(g.khoang || "…")}</b></td>
           <td>Địa chỉ: <b>${e(g.dia_chi || "………")}</b></td>
         </tr>`).join("");
       const ktRows = loKT.map(g => `
@@ -1634,11 +1634,11 @@ export default {
       r++;
       this.setCell(ws, `A${r}`, "- Nguồn gốc(7): Số BKLS gốc + tên chủ rừng + lô khoảnh + địa chỉ", { merge: `G${r}` });
       r++;
-      // Nguồn gốc — 1 dòng / 1 lô (4 cột: BKLS | Chủ rừng | Lô khoảng | Địa chỉ)
+      // Nguồn gốc — 1 dòng / 1 lô (4 cột: BKLS | Chủ rừng | Lô khoảnh | Địa chỉ)
       nguonGoc.forEach(g => {
         this.setCell(ws, `A${r}`, `Số BKLS: ${g.so_bkls || "………"}`, { merge: `B${r}` });
         this.setCell(ws, `C${r}`, `Chủ rừng: ${g.chu_rung || "………"}`);
-        this.setCell(ws, `D${r}`, `Lô ${g.lo || "…"} khoảng ${g.khoang || "…"}`);
+        this.setCell(ws, `D${r}`, `Lô ${g.lo || "…"} khoảnh ${g.khoang || "…"}`);
         this.setCell(ws, `E${r}`, `Địa chỉ: ${g.dia_chi || "………"}`, { merge: `G${r}` });
         r++;
       });
