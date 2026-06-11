@@ -352,6 +352,8 @@ router.get('/auto-ca', async (req, res) => {
             }
             return best
         }
+        // Phần giao nhau (phút) giữa 2 khoảng [aS,aE] và [bS,bE]
+        const overlap = (aS, aE, bS, bE) => Math.max(0, Math.min(aE, bE) - Math.max(aS, bS))
         // Tính các trường dẫn xuất (giờ LV, làm thêm, trễ...) cho 1 ca
         const buildRow = (base, ca, checkIn, checkOut, punchCount) => {
             if (!ca) {
@@ -366,45 +368,40 @@ router.get('/auto-ca', async (req, res) => {
             }
             const checkInMin = minuteOfDay(checkIn)
             const checkOutMin = checkOut ? minuteOfDay(checkOut) : null
+            const tre_phut = Math.max(0, checkInMin - ca.giovao)
 
-            // workMinutes gross = khoảng cách quẹt đầu → quẹt cuối trong ca
-            let workMinutesGross = 0
+            let workMinutes = 0, lamThem = 0, mealtime = 0, workMinutesGross = 0
             if (checkOutMin !== null) {
+                let caGioRa = ca.giora
                 let co = checkOutMin
+                if (caGioRa < ca.giovao) caGioRa += 1440 // ca qua đêm
                 if (co < checkInMin) co += 1440
                 workMinutesGross = co - checkInMin
-            }
 
-            const mealtime = ca.mealtime || 0
-            let caGioRa = ca.giora
-            if (caGioRa < ca.giovao) caGioRa += 1440 // ca qua đêm
+                // Giờ làm chính thức = phần nằm trong khung ca [giờ vào, giờ ra]
+                // → đến sớm trước giờ vào KHÔNG được cộng; về muộn cắt tại giờ ra ca.
+                const regStart = Math.max(checkInMin, ca.giovao)
+                const regEnd = Math.min(co, caGioRa)
+                const regular = Math.max(0, regEnd - regStart)
 
-            let checkOutAdj = checkOutMin
-            if (checkOutAdj !== null && checkOutAdj < ca.giovao) checkOutAdj += 1440
-
-            // Phần vượt quá giờ ra ca
-            const vuotGioRa = (checkOutAdj !== null && workMinutesGross >= 5)
-                ? Math.max(0, checkOutAdj - caGioRa)
-                : 0
-
-            let lamThem = 0
-            let workMinutesNet = 0
-            if (workMinutesGross >= 5) {
-                if (vuotGioRa > 30) {
-                    // Quá 30 phút → tính làm thêm
-                    lamThem = vuotGioRa
-                    workMinutesNet = Math.max(0, workMinutesGross - mealtime - lamThem)
-                } else {
-                    // Dưới 30 phút → không tính làm thêm, giờ LV tính đến giờ ra ca
-                    const workToCaEnd = Math.max(0, caGioRa - checkInMin - mealtime)
-                    workMinutesNet = Math.min(workMinutesGross - mealtime, workToCaEnd)
-                    workMinutesNet = Math.max(0, workMinutesNet)
+                // Trừ giờ nghỉ: theo khung nghỉ [gionghi, gionghi1] nếu có,
+                // nếu không có thì trừ mealtime khi làm tới hết ca.
+                if (ca.gionghi != null && ca.gionghi1 != null) {
+                    mealtime = overlap(regStart, regEnd, ca.gionghi, ca.gionghi1)
+                } else if (ca.mealtime && regEnd >= caGioRa) {
+                    mealtime = Math.min(ca.mealtime, regular)
                 }
+                workMinutes = Math.max(0, regular - mealtime)
+
+                // Làm thêm = phần GIỜ RA vượt quá giờ ra ca trên 30 phút
+                // (chỉ dựa vào giờ ra, không liên quan giờ vào).
+                const vuotGioRa = Math.max(0, co - caGioRa)
+                if (vuotGioRa > 30) lamThem = vuotGioRa
             }
 
             return {
                 ...base, checkIn, checkOut, punchCount,
-                workMinutes: workMinutesNet,
+                workMinutes,
                 workMinutesGross,
                 lamThem,
                 mealtime,
@@ -414,7 +411,7 @@ router.get('/auto-ca', async (req, res) => {
                 ca_giovao: ca.giovao,
                 ca_giora: ca.giora,
                 ca_thoigianlamviec: ca.thoigianlamviec,
-                tre_phut: Math.max(0, checkInMin - ca.giovao),
+                tre_phut,
             }
         }
 
@@ -499,7 +496,11 @@ router.get('/auto-ca', async (req, res) => {
                 }
                 segs.sort((a, b) => (a.ca_giovao || 0) - (b.ca_giovao || 0))
                 // Gộp tất cả ca trong ngày thành 1 dòng (ca1_*, ca2_*)
-                result.push(combineRow(base, segs))
+                const row = combineRow(base, segs)
+                // Người đi 2 ca: làm tròn XUỐNG bội số 30 cho tổng phút làm thêm
+                // (vd 36→30, 59→30, 60→60, 65→60, 91→90)
+                row.lamThem = Math.floor((row.lamThem || 0) / 30) * 30
+                result.push(row)
             } else {
                 // 0 hoặc 1 ca gán → 1 dòng/ngày, khớp ca gần giờ vào nhất (như cũ)
                 const checkIn = punches[0]
