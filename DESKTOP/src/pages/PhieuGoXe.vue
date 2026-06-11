@@ -1168,18 +1168,30 @@ export default {
       }
       // Làm tròn giá trị thực sự đến 4 chữ số (không chỉ hiển thị) để cộng
       // nhẩm các dòng trong lô bằng đúng tổng kl_tron_lo (cũng 4 chữ số).
+      // CHỈ "absorb" sai số ở dòng cuối khi lô đã được lấp đầy thật sự
+      // (Σ kl_xe × he_so ≈ kl_tron_lo). Nếu lô chỉ ghép một phần,
+      // mỗi dòng = kl × he_so bình thường — KHÔNG ép dòng cuối phình lên.
       const round4 = v => Math.round(v * 10000) / 10000;
+      const FILLED_EPS = 0.01;  // ngưỡng coi như lô đầy (1 cm³)
       for (const lo in loStats) {
         const info = loStats[lo];
         if (info.kl_tron_lo > 0) {
+          const sumKlXe = info.rows.reduce(
+            (s, r) => s + (Number(r.kl_m3) || 0), 0);
+          const heSoLo = Number(info.rows[0].he_so) || 2;
+          const expected = sumKlXe * heSoLo;
+          const isFilled = Math.abs(expected - info.kl_tron_lo) < FILLED_EPS;
+
           const target = round4(info.kl_tron_lo);
           let assigned = 0;
           info.rows.forEach((d, i) => {
             const klRow = Number(d.kl_m3) || 0;
             const heSoRow = Number(d.he_so) || 2;
-            if (i === info.rows.length - 1) {
+            if (isFilled && i === info.rows.length - 1) {
+              // Lô đầy → dòng cuối absorb sai số float → Σ = kl_tron_lo
               d._quy_doi = round4(target - assigned);
             } else {
+              // Lô chưa đầy hoặc dòng không phải cuối → kl × he_so bình thường
               d._quy_doi = round4(klRow * heSoRow);
               assigned = round4(assigned + d._quy_doi);
             }
