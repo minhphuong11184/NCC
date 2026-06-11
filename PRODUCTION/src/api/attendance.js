@@ -297,23 +297,19 @@ router.get('/auto-ca', async (req, res) => {
         if (toDate) { request.input('toDate', toDate); where += ' AND CAST(L.punchTime AS DATE) <= @toDate' }
         if (userId) { request.input('userId', userId); where += ' AND L.userId = @userId' }
 
-        // 1. Lấy summary chấm công (checkIn, checkOut theo ngày)
-        const summaryResult = await request.query(`
+        // 1. Lấy TOÀN BỘ lượt quẹt (không gộp) để có thể tách theo từng ca
+        const punchResult = await request.query(`
             SELECT
                 L.userId,
+                L.punchTime,
                 CAST(L.punchTime AS DATE) AS workDate,
-                MIN(L.punchTime) AS checkIn,
-                MAX(L.punchTime) AS checkOut,
-                COUNT(*) AS punchCount,
-                DATEDIFF(MINUTE, MIN(L.punchTime), MAX(L.punchTime)) AS workMinutes,
                 A.LAST_NAME AS fullName,
                 A.ATTENDANCE_CODE AS attendanceCode,
                 A.ID AS accountId
             FROM prod.CHAMCONG_LOGS L
             LEFT JOIN base.ACCOUNT A ON A.ATTENDANCE_CODE = L.userId
             ${where}
-            GROUP BY L.userId, CAST(L.punchTime AS DATE), A.LAST_NAME, A.ATTENDANCE_CODE, A.ID
-            ORDER BY CAST(L.punchTime AS DATE) DESC, MIN(L.punchTime) ASC
+            ORDER BY L.userId, L.punchTime ASC
         `)
 
         // 2. Lấy tất cả ca làm việc
@@ -338,83 +334,196 @@ router.get('/auto-ca', async (req, res) => {
             caByAccount[r.account_id].push(r)
         })
 
-        // 4. Với mỗi ngày/user: ưu tiên nhóm ca đã gán, nếu không có → dùng tất cả ca
-        const result = summaryResult.recordset.map(row => {
-            if (!row.checkIn) {
-                return { ...row, ca_id: null, ca_ma: null, ca_ten: null, ca_giovao: null, ca_giora: null }
+        // ── Helpers ───────────────────────────────────────────────────────
+        // Phút trong ngày (dùng UTC vì DB lưu giờ local dạng UTC)
+        const minuteOfDay = dt => {
+            const d = new Date(dt)
+            return d.getUTCHours() * 60 + d.getUTCMinutes()
+        }
+        // Khoảng cách (phút) từ 1 lượt quẹt tới khung giờ [giovao, giora] của ca
+        // (0 nếu nằm trong khung; xử lý cả ca qua đêm)
+        const caDistance = (min, ca) => {
+            let lo = ca.giovao, hi = ca.giora
+            if (hi < lo) hi += 1440 // ca qua đêm
+            let best = Infinity
+            for (const m of [min, min + 1440]) {
+                const d = m < lo ? lo - m : (m > hi ? m - hi : 0)
+                if (d < best) best = d
             }
-
-            const userCas = caByAccount[row.accountId]
-            const danhSachCa = (userCas && userCas.length) ? userCas : allCas
-
-            // checkIn phút trong ngày (dùng UTC vì DB lưu giờ local dạng UTC)
-            const checkInDate = new Date(row.checkIn)
-            const checkInMin = checkInDate.getUTCHours() * 60 + checkInDate.getUTCMinutes()
-
-            // Tìm ca có giovao gần checkIn nhất
-            let bestCa = null
-            let bestDiff = Infinity
-            for (const ca of danhSachCa) {
-                let diff = Math.abs(checkInMin - ca.giovao)
-                // Xử lý ca qua ngày (vd: ca 22:00, checkIn 22:15 → diff = 15)
-                if (diff > 720) diff = 1440 - diff
-                if (diff < bestDiff) {
-                    bestDiff = diff
-                    bestCa = ca
-                }
-            }
-
-            // Chỉ gán ca nếu checkIn cách giovao không quá 90 phút
-            if (bestCa && bestDiff <= 90) {
-                const mealtime = bestCa.mealtime || 0
-                const checkOutDate = row.checkOut ? new Date(row.checkOut) : null
-                const checkOutMin = checkOutDate ? checkOutDate.getUTCHours() * 60 + checkOutDate.getUTCMinutes() : null
-
-                // Tính giờ ra ca (xử lý ca qua ngày)
-                let caGioRa = bestCa.giora
-                if (caGioRa < bestCa.giovao) caGioRa += 1440 // ca qua ngày
-
-                let checkOutAdj = checkOutMin
-                if (checkOutAdj !== null && checkOutAdj < bestCa.giovao) checkOutAdj += 1440
-
-                // Tính phần vượt quá giờ ra ca
-                const vuotGioRa = (checkOutAdj !== null && row.workMinutes >= 5)
-                    ? Math.max(0, checkOutAdj - caGioRa)
-                    : 0
-
-                let lamThem = 0
-                let workMinutesNet = 0
-
-                if (row.workMinutes >= 5) {
-                    if (vuotGioRa > 30) {
-                        // Quá 30 phút → tính làm thêm
-                        lamThem = vuotGioRa
-                        workMinutesNet = Math.max(0, (row.workMinutes || 0) - mealtime - lamThem)
-                    } else {
-                        // Dưới 30 phút → không tính làm thêm, giờ LV tính đến giờ ra ca
-                        const workToCaEnd = Math.max(0, caGioRa - checkInMin - mealtime)
-                        workMinutesNet = Math.min(row.workMinutes - mealtime, workToCaEnd)
-                        workMinutesNet = Math.max(0, workMinutesNet)
-                    }
-                }
-
+            return best
+        }
+        // Tính các trường dẫn xuất (giờ LV, làm thêm, trễ...) cho 1 ca
+        const buildRow = (base, ca, checkIn, checkOut, punchCount) => {
+            if (!ca) {
+                const ci = minuteOfDay(checkIn)
+                let gross = 0
+                if (checkOut) { let co = minuteOfDay(checkOut); if (co < ci) co += 1440; gross = co - ci }
                 return {
-                    ...row,
-                    workMinutes: workMinutesNet,
-                    workMinutesGross: row.workMinutes,
-                    lamThem: lamThem,
-                    mealtime: mealtime,
-                    ca_id: bestCa.ca_id,
-                    ca_ma: bestCa.ma,
-                    ca_ten: bestCa.ten,
-                    ca_giovao: bestCa.giovao,
-                    ca_giora: bestCa.giora,
-                    ca_thoigianlamviec: bestCa.thoigianlamviec,
-                    tre_phut: Math.max(0, checkInMin - bestCa.giovao),
+                    ...base, checkIn, checkOut, punchCount, workMinutes: 0,
+                    workMinutesGross: gross, lamThem: 0, mealtime: 0, tre_phut: 0,
+                    ca_id: null, ca_ma: null, ca_ten: null, ca_giovao: null, ca_giora: null
+                }
+            }
+            const checkInMin = minuteOfDay(checkIn)
+            const checkOutMin = checkOut ? minuteOfDay(checkOut) : null
+
+            // workMinutes gross = khoảng cách quẹt đầu → quẹt cuối trong ca
+            let workMinutesGross = 0
+            if (checkOutMin !== null) {
+                let co = checkOutMin
+                if (co < checkInMin) co += 1440
+                workMinutesGross = co - checkInMin
+            }
+
+            const mealtime = ca.mealtime || 0
+            let caGioRa = ca.giora
+            if (caGioRa < ca.giovao) caGioRa += 1440 // ca qua đêm
+
+            let checkOutAdj = checkOutMin
+            if (checkOutAdj !== null && checkOutAdj < ca.giovao) checkOutAdj += 1440
+
+            // Phần vượt quá giờ ra ca
+            const vuotGioRa = (checkOutAdj !== null && workMinutesGross >= 5)
+                ? Math.max(0, checkOutAdj - caGioRa)
+                : 0
+
+            let lamThem = 0
+            let workMinutesNet = 0
+            if (workMinutesGross >= 5) {
+                if (vuotGioRa > 30) {
+                    // Quá 30 phút → tính làm thêm
+                    lamThem = vuotGioRa
+                    workMinutesNet = Math.max(0, workMinutesGross - mealtime - lamThem)
+                } else {
+                    // Dưới 30 phút → không tính làm thêm, giờ LV tính đến giờ ra ca
+                    const workToCaEnd = Math.max(0, caGioRa - checkInMin - mealtime)
+                    workMinutesNet = Math.min(workMinutesGross - mealtime, workToCaEnd)
+                    workMinutesNet = Math.max(0, workMinutesNet)
                 }
             }
 
-            return { ...row, ca_id: null, ca_ma: null, ca_ten: null, ca_giovao: null, ca_giora: null }
+            return {
+                ...base, checkIn, checkOut, punchCount,
+                workMinutes: workMinutesNet,
+                workMinutesGross,
+                lamThem,
+                mealtime,
+                ca_id: ca.ca_id,
+                ca_ma: ca.ma,
+                ca_ten: ca.ten,
+                ca_giovao: ca.giovao,
+                ca_giora: ca.giora,
+                ca_thoigianlamviec: ca.thoigianlamviec,
+                tre_phut: Math.max(0, checkInMin - ca.giovao),
+            }
+        }
+
+        // Gộp các ca trong cùng 1 ngày thành 1 DÒNG (ca1_*, ca2_*) + cộng dồn tổng
+        const combineRow = (base, segs) => {
+            segs = segs.filter(Boolean)
+            const sum = k => segs.reduce((s, x) => s + (x[k] || 0), 0)
+            const flat = (seg, i) => seg ? {
+                [`ca${i}_ma`]:       seg.ca_ma,
+                [`ca${i}_ten`]:      seg.ca_ten,
+                [`ca${i}_giovao`]:   seg.ca_giovao,
+                [`ca${i}_giora`]:    seg.ca_giora,
+                [`ca${i}_checkIn`]:  seg.checkIn,
+                [`ca${i}_checkOut`]: seg.workMinutesGross >= 5 ? seg.checkOut : null,
+                [`ca${i}_tre`]:      seg.tre_phut || 0,
+                [`ca${i}_workMinutes`]: seg.workMinutes || 0,
+            } : {}
+            const last = segs[segs.length - 1]
+            return {
+                ...base,
+                punchCount:       sum('punchCount'),
+                workMinutes:      sum('workMinutes'),
+                workMinutesGross: sum('workMinutesGross'),
+                lamThem:          sum('lamThem'),
+                mealtime:         sum('mealtime'),
+                tre_phut:         sum('tre_phut'),
+                ca_ma:  segs.map(s => s.ca_ma).filter(Boolean).join(', ') || null,
+                ca_ten: segs.map(s => s.ca_ten).filter(Boolean).join(', ') || null,
+                checkIn:  segs.length ? segs[0].checkIn : null,
+                checkOut: last ? (last.workMinutesGross >= 5 ? last.checkOut : null) : null,
+                shiftCount: segs.length,
+                ...flat(segs[0], 1),
+                ...flat(segs[1], 2),
+            }
+        }
+
+        // 4. Gộp lượt quẹt theo (user + ngày)
+        const groups = new Map()
+        for (const p of punchResult.recordset) {
+            const wd = new Date(p.workDate)
+            const dateKey = `${wd.getUTCFullYear()}-${wd.getUTCMonth() + 1}-${wd.getUTCDate()}`
+            const key = p.userId + '|' + dateKey
+            let g = groups.get(key)
+            if (!g) {
+                g = {
+                    userId: p.userId, workDate: p.workDate, fullName: p.fullName,
+                    attendanceCode: p.attendanceCode, accountId: p.accountId, punches: []
+                }
+                groups.set(key, g)
+            }
+            g.punches.push(p.punchTime)
+        }
+
+        // 5. Với mỗi nhóm: tách lượt quẹt theo ca đã gán
+        const result = []
+        for (const g of groups.values()) {
+            const base = {
+                userId: g.userId, workDate: g.workDate,
+                fullName: g.fullName, attendanceCode: g.attendanceCode,
+            }
+            const punches = g.punches.slice().sort((a, b) => new Date(a) - new Date(b))
+            const userCas = caByAccount[g.accountId]
+
+            if (userCas && userCas.length > 1) {
+                // Người làm NHIỀU ca → phân mỗi lượt quẹt vào ca gần nhất
+                const buckets = new Map() // ca_id → { ca, pts[] }
+                for (const pt of punches) {
+                    const min = minuteOfDay(pt)
+                    let bestCa = null, bestDiff = Infinity
+                    for (const ca of userCas) {
+                        const d = caDistance(min, ca)
+                        if (d < bestDiff) { bestDiff = d; bestCa = ca }
+                    }
+                    if (!buckets.has(bestCa.ca_id)) buckets.set(bestCa.ca_id, { ca: bestCa, pts: [] })
+                    buckets.get(bestCa.ca_id).pts.push(pt)
+                }
+                // Mỗi ca có quẹt → 1 phân đoạn (giờ vào = quẹt đầu, giờ ra = quẹt cuối)
+                const segs = []
+                for (const { ca, pts } of buckets.values()) {
+                    const checkOut = pts.length > 1 ? pts[pts.length - 1] : null
+                    segs.push(buildRow(base, ca, pts[0], checkOut, pts.length))
+                }
+                segs.sort((a, b) => (a.ca_giovao || 0) - (b.ca_giovao || 0))
+                // Gộp tất cả ca trong ngày thành 1 dòng (ca1_*, ca2_*)
+                result.push(combineRow(base, segs))
+            } else {
+                // 0 hoặc 1 ca gán → 1 dòng/ngày, khớp ca gần giờ vào nhất (như cũ)
+                const checkIn = punches[0]
+                const checkOut = punches.length > 1 ? punches[punches.length - 1] : null
+                const danhSachCa = (userCas && userCas.length) ? userCas : allCas
+                const checkInMin = minuteOfDay(checkIn)
+                let bestCa = null, bestDiff = Infinity
+                for (const ca of danhSachCa) {
+                    let diff = Math.abs(checkInMin - ca.giovao)
+                    if (diff > 720) diff = 1440 - diff // ca qua đêm
+                    if (diff < bestDiff) { bestDiff = diff; bestCa = ca }
+                }
+                // Chỉ gán ca nếu checkIn cách giovao không quá 90 phút
+                const seg = buildRow(base, (bestCa && bestDiff <= 90) ? bestCa : null,
+                    checkIn, checkOut, punches.length)
+                result.push(combineRow(base, [seg]))
+            }
+        }
+
+        // Sắp xếp: ngày giảm dần, trong ngày theo giờ vào tăng dần
+        result.sort((a, b) => {
+            const diff = new Date(b.workDate) - new Date(a.workDate)
+            if (diff !== 0) return diff
+            return new Date(a.checkIn) - new Date(b.checkIn)
         })
 
         res.api.sendData(result)

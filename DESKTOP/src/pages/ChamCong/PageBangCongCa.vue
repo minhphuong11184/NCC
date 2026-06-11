@@ -54,14 +54,13 @@
       <dx-column data-field="fullName" caption="Họ tên" :group-index="0" />
       <dx-column data-field="userId" caption="Mã CC" :width="70" />
       <dx-column data-field="workDateStr" caption="Ngày" :width="100" sort-order="asc" />
-      <dx-column data-field="ca_ma" caption="Ca" :width="80">
+      <dx-column data-field="ca_ma" caption="Ca" :width="90">
         <dx-header-filter :data-source="caFilterItems" />
       </dx-column>
-      <dx-column data-field="ca_ten" caption="Tên ca" :width="100" />
-      <dx-column data-field="checkInStr" caption="Giờ vào" :width="80" />
-      <dx-column data-field="checkOutStr" caption="Giờ ra" :width="80" />
-      <dx-column data-field="ca_giovao_str" caption="Ca vào" :width="80" css-class="text-grey-6" />
-      <dx-column data-field="ca_giora_str" caption="Ca ra" :width="80" css-class="text-grey-6" />
+      <dx-column data-field="vao1Str" caption="Vào ca 1" :width="80" />
+      <dx-column data-field="ra1Str" caption="Ra ca 1" :width="80" />
+      <dx-column data-field="vao2Str" caption="Vào ca 2" :width="80" css-class="bg-blue-1" />
+      <dx-column data-field="ra2Str" caption="Ra ca 2" :width="80" css-class="bg-blue-1" />
       <dx-column data-field="tre_phut" caption="Trễ (phút)" :width="90" data-type="number"
         :calculate-cell-value="r => r.tre_phut > 0 ? r.tre_phut : ''"
         css-class="text-orange" />
@@ -157,10 +156,10 @@ export default {
             ...r,
             _key: r.userId + '_' + r.workDate + '_' + i,
             workDateStr: this.fmtDate(r.workDate),
-            checkInStr: this.fmtDateTime(r.checkIn),
-            checkOutStr: r.workMinutes >= 5 ? this.fmtDateTime(r.checkOut) : "",
-            ca_giovao_str: this.fmtTime(r.ca_giovao),
-            ca_giora_str: this.fmtTime(r.ca_giora),
+            vao1Str: this.fmtDateTime(r.ca1_checkIn),
+            ra1Str:  r.ca1_checkOut ? this.fmtDateTime(r.ca1_checkOut) : "",
+            vao2Str: r.ca2_checkIn  ? this.fmtDateTime(r.ca2_checkIn)  : "",
+            ra2Str:  r.ca2_checkOut ? this.fmtDateTime(r.ca2_checkOut) : "",
             workHoursStr: this.fmtWorkHours(r.workMinutes),
             lamThem: r.lamThem || 0,
             lamThemStr: r.lamThem > 0 ? this.fmtWorkHours(r.lamThem) : "",
@@ -180,11 +179,10 @@ export default {
         "Họ tên": r.fullName,
         "Ngày": r.workDateStr,
         "Ca": r.ca_ma || "",
-        "Tên ca": r.ca_ten || "",
-        "Giờ vào": r.checkInStr,
-        "Giờ ra": r.checkOutStr,
-        "Ca vào": r.ca_giovao_str,
-        "Ca ra": r.ca_giora_str,
+        "Vào ca 1": r.vao1Str,
+        "Ra ca 1": r.ra1Str,
+        "Vào ca 2": r.vao2Str,
+        "Ra ca 2": r.ra2Str,
         "Trễ (phút)": r.tre_phut > 0 ? r.tre_phut : "",
         "Nghỉ (phút)": r.mealtime > 0 ? r.mealtime : "",
         "Phút LV": r.workMinutes,
