@@ -238,81 +238,48 @@ router.get('/ghep', async (req, res) => {
                 return
             }
 
-            // Tách QC theo SỐ THANH NGUYÊN (không tách thanh lẻ).
-            // Mỗi thanh có cùng thể tích = day×rong×cao/1e9 (m³).
-            // Lô được lấp đầy bằng số thanh nguyên — slack < 1 thanh trên lô
-            // sẽ được hấp thụ ở Excel (dòng cuối lô).
-            if (tongThanhRow > 0) {
-                const klPerThanh = klRow / tongThanhRow
-                let remainingThanh = tongThanhRow
-                while (remainingThanh > 0 && loIdx < loGos.length) {
-                    const lo = loGos[loIdx]
-                    if (lo.kl_con_lai <= EPS) { loIdx++; continue }
+            // Tách QC theo KL: chia tỉ lệ kl_part vào lô, lấp đầy lô tối đa.
+            // tong_thanh chia tỉ lệ theo kl_part / klRow (chấp nhận thanh lẻ
+            // để lấp đầy lô gỗ tròn chính xác — Σ kl_xe của lô = kl_tron/he_so).
+            let remaining = klRow
+            while (remaining > EPS && loIdx < loGos.length) {
+                const lo = loGos[loIdx]
+                if (lo.kl_con_lai <= EPS) { loIdx++; continue }
 
-                    // Số thanh tối đa lô có thể chứa (làm tròn xuống, không vượt)
-                    const maxThanhLo = Math.floor(lo.kl_con_lai / klPerThanh + 1e-9)
-                    if (maxThanhLo <= 0) {
-                        // Lô không đủ chỗ cho 1 thanh → để slack, sang lô kế
-                        loIdx++
-                        continue
-                    }
-                    const thanhPart = Math.min(remainingThanh, maxThanhLo)
-                    const klPart = thanhPart * klPerThanh
+                const klPart = Math.min(remaining, lo.kl_con_lai)
+                const ratio = klRow > 0 ? klPart / klRow : 1
+                const thanhPart = tongThanhRow > 0
+                    ? Math.round(tongThanhRow * ratio * 100) / 100
+                    : 0
 
-                    details.push({
-                        ...trimmed,
-                        kl_m3: Math.round(klPart * 10000) / 10000,
-                        lo_go: lo.lo_go,
-                        chung_chi: lo.chung_chi,
-                        tong_thanh: thanhPart,           // số nguyên
-                        is_split: thanhPart < tongThanhRow,
-                    })
+                details.push({
+                    ...trimmed,
+                    kl_m3: Math.round(klPart * 10000) / 10000,
+                    lo_go: lo.lo_go,
+                    chung_chi: lo.chung_chi,
+                    tong_thanh: thanhPart,
+                    is_split: klPart < klRow - EPS || remaining < klRow - EPS,
+                })
 
-                    lo.kl_con_lai = Math.round((lo.kl_con_lai - klPart) * 10000) / 10000
-                    remainingThanh -= thanhPart
-                    if (lo.kl_con_lai <= EPS) loIdx++
-                }
+                lo.kl_con_lai = Math.round((lo.kl_con_lai - klPart) * 10000) / 10000
+                remaining = Math.round((remaining - klPart) * 10000) / 10000
+                if (lo.kl_con_lai <= EPS) loIdx++
+            }
 
-                // Hết lô nhưng còn thanh dư → đẩy không gán
-                if (remainingThanh > 0) {
-                    details.push({
-                        ...trimmed,
-                        kl_m3: Math.round(remainingThanh * klPerThanh * 10000) / 10000,
-                        lo_go: null,
-                        chung_chi: null,
-                        tong_thanh: remainingThanh,
-                        is_split: true,
-                    })
-                }
-            } else {
-                // Trường hợp thiếu thông tin số thanh — fallback chia theo KL như cũ
-                let remaining = klRow
-                while (remaining > EPS && loIdx < loGos.length) {
-                    const lo = loGos[loIdx]
-                    if (lo.kl_con_lai <= EPS) { loIdx++; continue }
-                    const klPart = Math.min(remaining, lo.kl_con_lai)
-                    details.push({
-                        ...trimmed,
-                        kl_m3: Math.round(klPart * 10000) / 10000,
-                        lo_go: lo.lo_go,
-                        chung_chi: lo.chung_chi,
-                        tong_thanh: 0,
-                        is_split: klPart < klRow - EPS || remaining < klRow - EPS,
-                    })
-                    lo.kl_con_lai = Math.round((lo.kl_con_lai - klPart) * 10000) / 10000
-                    remaining = Math.round((remaining - klPart) * 10000) / 10000
-                    if (lo.kl_con_lai <= EPS) loIdx++
-                }
-                if (remaining > EPS) {
-                    details.push({
-                        ...trimmed,
-                        kl_m3: Math.round(remaining * 10000) / 10000,
-                        lo_go: null,
-                        chung_chi: null,
-                        tong_thanh: 0,
-                        is_split: true,
-                    })
-                }
+            // Hết lô nhưng QC vẫn còn → đẩy phần dư không gán lô
+            if (remaining > EPS) {
+                const ratio = klRow > 0 ? remaining / klRow : 1
+                const thanhPart = tongThanhRow > 0
+                    ? Math.round(tongThanhRow * ratio * 100) / 100
+                    : 0
+                details.push({
+                    ...trimmed,
+                    kl_m3: Math.round(remaining * 10000) / 10000,
+                    lo_go: null,
+                    chung_chi: null,
+                    tong_thanh: thanhPart,
+                    is_split: true,
+                })
             }
         })
 

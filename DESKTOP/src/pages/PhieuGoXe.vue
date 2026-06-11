@@ -129,7 +129,7 @@
               <td>{{ d.dt_day }}</td>
               <td>{{ d.dt_rong }}</td>
               <td>{{ d.dt_cao }}</td>
-              <td>{{ d.tong_thanh }}</td>
+              <td>{{ Math.ceil(Number(d.tong_thanh) || 0) }}</td>
               <td class="num">{{ fmtKL(d.kl_m3) }}</td>
               <td></td>
             </tr>
@@ -213,7 +213,7 @@
               <td>{{ d.dt_day }}</td>
               <td>{{ d.dt_rong }}</td>
               <td>{{ d.dt_cao }}</td>
-              <td>{{ d.tong_thanh }}</td>
+              <td>{{ Math.ceil(Number(d.tong_thanh) || 0) }}</td>
               <td class="num">{{ fmtKL(d.kl_m3) }}</td>
               <td></td>
             </tr>
@@ -448,8 +448,9 @@ export default {
     /** Tổng số thanh trong toàn bộ chi tiết */
     tongSoThanh() {
       if (!this.currentPhieu) return 0;
+      // Tổng theo số thanh đã làm tròn lên (khớp với hiển thị từng dòng)
       return (this.currentPhieu.chi_tiet || [])
-        .reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
+        .reduce((s, d) => s + Math.ceil(Number(d.tong_thanh) || 0), 0);
     },
     /** Mục 3 — Nguồn gốc: group theo (lo_go_tron, chu_rung), unique */
     nguonGocList() {
@@ -710,7 +711,7 @@ export default {
           <td>${e(d.dt_day || "")}</td>
           <td>${e(d.dt_rong || "")}</td>
           <td>${e(d.dt_cao || "")}</td>
-          <td>${e(d.tong_thanh || "")}</td>
+          <td>${Math.ceil(Number(d.tong_thanh) || 0) || ""}</td>
           <td class="num">${this.fmtKL(d.kl_m3)}</td>
           <td></td>
         </tr>`).join("");
@@ -785,7 +786,7 @@ export default {
           <td>${e(d.dt_day || "")}</td>
           <td>${e(d.dt_rong || "")}</td>
           <td>${e(d.dt_cao || "")}</td>
-          <td>${e(d.tong_thanh || "")}</td>
+          <td>${Math.ceil(Number(d.tong_thanh) || 0) || ""}</td>
           <td class="num">${this.fmtKL(d.kl_m3)}</td>
           <td></td>
         </tr>`).join("");
@@ -849,7 +850,8 @@ export default {
       const dt = p.CREATED_AT ? new Date(p.CREATED_AT) : new Date();
       const tong = this.fmtKL(p.tong_kl);
       const tongChu = volumeToWordsVN(p.tong_kl, 4);
-      const tongThanh = (p.chi_tiet || []).reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
+      const tongThanh = (p.chi_tiet || []).reduce(
+        (s, d) => s + Math.ceil(Number(d.tong_thanh) || 0), 0);
 
       // Group lo_go_tron + chu_rung
       const seenNG = new Set();
@@ -1210,7 +1212,7 @@ export default {
             d.dt_day || "",
             d.dt_rong || "",
             d.dt_cao || "",
-            d.tong_thanh || 0,
+            Math.ceil(Number(d.tong_thanh) || 0),
             kl,
             isFirstOfPhieu ? (Number(p.tong_kl) || 0) : "",
             p.MAKHO || "",
@@ -1242,7 +1244,8 @@ export default {
           row.height = 24;
           totalKL += kl;
           totalQuyDoi += quyDoi;
-          totalThanh += Number(d.tong_thanh) || 0;
+          // Tổng theo số thanh đã làm tròn lên (để khớp với hiển thị từng dòng)
+          totalThanh += Math.ceil(Number(d.tong_thanh) || 0);
           isFirstOfPhieu = false;
           r++;
         }
@@ -1369,7 +1372,7 @@ export default {
       (p.chi_tiet || []).forEach((d, i) => {
         const row = ws.getRow(r);
         const vals = [i + 1, d.dt_day, d.dt_rong, d.dt_cao,
-          d.SOBO, d.SOTHANH_BO, d.tong_thanh,
+          d.SOBO, d.SOTHANH_BO, Math.ceil(Number(d.tong_thanh) || 0),
           d.kl_m3 ? Number(d.kl_m3) : 0, d.lo_go_xe || ""];
         vals.forEach((v, ci) => {
           const c = row.getCell(ci + 1);
@@ -1379,7 +1382,7 @@ export default {
           c.border = this.bThin();
           if (ci === 7) c.numFmt = "#,##0.0000";
         });
-        totalThanh += Number(d.tong_thanh) || 0;
+        totalThanh += Math.ceil(Number(d.tong_thanh) || 0);
         row.height = 22;
         r++;
       });
@@ -1450,7 +1453,7 @@ export default {
       (p.chi_tiet || []).forEach((d, i) => {
         const row = ws.getRow(r);
         [i + 1, "Gỗ keo xẻ FSC 100%", d.chu_rung || "", d.lo_go_tron || "", d.lo_go_xe || "",
-          d.dt_day, d.dt_rong, d.dt_cao, d.tong_thanh,
+          d.dt_day, d.dt_rong, d.dt_cao, Math.ceil(Number(d.tong_thanh) || 0),
           d.kl_m3 ? Number(d.kl_m3) : 0, ""].forEach((v, ci) => {
             const c = row.getCell(ci + 1);
             c.value = v;
@@ -1517,7 +1520,7 @@ export default {
       (p.chi_tiet || []).forEach((d, i) => {
         const row = ws.getRow(r);
         [i + 1, d.chu_rung || "", d.lo_go_tron || "", d.lo_go_xe || "", "Gỗ keo xẻ FSC 100%",
-          "m³", d.dt_day, d.dt_rong, d.dt_cao, d.tong_thanh,
+          "m³", d.dt_day, d.dt_rong, d.dt_cao, Math.ceil(Number(d.tong_thanh) || 0),
           d.kl_m3 ? Number(d.kl_m3) : 0, ""].forEach((v, ci) => {
             const c = row.getCell(ci + 1);
             c.value = v;
@@ -1552,7 +1555,9 @@ export default {
     buildBlockBKLS(ws, p, cfg, start, idx) {
       let r = start;
       const dt = p.CREATED_AT ? new Date(p.CREATED_AT) : new Date();
-      const tongThanh = (p.chi_tiet || []).reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
+      // Tổng số thanh BKLS — tính theo số thanh đã làm tròn lên
+      const tongThanh = (p.chi_tiet || []).reduce(
+        (s, d) => s + Math.ceil(Number(d.tong_thanh) || 0), 0);
       const phIdx = typeof idx === "number" ? idx : this.phieuList.indexOf(p);
       const soBKLSStr = this.soBKLSByIdx(Math.max(0, phIdx));
       // Địa chỉ nơi đến (Woodsland) — ăn theo MAKHO của phiếu
