@@ -424,7 +424,7 @@ export default {
 
         // 4. Phân bổ Ngay_nhap: K chuyến/ngày = số xe (mỗi xe 1 chuyến/ngày).
         // Nếu vượt → 2K chuyến/ngày (1 xe 2 chuyến/ngày).
-        const ngayList = this.phanBoNgayNhap(this.phieu.length);
+        const ngayList = this.phanBoNgayNhap(this.phieu);
         if (!ngayList) {
           this.$q.notify({
             type: "negative",
@@ -592,63 +592,96 @@ export default {
      * - Nếu N > 2*K*W → quá tải, chia đều có cảnh báo
      * Trả về mảng N phần tử dạng ISO date string "YYYY-MM-DDT09:00:00".
      */
-    phanBoNgayNhap(N) {
+    /**
+     * Phân bổ ngày xe chạy cho từng chuyến, RÀNG BUỘC:
+     *   ngay_xe_chay >= ngay_hop_dong (của chính chuyến đó)
+     * Sắp xếp chuyến theo ngày hợp đồng (sớm trước), tham lam fill vào ngày
+     * làm việc đầu tiên có slot.
+     * Trả về mảng date string "YYYY-MM-DDT09:00:00" theo thứ tự gốc của phieuList.
+     */
+    phanBoNgayNhap(phieuList) {
+      const N = Array.isArray(phieuList) ? phieuList.length : 0;
+      if (!N) return null;
       const workdays = this.danhSachNgayLamViec();
       const W = workdays.length;
       const xeList = this.danhSachXe.filter(x => x.bien_so);
       const K = Math.max(1, xeList.length);
-      if (W === 0 || N === 0) return null;
+      if (W === 0) return null;
 
-      let perDayPlan = [];
+      // Capacity mỗi ngày (chia đều tối đa 2K/ngày, vượt thì chia rộng hơn)
+      const perDayCap = new Array(W).fill(0);
       if (N <= K * W) {
-        // Mỗi ngày K chuyến (mỗi xe 1 chuyến); ngày cuối có thể < K
+        // Mỗi ngày K chuyến
         let remaining = N;
-        while (remaining > 0) {
-          perDayPlan.push(Math.min(K, remaining));
+        for (let i = 0; i < W && remaining > 0; i++) {
+          perDayCap[i] = Math.min(K, remaining);
           remaining -= K;
         }
       } else if (N <= 2 * K * W) {
-        // Vượt mức K/ngày → một số ngày 2K chuyến (mỗi xe 2 chuyến), còn lại K chuyến
         const extra = N - K * W;
         const days2K = Math.ceil(extra / K);
-        const days1K = W - days2K;
-        for (let i = 0; i < days1K; i++) perDayPlan.push(K);
-        for (let i = 0; i < days2K; i++) perDayPlan.push(2 * K);
+        for (let i = 0; i < W; i++) perDayCap[i] = K;
+        for (let i = W - days2K; i < W; i++) perDayCap[i] = 2 * K;
       } else {
-        // Quá tải: chia đều base = ceil(N/W), cảnh báo
         const base = Math.floor(N / W);
         const rem = N % W;
-        for (let i = 0; i < W; i++) perDayPlan.push(base + (i < rem ? 1 : 0));
+        for (let i = 0; i < W; i++) perDayCap[i] = base + (i < rem ? 1 : 0);
         this.$q.notify({
           type: "warning",
-          message: `${N} chuyến / ${W} ngày làm việc với ${K} xe — vượt 2 chuyến/xe/ngày, phải chia cao hơn.`,
+          message: `${N} chuyến / ${W} ngày làm việc với ${K} xe — vượt 2 chuyến/xe/ngày`,
           timeout: 7000,
         });
       }
 
-      // Chọn ngày làm việc cho từng buổi theo cách A hoặc B
-      const numSessions = perDayPlan.length;
-      let chosenDays;
-      if (this.cachPhanNgay === "B" && numSessions > 1 && numSessions < W) {
-        // Mode B: rải đều cả tháng — step = floor(W/numSessions)
-        const step = Math.floor(W / numSessions);
-        chosenDays = [];
-        for (let i = 0; i < numSessions; i++) {
-          const idx = Math.min(W - 1, i * step);
-          chosenDays.push(workdays[idx]);
+      // Parse ngày hợp đồng
+      const parseHD = s => {
+        if (!s) return null;
+        const m1 = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (m1) return new Date(+m1[3], +m1[2] - 1, +m1[1]);
+        const m2 = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (m2) return new Date(+m2[1], +m2[2] - 1, +m2[3]);
+        const d = new Date(s);
+        return isNaN(d) ? null : d;
+      };
+      const wdDates = workdays.map(s => new Date(s));
+
+      // Sắp xếp chuyến theo ngày hợp đồng (sớm trước; null đẩy cuối)
+      const sorted = phieuList.map((p, i) => ({ i, hd: parseHD(p.ngay_hop_dong) }));
+      sorted.sort((a, b) => {
+        if (!a.hd && !b.hd) return a.i - b.i;
+        if (!a.hd) return 1;
+        if (!b.hd) return -1;
+        return a.hd - b.hd;
+      });
+
+      // Tham lam gán ngày làm việc đầu tiên >= ngày HĐ và còn slot
+      const usedPerDay = new Array(W).fill(0);
+      const result = new Array(N).fill(null);
+      let cantFit = 0;
+      for (const { i, hd } of sorted) {
+        let w = -1;
+        for (let j = 0; j < W; j++) {
+          if (hd && wdDates[j] < hd) continue;
+          if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
         }
-      } else {
-        // Mode A (mặc định): liên tiếp từ ngày đầu
-        chosenDays = workdays.slice(0, numSessions);
+        if (w === -1) {
+          // Không có ngày làm việc nào sau ngày HĐ + còn slot → fallback
+          cantFit++;
+          for (let j = W - 1; j >= 0; j--) {
+            if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
+          }
+          if (w === -1) return null;
+        }
+        usedPerDay[w]++;
+        result[i] = `${workdays[w]}T09:00:00`;
       }
 
-      const result = [];
-      let phIdx = 0;
-      for (let dayIdx = 0; dayIdx < numSessions; dayIdx++) {
-        const dayIso = chosenDays[dayIdx];
-        for (let k = 0; k < perDayPlan[dayIdx]; k++) {
-          result[phIdx++] = `${dayIso}T09:00:00`;
-        }
+      if (cantFit > 0) {
+        this.$q.notify({
+          type: "warning",
+          message: `${cantFit} chuyến có ngày hợp đồng > mọi ngày làm việc của T${this.thang}/${this.nam} — đã tạm gán ngày cuối tháng. Kiểm tra lại ngày HĐ trong KH.`,
+          timeout: 9000,
+        });
       }
       return result;
     },

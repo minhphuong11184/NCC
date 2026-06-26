@@ -430,6 +430,13 @@ router.get('/auto-ca', async (req, res) => {
                 [`ca${i}_workMinutes`]: seg.workMinutes || 0,
             } : {}
             const last = segs[segs.length - 1]
+            // Lỗi công = có giờ vào nhưng thiếu giờ ra (chỉ quẹt 1 lượt trong ca → quên quẹt)
+            const loiList = []
+            segs.forEach((s, idx) => {
+                if (s.checkIn && !(s.workMinutesGross >= 5)) {
+                    loiList.push(segs.length > 1 ? `Ca ${idx + 1} thiếu giờ ra` : 'Thiếu giờ ra')
+                }
+            })
             return {
                 ...base,
                 punchCount:       sum('punchCount'),
@@ -443,6 +450,8 @@ router.get('/auto-ca', async (req, res) => {
                 checkIn:  segs.length ? segs[0].checkIn : null,
                 checkOut: last ? (last.workMinutesGross >= 5 ? last.checkOut : null) : null,
                 shiftCount: segs.length,
+                loi: loiList.length > 0,
+                loiText: loiList.join('; ') || null,
                 ...flat(segs[0], 1),
                 ...flat(segs[1], 2),
             }

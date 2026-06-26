@@ -172,6 +172,11 @@ export const adminRoutes = [
     meta: { requiresAuth: true }
   },
   {
+    path: "/loi-cong",
+    component: () => import("pages/ChamCong/PageLoiCong.vue"),
+    meta: { requiresAuth: true }
+  },
+  {
     path: "/bao-cao-nhap-xuat-ton",
     component: () => import("pages/BaoCaoNhapXuatTon.vue"),
     meta: { requiresAuth: true }
