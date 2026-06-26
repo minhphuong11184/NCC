@@ -125,7 +125,11 @@ const parseThang = (v) => {
 };
 const parseNgay = (v) => {
   if (v === null || v === undefined || v === "") return null;
-  if (v instanceof Date && !isNaN(v)) return v.toISOString();
+  if (v instanceof Date && !isNaN(v)) {
+    // Tránh lệch -1 ngày do timezone: lấy UTC components rồi tạo UTC midnight
+    const iso = new Date(Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate())).toISOString();
+    return iso;
+  }
   const s = String(v).trim();
   const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (!m) return null;

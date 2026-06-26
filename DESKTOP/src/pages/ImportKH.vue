@@ -161,23 +161,45 @@ export default {
         const addr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
         const cell = ws[addr];
         if (!cell) return null;
-        // Ưu tiên parse từ serial number (cell.t='n') qua XLSX.SSF — không TZ
+
+        // 1. Numeric serial → SSF (chính xác, không có TZ).
         if (cell.t === "n" && typeof cell.v === "number" && XLSX.SSF && XLSX.SSF.parse_date_code) {
           const p = XLSX.SSF.parse_date_code(cell.v);
           if (p && p.y) return `${pad(p.d)}/${pad(p.m)}/${p.y}`;
         }
-        if (cell.v instanceof Date) {
-          const d = cell.v;
-          // xlsx lưu date theo UTC midnight → dùng getUTC* để tránh lệch
-          // -1 ngày do timezone (vd local Vietnam UTC+7 vs UTC).
-          return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+
+        // 2. ƯU TIÊN cell.w (chuỗi Excel hiển thị thật) — KHÔNG dính TZ.
+        //    Excel VN thường "dd/mm/yyyy". Heuristic: nếu nửa thứ 1 > 12 → day-first,
+        //    nếu nửa thứ 2 > 12 → month-first, còn lại mặc định day-first (VN).
+        if (cell.w) {
+          const w = String(cell.w).trim();
+          const m1 = w.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+          if (m1) {
+            let a = +m1[1], b = +m1[2], y = +m1[3];
+            if (y < 100) y += 2000;
+            let dd, mm;
+            if (a > 12) { dd = a; mm = b; }
+            else if (b > 12) { mm = a; dd = b; }
+            else { dd = a; mm = b; }
+            return `${pad(dd)}/${pad(mm)}/${y}`;
+          }
+          const iso = w.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+          if (iso) return `${pad(+iso[3])}/${pad(+iso[2])}/${iso[1]}`;
         }
-        // Fallback: text — nếu là "DD/MM/YYYY" giữ nguyên; nếu "YYYY-MM-DD" convert
-        const s = String(cell.w || cell.v || "").trim();
-        if (!s) return null;
-        const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-        if (iso) return `${pad(+iso[3])}/${pad(+iso[2])}/${iso[1]}`;
-        return s;
+
+        // 3. Date object (fallback) — dùng UTC components, ép qua SSF serial
+        //    để không bị TZ skew.
+        if (cell.v instanceof Date && XLSX.SSF && XLSX.SSF.parse_date_code) {
+          const d = cell.v;
+          const utcMidnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+          const epoch = Date.UTC(1899, 11, 30);
+          const serial = Math.round((utcMidnight - epoch) / 86400000);
+          const p = XLSX.SSF.parse_date_code(serial);
+          if (p && p.y) return `${pad(p.d)}/${pad(p.m)}/${p.y}`;
+        }
+
+        const s = String(cell.v || "").trim();
+        return s || null;
       };
 
       /**
