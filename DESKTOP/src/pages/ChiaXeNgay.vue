@@ -460,18 +460,12 @@ export default {
 
       const usedPerDay = new Array(W).fill(0);
       const result = new Array(N).fill(null);
-      let lastIdx = 0;
       let cantFit = 0;
       for (let i = 0; i < N; i++) {
         const hd = parseHD(phieuList[i].ngay_hop_dong);
-        let minIdxByHD = 0;
-        if (hd) {
-          minIdxByHD = wdDates.findIndex(d => d >= hd);
-          if (minIdxByHD === -1) minIdxByHD = W;
-        }
-        const startIdx = Math.max(lastIdx, minIdxByHD);
         let w = -1;
-        for (let j = startIdx; j < W; j++) {
+        for (let j = 0; j < W; j++) {
+          if (hd && wdDates[j] < hd) continue;
           if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
         }
         if (w === -1) {
@@ -483,7 +477,6 @@ export default {
         }
         usedPerDay[w]++;
         result[i] = `${workdays[w]}T09:00:00`;
-        lastIdx = w;
       }
 
       if (cantFit > 0) {

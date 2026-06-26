@@ -643,27 +643,20 @@ export default {
       };
       const wdDates = workdays.map(s => new Date(s));
 
-      // Gán THEO THỨ TỰ SỐ PHIẾU (không sort lại):
-      //   với mỗi i, tìm workday từ minStart trở đi (minStart = max(idx ngày HĐ, idx ngày chuyến trước))
+      // Gán theo thứ tự số phiếu (input order): mỗi chuyến nhận workday đầu
+      // tiên >= ngày HĐ và còn slot. Vì ngày HĐ đã tăng dần theo lô gỗ,
+      // ngày chia tự nhiên cũng tăng dần — không cần ép monotonic riêng.
       const usedPerDay = new Array(W).fill(0);
       const result = new Array(N).fill(null);
-      let lastIdx = 0;            // index workday tối thiểu cho chuyến tiếp theo
       let cantFit = 0;
       for (let i = 0; i < N; i++) {
         const hd = parseHD(phieuList[i].ngay_hop_dong);
-        // idx tối thiểu thoả ngày HĐ
-        let minIdxByHD = 0;
-        if (hd) {
-          minIdxByHD = wdDates.findIndex(d => d >= hd);
-          if (minIdxByHD === -1) minIdxByHD = W;  // ngày HĐ sau cả tháng
-        }
-        const startIdx = Math.max(lastIdx, minIdxByHD);
         let w = -1;
-        for (let j = startIdx; j < W; j++) {
+        for (let j = 0; j < W; j++) {
+          if (hd && wdDates[j] < hd) continue;
           if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
         }
         if (w === -1) {
-          // Hết slot từ startIdx → cảnh báo, dùng ngày cuối có slot
           cantFit++;
           for (let j = W - 1; j >= 0; j--) {
             if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
@@ -672,7 +665,6 @@ export default {
         }
         usedPerDay[w]++;
         result[i] = `${workdays[w]}T09:00:00`;
-        lastIdx = w;  // chuyến sau phải ≥ ngày này
       }
 
       if (cantFit > 0) {
