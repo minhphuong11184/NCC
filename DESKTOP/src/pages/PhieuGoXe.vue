@@ -612,7 +612,15 @@ export default {
           { params: { thang: this.thang, nam: this.nam, mancc: this.mancc } }
         );
         if (data && data.meta && data.meta.success) {
-          this.phieuList = data.data.phieu || [];
+          // Sắp xếp phiếu theo SOPHIEU tăng dần (numeric-aware, locale Việt)
+          // để Excel/Word/dropdown đều xuất theo tuần tự số phiếu.
+          const list = data.data.phieu || [];
+          list.sort((a, b) => {
+            const sa = String(a.SOPHIEU || "");
+            const sb = String(b.SOPHIEU || "");
+            return sa.localeCompare(sb, "vi", { numeric: true, sensitivity: "base" });
+          });
+          this.phieuList = list;
           this.selectedIdx = 0;
           if (!this.phieuList.length) {
             this.$q.notify({
