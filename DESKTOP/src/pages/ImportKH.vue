@@ -161,13 +161,16 @@ export default {
         const addr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
         const cell = ws[addr];
         if (!cell) return null;
-        if (cell.v instanceof Date) {
-          const d = cell.v;
-          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-        }
+        // Ưu tiên parse từ serial number (cell.t='n') qua XLSX.SSF — không TZ
         if (cell.t === "n" && typeof cell.v === "number" && XLSX.SSF && XLSX.SSF.parse_date_code) {
           const p = XLSX.SSF.parse_date_code(cell.v);
           if (p && p.y) return `${pad(p.d)}/${pad(p.m)}/${p.y}`;
+        }
+        if (cell.v instanceof Date) {
+          const d = cell.v;
+          // xlsx lưu date theo UTC midnight → dùng getUTC* để tránh lệch
+          // -1 ngày do timezone (vd local Vietnam UTC+7 vs UTC).
+          return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
         }
         // Fallback: text — nếu là "DD/MM/YYYY" giữ nguyên; nếu "YYYY-MM-DD" convert
         const s = String(cell.w || cell.v || "").trim();

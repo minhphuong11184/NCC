@@ -610,7 +610,10 @@ export default {
       this.exporting = true;
       try {
         const res = await this.getAllPhieuGoTron();
-        const allPhieu = (res && res.data) || [];
+        const allPhieu = ((res && res.data) || []).slice().sort((a, b) =>
+          String(a.So_phieu || "").localeCompare(
+            String(b.So_phieu || ""), "vi", { numeric: true, sensitivity: "base" })
+        );
         if (!allPhieu.length) {
           this.$q.notify({ type: "warning", message: "Không có phiếu nào có khối lượng > 0" });
           return;
@@ -1585,7 +1588,10 @@ export default {
       this.exporting = true;
       try {
         const res = await this.getAllPhieuGoTron();
-        const allPhieu = (res && res.data) || [];
+        const allPhieu = ((res && res.data) || []).slice().sort((a, b) =>
+          String(a.So_phieu || "").localeCompare(
+            String(b.So_phieu || ""), "vi", { numeric: true, sensitivity: "base" })
+        );
         if (!allPhieu.length) {
           this.$q.notify({ type: "warning", message: "Không có phiếu nào có khối lượng > 0" });
           return;
