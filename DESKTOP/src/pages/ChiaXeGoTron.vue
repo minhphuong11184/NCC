@@ -593,11 +593,11 @@ export default {
      * Trả về mảng N phần tử dạng ISO date string "YYYY-MM-DDT09:00:00".
      */
     /**
-     * Phân bổ ngày xe chạy cho từng chuyến, RÀNG BUỘC:
-     *   ngay_xe_chay >= ngay_hop_dong (của chính chuyến đó)
-     * Sắp xếp chuyến theo ngày hợp đồng (sớm trước), tham lam fill vào ngày
-     * làm việc đầu tiên có slot.
-     * Trả về mảng date string "YYYY-MM-DDT09:00:00" theo thứ tự gốc của phieuList.
+     * Phân bổ ngày xe chạy theo THỨ TỰ SỐ PHIẾU (input order = sắp xếp lô gỗ
+     * ở caller). Mỗi chuyến nhận ngày làm việc đầu tiên thoả 2 ràng buộc:
+     *   - ngay_xe_chay >= ngay_hop_dong (của chính chuyến)
+     *   - ngay_xe_chay >= ngày của chuyến TRƯỚC (đảm bảo thứ tự ngày
+     *     tăng dần khớp số phiếu — Excel/Word không bị đảo)
      */
     phanBoNgayNhap(phieuList) {
       const N = Array.isArray(phieuList) ? phieuList.length : 0;
@@ -608,10 +608,9 @@ export default {
       const K = Math.max(1, xeList.length);
       if (W === 0) return null;
 
-      // Capacity mỗi ngày (chia đều tối đa 2K/ngày, vượt thì chia rộng hơn)
+      // Capacity mỗi ngày
       const perDayCap = new Array(W).fill(0);
       if (N <= K * W) {
-        // Mỗi ngày K chuyến
         let remaining = N;
         for (let i = 0; i < W && remaining > 0; i++) {
           perDayCap[i] = Math.min(K, remaining);
@@ -633,7 +632,6 @@ export default {
         });
       }
 
-      // Parse ngày hợp đồng
       const parseHD = s => {
         if (!s) return null;
         const m1 = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -645,27 +643,27 @@ export default {
       };
       const wdDates = workdays.map(s => new Date(s));
 
-      // Sắp xếp chuyến theo ngày hợp đồng (sớm trước; null đẩy cuối)
-      const sorted = phieuList.map((p, i) => ({ i, hd: parseHD(p.ngay_hop_dong) }));
-      sorted.sort((a, b) => {
-        if (!a.hd && !b.hd) return a.i - b.i;
-        if (!a.hd) return 1;
-        if (!b.hd) return -1;
-        return a.hd - b.hd;
-      });
-
-      // Tham lam gán ngày làm việc đầu tiên >= ngày HĐ và còn slot
+      // Gán THEO THỨ TỰ SỐ PHIẾU (không sort lại):
+      //   với mỗi i, tìm workday từ minStart trở đi (minStart = max(idx ngày HĐ, idx ngày chuyến trước))
       const usedPerDay = new Array(W).fill(0);
       const result = new Array(N).fill(null);
+      let lastIdx = 0;            // index workday tối thiểu cho chuyến tiếp theo
       let cantFit = 0;
-      for (const { i, hd } of sorted) {
+      for (let i = 0; i < N; i++) {
+        const hd = parseHD(phieuList[i].ngay_hop_dong);
+        // idx tối thiểu thoả ngày HĐ
+        let minIdxByHD = 0;
+        if (hd) {
+          minIdxByHD = wdDates.findIndex(d => d >= hd);
+          if (minIdxByHD === -1) minIdxByHD = W;  // ngày HĐ sau cả tháng
+        }
+        const startIdx = Math.max(lastIdx, minIdxByHD);
         let w = -1;
-        for (let j = 0; j < W; j++) {
-          if (hd && wdDates[j] < hd) continue;
+        for (let j = startIdx; j < W; j++) {
           if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
         }
         if (w === -1) {
-          // Không có ngày làm việc nào sau ngày HĐ + còn slot → fallback
+          // Hết slot từ startIdx → cảnh báo, dùng ngày cuối có slot
           cantFit++;
           for (let j = W - 1; j >= 0; j--) {
             if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
@@ -674,12 +672,13 @@ export default {
         }
         usedPerDay[w]++;
         result[i] = `${workdays[w]}T09:00:00`;
+        lastIdx = w;  // chuyến sau phải ≥ ngày này
       }
 
       if (cantFit > 0) {
         this.$q.notify({
           type: "warning",
-          message: `${cantFit} chuyến có ngày hợp đồng > mọi ngày làm việc của T${this.thang}/${this.nam} — đã tạm gán ngày cuối tháng. Kiểm tra lại ngày HĐ trong KH.`,
+          message: `${cantFit} chuyến vướng ràng buộc ngày HĐ / thứ tự — tạm gán ngày cuối. Kiểm tra lại.`,
           timeout: 9000,
         });
       }

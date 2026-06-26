@@ -417,8 +417,8 @@ export default {
     },
     /** Phân bổ N chuyến vào workdaysInRange theo K chuyến/ngày (K=số xe). */
     /**
-     * Phân bổ ngày xe chạy với ràng buộc: ngay_xe_chay >= ngay_hop_dong (mỗi chuyến).
-     * Sắp xếp chuyến theo ngày HĐ (sớm trước), tham lam fill workday đầu tiên có slot.
+     * Phân bổ ngày xe theo thứ tự SỐ PHIẾU (input order). Ràng buộc:
+     *   ngay_nhap >= ngay_hop_dong  AND  >= ngày chuyến trước
      */
     phanBoNgayNhap(phieuList) {
       const N = Array.isArray(phieuList) ? phieuList.length : 0;
@@ -458,21 +458,20 @@ export default {
       };
       const wdDates = workdays.map(s => new Date(s));
 
-      const sorted = phieuList.map((p, i) => ({ i, hd: parseHD(p.ngay_hop_dong) }));
-      sorted.sort((a, b) => {
-        if (!a.hd && !b.hd) return a.i - b.i;
-        if (!a.hd) return 1;
-        if (!b.hd) return -1;
-        return a.hd - b.hd;
-      });
-
       const usedPerDay = new Array(W).fill(0);
       const result = new Array(N).fill(null);
+      let lastIdx = 0;
       let cantFit = 0;
-      for (const { i, hd } of sorted) {
+      for (let i = 0; i < N; i++) {
+        const hd = parseHD(phieuList[i].ngay_hop_dong);
+        let minIdxByHD = 0;
+        if (hd) {
+          minIdxByHD = wdDates.findIndex(d => d >= hd);
+          if (minIdxByHD === -1) minIdxByHD = W;
+        }
+        const startIdx = Math.max(lastIdx, minIdxByHD);
         let w = -1;
-        for (let j = 0; j < W; j++) {
-          if (hd && wdDates[j] < hd) continue;
+        for (let j = startIdx; j < W; j++) {
           if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
         }
         if (w === -1) {
@@ -484,12 +483,13 @@ export default {
         }
         usedPerDay[w]++;
         result[i] = `${workdays[w]}T09:00:00`;
+        lastIdx = w;
       }
 
       if (cantFit > 0) {
         this.$q.notify({
           type: "warning",
-          message: `${cantFit} chuyến có ngày HĐ > mọi ngày làm việc trong khoảng — tạm gán ngày cuối.`,
+          message: `${cantFit} chuyến vướng ràng buộc — tạm gán ngày cuối.`,
           timeout: 9000,
         });
       }
