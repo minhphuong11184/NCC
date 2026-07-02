@@ -77,7 +77,7 @@ router.get('/all-phieu-go-tron', (req, res) => {
              FROM [prod].[NHAP_GO_TRON] N
              JOIN ranked R ON R.id = N.id
              WHERE N.Khoi_luong IS NOT NULL AND N.Khoi_luong > 0
-             ORDER BY N.Ngay_nhap, N.So_phieu`,
+             ORDER BY N.Lo_go, N.So_phieu`,
             (err, record) => {
                 if (err) return res.api.sendFail(getErrorMessage(4907))
                 res.api.sendData(record.recordset)

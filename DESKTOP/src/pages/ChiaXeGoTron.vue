@@ -643,9 +643,8 @@ export default {
       };
       const wdDates = workdays.map(s => new Date(s));
 
-      // Gán theo thứ tự số phiếu (input order): mỗi chuyến nhận workday đầu
-      // tiên >= ngày HĐ và còn slot. Vì ngày HĐ đã tăng dần theo lô gỗ,
-      // ngày chia tự nhiên cũng tăng dần — không cần ép monotonic riêng.
+      // Gán theo thứ tự số phiếu (input = lô gỗ ASC). Ràng buộc: ngày xe >= ngày HĐ.
+      // Vì HĐ đã tăng dần theo lô → workday cũng tự nhiên tăng dần.
       const usedPerDay = new Array(W).fill(0);
       const result = new Array(N).fill(null);
       let cantFit = 0;

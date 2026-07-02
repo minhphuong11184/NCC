@@ -574,10 +574,15 @@ export default {
       this.exporting = true;
       try {
         const res = await this.getAllPhieuGoTron();
-        const allPhieu = ((res && res.data) || []).slice().sort((a, b) =>
-          String(a.So_phieu || "").localeCompare(
-            String(b.So_phieu || ""), "vi", { numeric: true, sensitivity: "base" })
-        );
+        // Sort theo MÃ LÔ GỖ (Lo_go_tron / Lo_go), tiebreak So_phieu
+        const allPhieu = ((res && res.data) || []).slice().sort((a, b) => {
+          const la = String(a.Lo_go_tron || a.Lo_go || "");
+          const lb = String(b.Lo_go_tron || b.Lo_go || "");
+          const cmp = la.localeCompare(lb, "vi", { numeric: true, sensitivity: "base" });
+          if (cmp !== 0) return cmp;
+          return String(a.So_phieu || "").localeCompare(
+            String(b.So_phieu || ""), "vi", { numeric: true, sensitivity: "base" });
+        });
         if (!allPhieu.length) {
           this.$q.notify({ type: "warning", message: "Không có phiếu nào có khối lượng > 0" });
           return;
@@ -1551,10 +1556,15 @@ export default {
       this.exporting = true;
       try {
         const res = await this.getAllPhieuGoTron();
-        const allPhieu = ((res && res.data) || []).slice().sort((a, b) =>
-          String(a.So_phieu || "").localeCompare(
-            String(b.So_phieu || ""), "vi", { numeric: true, sensitivity: "base" })
-        );
+        // Sort theo MÃ LÔ GỖ (Lo_go_tron / Lo_go), tiebreak So_phieu
+        const allPhieu = ((res && res.data) || []).slice().sort((a, b) => {
+          const la = String(a.Lo_go_tron || a.Lo_go || "");
+          const lb = String(b.Lo_go_tron || b.Lo_go || "");
+          const cmp = la.localeCompare(lb, "vi", { numeric: true, sensitivity: "base" });
+          if (cmp !== 0) return cmp;
+          return String(a.So_phieu || "").localeCompare(
+            String(b.So_phieu || ""), "vi", { numeric: true, sensitivity: "base" });
+        });
         if (!allPhieu.length) {
           this.$q.notify({ type: "warning", message: "Không có phiếu nào có khối lượng > 0" });
           return;
