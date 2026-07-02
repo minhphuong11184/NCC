@@ -134,10 +134,10 @@ export default {
       if (!this.phieu) return "";
       return [this.phieu.Thon, this.phieu.Xa, this.phieu.Huyen].filter(Boolean).join(", ");
     },
-    /** Ngày của BKLS: thử nhiều nguồn (NGAY cast date, Ngay_nhap, Ngay_BKLS). */
+    /** Ngày của BKLS: CHỈ theo NGÀY XE CHẠY (Ngay_nhap). Bỏ Ngay_BKLS. */
     ngayBKLS() {
       if (!this.phieu) return null;
-      const candidates = [this.phieu.NGAY, this.phieu.Ngay_nhap, this.phieu.Ngay_BKLS];
+      const candidates = [this.phieu.Ngay_nhap];
       for (const raw of candidates) {
         if (!raw) continue;
         const d1 = new Date(raw);

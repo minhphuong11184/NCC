@@ -489,7 +489,7 @@ export default {
     /** Trích năm (4 chữ số) từ phiếu — thử nhiều nguồn, cuối cùng năm hiện tại. */
     extractNamFromPhieu(p) {
       if (!p) return new Date().getFullYear();
-      const candidates = [p.NGAY, p.Ngay_nhap, p.Ngay_BKLS];
+      const candidates = [p.Ngay_nhap];
       for (const raw of candidates) {
         if (!raw) continue;
         const d = new Date(raw);
@@ -1012,7 +1012,7 @@ export default {
       const diaDanhKT = [p.Xa, p.Huyen].filter(Boolean).join(", ");
       // Ngày BKLS lấy từ KH_KHAI_THAC.ngay_bkls (lưu vào NHAP_GO_TRON.Ngay_BKLS),
       // fallback Ngay_nhap nếu trống
-      const dtBKLS = this.parseDateString(p.Ngay_BKLS) || (p.Ngay_nhap ? new Date(p.Ngay_nhap) : null);
+      const dtBKLS = p.Ngay_nhap ? new Date(p.Ngay_nhap) : null;
       const ngayStr = dtBKLS
         ? `Ngày ${dtBKLS.getDate()} tháng ${dtBKLS.getMonth() + 1} năm ${dtBKLS.getFullYear()}`
         : "Ngày … tháng … năm …";
@@ -1433,7 +1433,7 @@ export default {
       const e = this.wordEsc.bind(this);
       const diaChiCR = [p.Thon, p.Xa, p.Huyen].filter(Boolean).join(", ");
       const diaDanhKT = [p.Xa, p.Huyen].filter(Boolean).join(", ");
-      const dtBKLS = this.parseDateString(p.Ngay_BKLS) || (p.Ngay_nhap ? new Date(p.Ngay_nhap) : null);
+      const dtBKLS = p.Ngay_nhap ? new Date(p.Ngay_nhap) : null;
       const ngayStr = dtBKLS
         ? `Ngày ${dtBKLS.getDate()} tháng ${dtBKLS.getMonth() + 1} năm ${dtBKLS.getFullYear()}`
         : "Ngày ... tháng ... năm ...";
