@@ -211,9 +211,9 @@ export default {
       daChiaInfo: null,
       resetting: false,
       danhSachXe: [
-        { bien_so: "19C-16601", m3: 30 },
-        { bien_so: "19C-05899", m3: 30 },
-        { bien_so: "19C-06609", m3: 30 },
+        { bien_so: "22AC-32778", m3: 33 },
+        { bien_so: "22F-00536", m3: 28 },
+        { bien_so: "22A-32754", m3: 40 },
      
       ],
       loading: false,
@@ -433,11 +433,47 @@ export default {
           });
           return;
         }
-        const phieuToSave = this.phieu.map((p, i) => ({
-          ...p,
-          xuong_xe: p.xuong_xe || this.xuongXe || null,
-          ngay_nhap: ngayList[i],
-        }));
+        // Tách chuyến gán được ngày vs chuyến bị tồn (không đủ ngày làm việc)
+        const phieuToSave = [];
+        const chuyenTon = [];
+        this.phieu.forEach((p, i) => {
+          if (ngayList[i]) {
+            phieuToSave.push({
+              ...p,
+              xuong_xe: p.xuong_xe || this.xuongXe || null,
+              ngay_nhap: ngayList[i],
+            });
+          } else {
+            chuyenTon.push(p);
+          }
+        });
+        // Gom chuyến tồn theo chủ rừng → dạng entry tồn (khớp API /luu-ton)
+        if (chuyenTon.length) {
+          const tonMap = {};
+          chuyenTon.forEach(p => {
+            const key = p.ten_ho || "";
+            if (!tonMap[key]) {
+              tonMap[key] = {
+                ten_ho: p.ten_ho, xa: p.xa, thon: p.thon,
+                kl_kh: 0, kl_da_chia: 0, kl_ton: 0,
+                khoanh: p.khoanh, lo: p.lo,
+                dien_tich: p.dien_tich, loai_cay: p.loai_cay,
+                nam_trong: p.nam_trong, cccd: p.cccd,
+                chung_chi: p.chung_chi, so_bkls: p.so_bkls,
+                ngay_bkls: p.ngay_bkls, thang_goc: p.thang || this.thang,
+                lo_go_tron: p.lo_go_tron, lo_go_xe: p.lo_go_xe,
+                dia_chi_cccd: p.dia_chi_cccd, don_gia: p.don_gia,
+                KD: p.KD, VD: p.VD,
+                xuong_xe: p.xuong_xe || this.xuongXe || null,
+                nhom_chung_chi: p.nhom_chung_chi,
+              };
+            }
+            tonMap[key].kl_ton += (Number(p.khoi_luong) || 0);
+            tonMap[key].kl_kh += (Number(p.khoi_luong) || 0);
+          });
+          // Bổ sung vào this.ton để API /luu-ton nhận thêm các entry này
+          this.ton = [...(this.ton || []), ...Object.values(tonMap)];
+        }
         const { data } = await axios.post(
           `http://${this.host()}:2003/api/v1/chia-xe/luu`,
           {
@@ -656,11 +692,10 @@ export default {
           if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
         }
         if (w === -1) {
+          // Không có workday >= HĐ còn slot → KHÔNG gán ngày (thành TỒN)
           cantFit++;
-          for (let j = W - 1; j >= 0; j--) {
-            if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
-          }
-          if (w === -1) return null;
+          result[i] = null;
+          continue;
         }
         usedPerDay[w]++;
         result[i] = `${workdays[w]}T09:00:00`;
@@ -669,7 +704,7 @@ export default {
       if (cantFit > 0) {
         this.$q.notify({
           type: "warning",
-          message: `${cantFit} chuyến vướng ràng buộc ngày HĐ / thứ tự — tạm gán ngày cuối. Kiểm tra lại.`,
+          message: `${cantFit} chuyến không đủ ngày làm việc / vướng ràng buộc HĐ — sẽ chuyển thành TỒN sang KH tháng sau.`,
           timeout: 9000,
         });
       }

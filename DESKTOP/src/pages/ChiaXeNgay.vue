@@ -469,11 +469,10 @@ export default {
           if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
         }
         if (w === -1) {
+          // Không đủ ngày làm việc / vướng HĐ → thành TỒN
           cantFit++;
-          for (let j = W - 1; j >= 0; j--) {
-            if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
-          }
-          if (w === -1) return null;
+          result[i] = null;
+          continue;
         }
         usedPerDay[w]++;
         result[i] = `${workdays[w]}T09:00:00`;
@@ -529,11 +528,27 @@ export default {
           this.$q.notify({ type: "negative", message: "Không có ngày làm việc nào" });
           return;
         }
-        const phieuToSave = ordered.map((p, i) => ({
-          ...p,
-          xuong_xe: p.xuong_xe || this.xuongXe,
-          ngay_nhap: ngayList[i] || ngayList[ngayList.length - 1],
-        }));
+        // Chỉ save chuyến gán được ngày; bỏ qua chuyến không đủ workday
+        const phieuToSave = [];
+        let skipped = 0;
+        ordered.forEach((p, i) => {
+          if (ngayList[i]) {
+            phieuToSave.push({
+              ...p,
+              xuong_xe: p.xuong_xe || this.xuongXe,
+              ngay_nhap: ngayList[i],
+            });
+          } else {
+            skipped++;
+          }
+        });
+        if (skipped > 0) {
+          this.$q.notify({
+            type: "warning",
+            message: `Bỏ qua ${skipped} chuyến không đủ ngày làm việc — sẽ được xử lý qua bước đóng tháng chuyển tồn.`,
+            timeout: 7000,
+          });
+        }
 
         const tenHoChia = (this.tenHoChiaActual && this.tenHoChiaActual.length)
           ? this.tenHoChiaActual : this.selectedKH;
