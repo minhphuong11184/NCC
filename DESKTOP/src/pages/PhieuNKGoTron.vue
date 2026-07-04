@@ -67,10 +67,10 @@
             <tr><td class="lbl">Đơn vị giao hàng:</td><td class="val">{{ phieu.Chu_rung }}</td><td class="lbl">Số phiếu:</td><td class="val">{{ phieu.So_phieu }}</td></tr>
             <tr><td class="lbl">Địa chỉ:</td><td class="val" colspan="1">{{ phieu.Thon || '' }} {{ phieu.Xa || '' }} {{ phieu.Huyen || '' }}</td><td class="lbl">Biển số xe:</td><td class="val">{{ phieu.Xe }}</td></tr>
             <tr><td class="lbl">Số chứng chỉ FM/COC:</td><td class="val">{{ phieu.So_chung_chi }}</td><td class="lbl">Nơi giao nhận</td><td class="val">tại bãi 1: {{ phieu.Chu_rung }}</td></tr>
-            <tr><td class="lbl">Đơn vị nhận hàng:</td><td class="val">{{ UQ }} ({{ TEN_CTY }})</td><td class="lbl">Ngày nghiệm thu:</td><td class="val">{{ formatDate(phieu.Ngay_nhap) }}</td></tr>
+            <tr><td class="lbl">Đơn vị nhận hàng:</td><td class="val">{{ TEN_CTY }}</td><td class="lbl">Ngày nghiệm thu:</td><td class="val">{{ formatDate(phieu.Ngay_nhap) }}</td></tr>
             <tr><td class="lbl">Địa chỉ:</td><td class="val">{{ DIA_CHI_CTY }}</td><td class="lbl">Trạng thái MT:</td><td class="val">FSC 100%</td></tr>
-            <tr><td class="lbl">Số chứng chỉ FM/COC:</td><td class="val">{{ CHUNG_CHI_CTY }}</td><td class="lbl">Nhóm SP:</td><td class="val">W1.1</td></tr>
-            <tr><td></td><td></td><td class="lbl">Hiệu lực đến:</td><td class="val">{{ HIEU_LUC_CTY }}</td></tr>
+            <tr><td class="lbl">Số chứng chỉ FM/COC:</td><td class="val">{{ CHUNG_CHI_CTY }}</td><td class="lbl">Hiệu lực đến:</td><td class="val">{{ HIEU_LUC_CTY }}</td></tr>
+            <tr><td></td><td></td><td class="lbl">Nhóm SP:</td><td class="val">W1.1</td></tr>
             <tr><td></td><td></td><td class="lbl">Mã lô gỗ nhập:</td><td class="val">{{ phieu.Lo_go_tron }}</td></tr>
           </table>
 
@@ -836,10 +836,10 @@ export default {
         ["Đơn vị giao hàng:", p.Chu_rung || "", "Số phiếu:", p.So_phieu || ""],
         ["Địa chỉ:", diaChiCR, "Biển số xe:", p.Xe || ""],
         ["Số chứng chỉ FM/COC:", p.So_chung_chi || "", "Nơi giao nhận:", "tại bãi 1: " + (p.Chu_rung || "")],
-        ["Đơn vị nhận hàng:", `${cfg.UQ} (${cfg.TEN_CTY})`, "Ngày nghiệm thu:", this.formatDate(p.Ngay_nhap)],
+        ["Đơn vị nhận hàng:", cfg.TEN_CTY || "", "Ngày nghiệm thu:", this.formatDate(p.Ngay_nhap)],
         ["Địa chỉ:", cfg.DIA_CHI_CTY, "Trạng thái MT:", "FSC 100%"],
-        ["Số chứng chỉ FM/COC:", cfg.CHUNG_CHI_CTY, "Nhóm SP:", "W1.1"],
-        ["", "", "Hiệu lực đến:", cfg.HIEU_LUC_CTY],
+        ["Số chứng chỉ FM/COC:", cfg.CHUNG_CHI_CTY, "Hiệu lực đến:", cfg.HIEU_LUC_CTY],
+        ["", "", "Nhóm SP:", "W1.1"],
         ["", "", "Mã lô gỗ nhập:", p.Lo_go_tron || ""],
       ];
       let cur = r + 6;
@@ -1317,10 +1317,10 @@ export default {
           <tr><td class="lbl">Đơn vị giao hàng:</td><td class="val">${e(p.Chu_rung)}</td><td class="lbl">Số phiếu:</td><td class="val bold">${e(p.So_phieu)}</td></tr>
           <tr><td class="lbl">Địa chỉ:</td><td class="val">${e(diaChiCR)}</td><td class="lbl">Biển số xe:</td><td class="val">${e(p.Xe)}</td></tr>
           <tr><td class="lbl">Số chứng chỉ FM/COC:</td><td class="val">${e(p.So_chung_chi)}</td><td class="lbl">Nơi giao nhận:</td><td class="val">tại bãi 1: ${e(p.Chu_rung)}</td></tr>
-          <tr><td class="lbl">Đơn vị nhận hàng:</td><td class="val">${e(cfg.UQ)} (${e(cfg.TEN_CTY)})</td><td class="lbl">Ngày nghiệm thu:</td><td class="val">${e(this.formatDate(p.Ngay_nhap))}</td></tr>
+          <tr><td class="lbl">Đơn vị nhận hàng:</td><td class="val">${e(cfg.TEN_CTY)}</td><td class="lbl">Ngày nghiệm thu:</td><td class="val">${e(this.formatDate(p.Ngay_nhap))}</td></tr>
           <tr><td class="lbl">Địa chỉ:</td><td class="val">${e(cfg.DIA_CHI_CTY)}</td><td class="lbl">Trạng thái MT:</td><td class="val">FSC 100%</td></tr>
-          <tr><td class="lbl">Số chứng chỉ FM/COC:</td><td class="val">${e(cfg.CHUNG_CHI_CTY)}</td><td class="lbl">Nhóm SP:</td><td class="val">W1.1</td></tr>
-          <tr><td></td><td></td><td class="lbl">Hiệu lực đến:</td><td class="val">${e(cfg.HIEU_LUC_CTY)}</td></tr>
+          <tr><td class="lbl">Số chứng chỉ FM/COC:</td><td class="val">${e(cfg.CHUNG_CHI_CTY)}</td><td class="lbl">Hiệu lực đến:</td><td class="val">${e(cfg.HIEU_LUC_CTY)}</td></tr>
+          <tr><td></td><td></td><td class="lbl">Nhóm SP:</td><td class="val">W1.1</td></tr>
           <tr><td></td><td></td><td class="lbl">Mã lô gỗ nhập:</td><td class="val">${e(p.Lo_go_tron || "")}</td></tr>
         </table>
         <table class="tbl">

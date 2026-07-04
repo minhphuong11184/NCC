@@ -160,7 +160,8 @@ export default {
       const xuong = this.phieu.Xuong_xe ? this.phieu.Xuong_xe.trim() : "";
       const cfg = this.getXuongConfig(xuong);
       this.TEN_CTY = cfg.ten || "";
-      this.UQ = cfg.nguoi_dai_dien || "";
+      // Người lập bảng kê — ưu tiên nguoi_lap_bk, fallback nguoi_dai_dien
+      this.UQ = cfg.nguoi_lap_bk || cfg.nguoi_dai_dien || "";
       this.DIA_CHI_CTY = cfg.dia_chi || "";
       this.NGUOI_NHAN = cfg.nguoi_nhan || "";
       this.MA_SO_THUE = cfg.mst || "";
