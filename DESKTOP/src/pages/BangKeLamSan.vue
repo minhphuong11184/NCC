@@ -86,7 +86,10 @@
         <!-- Cam kết -->
         <div class="cam-ket">Chúng tôi/Tôi cam kết những nội dung kê khai trong bảng kê này là đúng sự thật và chịu trách nhiệm trước pháp luật về sự trung thực của thông tin đã kê khai.</div>
 
-        <div class="date-right">Ngày {{ ngay }} tháng {{ thang }} năm {{ nam }}</div>
+        <div class="date-row">
+          <div class="date-col-empty"></div>
+          <div class="date-col-right">Ngày {{ ngay }} tháng {{ thang }} năm {{ nam }}</div>
+        </div>
 
         <!-- Ký tên -->
         <div class="sign-area">
@@ -230,7 +233,11 @@ export default {
 .info-line.italic { font-style: italic; font-size: 10px; }
 .cam-ket { margin-top: 12px; font-style: italic; }
 .date-right { text-align: right; font-style: italic; margin-top: 12px; }
-.sign-area { display: flex; justify-content: space-between; margin-top: 12px; }
+/* Ngày căn giữa trên cột ký bên phải (khớp width sign-col=45%) */
+.date-row { display: flex; justify-content: space-between; margin-top: 12px; }
+.date-col-empty { width: 45%; }
+.date-col-right { width: 45%; text-align: center; font-style: italic; }
+.sign-area { display: flex; justify-content: space-between; margin-top: 6px; }
 .sign-col { text-align: center; width: 45%; }
 .sign-title { font-weight: bold; font-size: 11px; text-transform: uppercase; }
 .sign-sub { font-style: italic; font-size: 10px; }

@@ -1074,9 +1074,9 @@ export default {
         { italic: true });
       ws.getRow(cur - 1).height = 32;
 
-      // Date
+      // Date — căn giữa trên cột ký "TỔ CHỨC/CÁ NHÂN LẬP BẢNG KÊ" (F:J)
       cur++;
-      this.setCell(ws, `F${cur}`, ngayStr, { merge: `J${cur}`, italic: true, right: true });
+      this.setCell(ws, `F${cur}`, ngayStr, { merge: `J${cur}`, italic: true, center: true });
       cur += 2;
 
       // Sign area
@@ -1451,7 +1451,10 @@ export default {
         <p>Địa chỉ: ${e(diaChiCR)}        ${e(cfg.DIA_CHI_CTY)}</p>
         <p class="bold">6. Hồ sơ kèm theo (nếu có):</p>
         <p class="italic">Chúng tôi/Tôi cam kết những nội dung kê khai trong bảng kê này là đúng sự thật và chịu trách nhiệm trước pháp luật về sự trung thực của thông tin đã kê khai.</p>
-        <p class="right italic">${e(ngayStr)}</p>
+        <table class="sign-2col" style="margin-top:6pt"><tr>
+          <td></td>
+          <td class="italic" style="text-align:center">${e(ngayStr)}</td>
+        </tr></table>
         <table class="sign-2col"><tr>
           <td>
             <p class="bold">XÁC NHẬN CỦA CƠ QUAN CÓ THẨM QUYỀN (9)</p>
