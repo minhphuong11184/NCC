@@ -37,12 +37,22 @@ router.get('/ghep', async (req, res) => {
                            SOBO, SOTHANH_BO, TONG_THANH AS tong_thanh,
                            KL_M3 AS kl_m3,
                            LO_GO_GAN AS lo_go, CHUNG_CHI_GAN AS chung_chi,
+                           so_phieu_xe,
                            saved_at, source AS saved_source, he_so AS saved_he_so
                     FROM [prod].[GHEP_LO_GO_RESULT]
                     WHERE thang = @thang AND nam = @nam
                         AND LTRIM(RTRIM(mancc)) = @mancc
-                    ORDER BY CREATED_AT, SOPHIEU, id
+                    ORDER BY CREATED_AT, id
                 `)
+            // Re-sort JS numeric-aware theo (CREATED_AT, SOPHIEU) — trùng logic /ghep
+            // Tránh SQL ORDER BY SOPHIEU lexicographic đảo "2026.10..." trước "2026.9..."
+            recordset.sort((a, b) => {
+                const da = a.CREATED_AT ? new Date(a.CREATED_AT).getTime() : 0
+                const db = b.CREATED_AT ? new Date(b.CREATED_AT).getTime() : 0
+                if (da !== db) return da - db
+                return String(a.SOPHIEU || '').localeCompare(
+                    String(b.SOPHIEU || ''), 'vi', { numeric: true, sensitivity: 'base' })
+            })
             const phieuMap = {}
             recordset.forEach(d => {
                 if (!phieuMap[d.SOPHIEU]) {
@@ -53,6 +63,7 @@ router.get('/ghep', async (req, res) => {
                         BIENSOXE: d.BIENSOXE ? d.BIENSOXE.trim() : null,
                         CREATED_AT: d.CREATED_AT,
                         MANCC: d.MANCC ? d.MANCC.trim() : null,
+                        so_phieu_xe: d.so_phieu_xe ? d.so_phieu_xe.trim() : null,
                         chi_tiet: [],
                         tong_kl: 0,
                     }
