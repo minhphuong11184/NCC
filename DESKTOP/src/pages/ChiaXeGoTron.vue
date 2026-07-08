@@ -447,6 +447,27 @@ export default {
             chuyenTon.push(p);
           }
         });
+
+        // Rebalance XE theo TỪNG NGÀY (round-robin) — tránh 1 xe gánh 3 chuyến
+        // trong khi xe khác chỉ 1 chuyến khi thứ tự sort làm lệch phân bổ.
+        // Mỗi ngày, chuyến j trong ngày → xe[j % K].
+        const xeList = (this.danhSachXe || []).filter(x => x.bien_so);
+        const K = xeList.length;
+        if (K > 0) {
+          const byDay = {};
+          phieuToSave.forEach((p, i) => {
+            const day = String(p.ngay_nhap || "").slice(0, 10);
+            if (!byDay[day]) byDay[day] = [];
+            byDay[day].push(i);
+          });
+          Object.values(byDay).forEach(arr => {
+            arr.forEach((idx, j) => {
+              const xe = xeList[j % K];
+              phieuToSave[idx].xe = xe.bien_so;
+              phieuToSave[idx].xe_m3 = xe.m3;
+            });
+          });
+        }
         // Gom chuyến tồn theo chủ rừng → dạng entry tồn (khớp API /luu-ton)
         if (chuyenTon.length) {
           const tonMap = {};

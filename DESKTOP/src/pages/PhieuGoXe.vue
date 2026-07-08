@@ -563,7 +563,12 @@ export default {
       const p = this.phieuList[i];
       if (p && p.so_phieu_xe) return p.so_phieu_xe;
       const stt = i + 1;
-      return `${String(stt).padStart(2, "0")}/${String(this.thang).padStart(2, "0")}`;
+      // Lấy tháng GỖ XẺ = tháng của CREATED_AT (ngày phiếu Woodsland),
+      // fallback this.thang nếu thiếu.
+      const thangXe = p && p.CREATED_AT
+        ? new Date(p.CREATED_AT).getMonth() + 1
+        : this.thang;
+      return `${String(stt).padStart(2, "0")}/${String(thangXe).padStart(2, "0")}`;
     },
     /** Số BKLS. Nếu phiếu có so_bkls_xe đã lưu thì dùng, không thì sinh từ bklsStart. */
     soBKLSByIdx(idx) {
@@ -571,7 +576,11 @@ export default {
       const p = this.phieuList[i];
       if (p && p.so_bkls_xe) return p.so_bkls_xe;
       const base = Number(this.bklsStart) || 0;
-      return `${base + i}/${this.nam}/BKLS`;
+      // Năm lấy theo năm gỗ xẻ (CREATED_AT), fallback this.nam
+      const namXe = p && p.CREATED_AT
+        ? new Date(p.CREATED_AT).getFullYear()
+        : this.nam;
+      return `${base + i}/${namXe}/BKLS`;
     },
     fmtNum2(v) {
       if (v == null || v === "") return "";
@@ -1166,20 +1175,21 @@ export default {
           loStats[lo].rows.push(d);
         }
       }
-      // Làm tròn giá trị thực sự đến 4 chữ số (không chỉ hiển thị) để cộng
-      // nhẩm các dòng trong lô bằng đúng tổng kl_tron_lo (cũng 4 chữ số).
-      // CHỈ "absorb" sai số ở dòng cuối khi lô đã được lấp đầy thật sự
-      // (Σ kl_xe × he_so ≈ kl_tron_lo). Nếu lô chỉ ghép một phần,
-      // mỗi dòng = kl × he_so bình thường — KHÔNG ép dòng cuối phình lên.
+      // Giữ nguyên HỆ SỐ DB (user nhập tay). Chỉ "absorb" sai số float ở dòng
+      // cuối khi lô đã được ghép ĐẦY (Σ kl_xẻ × he_so_db ≈ kl_tron_lo).
+      // Lô còn tồn (chưa đầy) → mỗi dòng = kl × he_so_db bình thường,
+      // Σ quy_đổi phản ánh đúng phần đã ghép (< kl_tron_lo).
       const round4 = v => Math.round(v * 10000) / 10000;
-      const FILLED_EPS = 0.01;  // ngưỡng coi như lô đầy (1 cm³)
+      const FILLED_EPS = 0.01;
       for (const lo in loStats) {
         const info = loStats[lo];
-        if (info.kl_tron_lo > 0) {
+        if (info.kl_tron_lo > 0 && info.rows.length > 0) {
           const sumKlXe = info.rows.reduce(
             (s, r) => s + (Number(r.kl_m3) || 0), 0);
-          const heSoLo = Number(info.rows[0].he_so) || 2;
-          const expected = sumKlXe * heSoLo;
+          if (sumKlXe <= 0) continue;
+
+          const heSoDb = Number(info.rows[0].he_so) || 2;
+          const expected = sumKlXe * heSoDb;
           const isFilled = Math.abs(expected - info.kl_tron_lo) < FILLED_EPS;
 
           const target = round4(info.kl_tron_lo);
@@ -1188,10 +1198,9 @@ export default {
             const klRow = Number(d.kl_m3) || 0;
             const heSoRow = Number(d.he_so) || 2;
             if (isFilled && i === info.rows.length - 1) {
-              // Lô đầy → dòng cuối absorb sai số float → Σ = kl_tron_lo
+              // Lô đầy + dòng cuối → absorb sai số float → Σ = kl_tron_lo
               d._quy_doi = round4(target - assigned);
             } else {
-              // Lô chưa đầy hoặc dòng không phải cuối → kl × he_so bình thường
               d._quy_doi = round4(klRow * heSoRow);
               assigned = round4(assigned + d._quy_doi);
             }

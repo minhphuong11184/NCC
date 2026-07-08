@@ -46,7 +46,7 @@ router.get('/list', async (req, res) => {
                     COALESCE(N.VD, T.vd) AS vd,
                     COALESCE(N.nhom_chung_chi, T.nhom_chung_chi) AS nhom_chung_chi,
                     COALESCE(N.Kl_tron_lo, T.kl_tron_goc) AS kl_tron_lo,
-                    H.he_so AS he_so_lo,
+                    COALESCE(H.he_so, T.he_so) AS he_so_lo,
                     G.so_phieu_xe, G.so_bkls_xe
                 FROM [prod].[GHEP_LO_GO_RESULT] G
                 LEFT JOIN (

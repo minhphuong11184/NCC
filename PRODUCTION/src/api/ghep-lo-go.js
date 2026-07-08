@@ -152,7 +152,7 @@ router.get('/ghep', async (req, res) => {
         // Duyệt từng detail, trừ dần (theo đơn vị xẻ = tròn / he_so).
         // Hệ số quy đổi theo từng lô (nếu có) hoặc dùng heSo chung từ query.
         const tr = v => (v == null ? null : String(v).trim() || null)
-        const loMap = {}   // lo_go -> { kl_tron, he_so, chung_chi, nguon_goc... }
+        const loMap = {}   // lo_go -> { kl_tron, he_so, chung_chi, nguon_goc, has_ton }
         loGoResult.recordset.forEach(l => {
             const key = l.Lo_go ? l.Lo_go.trim() : null
             if (!key) return
@@ -163,6 +163,7 @@ router.get('/ghep', async (req, res) => {
                 chung_chi: tr(l.chung_chi),
                 // Nguồn gốc rỗng — lô có trong NHAP_GO_TRON, BKLS tự JOIN khi /list
                 nguon_goc: null,
+                has_ton: false,
             }
         })
         // Cộng tồn kỳ trước vào lô (tạo mới nếu lô không nhập kỳ này).
@@ -179,6 +180,7 @@ router.get('/ghep', async (req, res) => {
             if (loMap[key]) {
                 loMap[key].kl_tron += (t.kl_con_lai_tron || 0)
                 if (!loMap[key].nguon_goc) loMap[key].nguon_goc = ng
+                loMap[key].has_ton = true
             } else {
                 loMap[key] = {
                     lo_go: key,
@@ -186,12 +188,15 @@ router.get('/ghep', async (req, res) => {
                     he_so: t.he_so || heSo,
                     chung_chi: tr(t.chung_chi),
                     nguon_goc: ng,
+                    has_ton: true,
                 }
             }
         })
 
+        // Sort theo mã lô tăng dần (numeric-aware, "-9" < "-10").
         const loGos = Object.values(loMap)
-            .sort((a, b) => (a.lo_go || '').localeCompare(b.lo_go || ''))
+            .sort((a, b) => (a.lo_go || '').localeCompare(
+                b.lo_go || '', 'vi', { numeric: true, sensitivity: 'base' }))
             .map(l => {
                 const heSoLo = l.he_so || heSo
                 return {
@@ -202,6 +207,7 @@ router.get('/ghep', async (req, res) => {
                     kl_con_lai: Math.round(l.kl_tron / heSoLo * 10000) / 10000,
                     chung_chi: l.chung_chi,
                     nguon_goc: l.nguon_goc,
+                    has_ton: l.has_ton,
                 }
             })
 

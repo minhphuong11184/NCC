@@ -181,9 +181,21 @@ export default {
       const wb = XLSX.read(buf, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
-      // Header ở dòng index 3 (0-based), data từ dòng 4
+      // Auto detect header row (chứa chữ "Mã lô gỗ" ở cột 1 hoặc "STT" ở cột 0)
+      let headerRow = -1;
+      for (let i = 0; i < Math.min(raw.length, 15); i++) {
+        const r = raw[i]; if (!r) continue;
+        const c0 = String(r[0] || "").toLowerCase();
+        const c1 = String(r[1] || "").toLowerCase();
+        if ((c0.includes("stt") && c1.includes("mã lô"))
+            || c1.includes("mã lô gỗ")) {
+          headerRow = i;
+          break;
+        }
+      }
+      if (headerRow === -1) headerRow = 3;  // fallback template gốc
       const out = [];
-      for (let i = 4; i < raw.length; i++) {
+      for (let i = headerRow + 1; i < raw.length; i++) {
         const r = raw[i]; if (!r) continue;
         const lo = toStr(r[1]); if (!lo) continue;
         if (lo.toLowerCase().includes("tổng") || lo.toLowerCase().includes("cộng")) continue;
