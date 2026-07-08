@@ -555,6 +555,7 @@ router.post('/save-result', async (req, res) => {
         table.columns.add('KL_M3', mssql.Float, { nullable: true })
         table.columns.add('LO_GO_GAN', mssql.NVarChar(50), { nullable: true })
         table.columns.add('CHUNG_CHI_GAN', mssql.NVarChar(255), { nullable: true })
+        table.columns.add('so_phieu_xe', mssql.NVarChar(50), { nullable: true })
 
         const num = v => (v === null || v === undefined || v === '' ? null : (isNaN(+v) ? null : +v))
         const str = v => (v === null || v === undefined ? null : String(v).trim() || null)
@@ -563,9 +564,30 @@ router.post('/save-result', async (req, res) => {
             const d = v instanceof Date ? v : new Date(v)
             return isNaN(d) ? null : d
         }
+        const pad2 = n => String(n).padStart(2, '0')
+
+        // Sort phiếu theo (CREATED_AT, SOPHIEU numeric-aware) trước khi sinh
+        // số phiếu STT. Trùng logic sort với /ghep để STT khớp thứ tự ghép.
+        const phieuSorted = phieu.slice().sort((a, b) => {
+            const da = a.CREATED_AT ? new Date(a.CREATED_AT).getTime() : 0
+            const db = b.CREATED_AT ? new Date(b.CREATED_AT).getTime() : 0
+            if (da !== db) return da - db
+            return String(a.SOPHIEU || '').localeCompare(
+                String(b.SOPHIEU || ''), 'vi', { numeric: true, sensitivity: 'base' })
+        })
 
         let totalDt = 0
-        phieu.forEach(p => {
+        phieuSorted.forEach((p, idx) => {
+            // Sinh so_phieu_xe = "STT/tháng" từ CREATED_AT (tháng GỖ XẺ).
+            // idx bắt đầu 0 → STT = idx + 1. Ưu tiên giá trị đã lưu p.so_phieu_xe
+            // (khi frontend gửi lại từ biên bản đã lưu).
+            const stt = idx + 1
+            const dCA = p.CREATED_AT ? new Date(p.CREATED_AT) : null
+            const thangXe = dCA && !isNaN(dCA) ? dCA.getMonth() + 1 : thang
+            const soPhieuXe = p.so_phieu_xe && String(p.so_phieu_xe).trim()
+                ? String(p.so_phieu_xe).trim()
+                : `${pad2(stt)}/${pad2(thangXe)}`
+
             const chiTiet = Array.isArray(p.chi_tiet) ? p.chi_tiet : []
             chiTiet.forEach(d => {
                 table.rows.add(
@@ -584,7 +606,8 @@ router.post('/save-result', async (req, res) => {
                     num(d.tong_thanh),
                     num(d.kl_m3),
                     str(d.lo_go),
-                    str(d.chung_chi)
+                    str(d.chung_chi),
+                    soPhieuXe
                 )
                 totalDt++
             })
