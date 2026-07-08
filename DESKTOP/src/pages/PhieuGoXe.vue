@@ -1110,6 +1110,7 @@ export default {
       const cols = [
         { key: "xuong",   header: "Xưởng xẻ",                  width: 16 },
         { key: "sophieu", header: "Số phiếu",                  width: 14 },
+        { key: "sopnk",   header: "Số phiếu\nnhập kho",        width: 12 },
         { key: "bienso",  header: "Biển số xe",                width: 12 },
         { key: "ngay",    header: "Ngày nhập",                 width: 11 },
         { key: "logo",    header: "Lô gỗ nhập",                width: 20 },
@@ -1213,25 +1214,27 @@ export default {
       let r = 4;
       let totalKL = 0, totalQuyDoi = 0, totalThanh = 0;
 
-      // Flatten tất cả chi_tiet + sort theo MÃ LÔ (numeric-aware), tiebreak SOPHIEU
+      // Flatten tất cả chi_tiet + tính so_phieu_nk cho mỗi phiếu.
+      // Sort: 1) số phiếu NK (STT + tháng gỗ xẻ) → 2) mã lô gỗ.
       const allRows = [];
-      for (const p of this.phieuList) {
+      for (let pi = 0; pi < this.phieuList.length; pi++) {
+        const p = this.phieuList[pi];
+        const soPhieuNk = this.soPhieuByIdx(pi);  // "01/06" format
         for (const d of (p.chi_tiet || [])) {
-          allRows.push({ p, d });
+          allRows.push({ p, d, so_phieu_nk: soPhieuNk });
         }
       }
       allRows.sort((a, b) => {
-        const la = String(a.d.lo_go_xe || "");
-        const lb = String(b.d.lo_go_xe || "");
-        const cmp = la.localeCompare(lb, "vi", { numeric: true, sensitivity: "base" });
-        if (cmp !== 0) return cmp;
-        return String(a.p.SOPHIEU || "").localeCompare(
-          String(b.p.SOPHIEU || ""), "vi", { numeric: true, sensitivity: "base" });
+        const cmpSp = String(a.so_phieu_nk || "").localeCompare(
+          String(b.so_phieu_nk || ""), "vi", { numeric: true, sensitivity: "base" });
+        if (cmpSp !== 0) return cmpSp;
+        return String(a.d.lo_go_xe || "").localeCompare(
+          String(b.d.lo_go_xe || ""), "vi", { numeric: true, sensitivity: "base" });
       });
 
       // Đánh dấu dòng đầu tiên xuất hiện của mỗi phiếu (để hiện KL xe)
       const seenPhieu = new Set();
-      for (const { p, d } of allRows) {
+      for (const { p, d, so_phieu_nk } of allRows) {
         const isFirstOfPhieu = !seenPhieu.has(p.SOPHIEU);
         seenPhieu.add(p.SOPHIEU);
         const row = ws.getRow(r);
@@ -1241,42 +1244,44 @@ export default {
         const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
 
           const values = [
-            cfg.ten || "",
-            p.SOPHIEU || "",
-            p.BIENSOXE || "",
-            this.fmtDate(p.CREATED_AT),
-            d.lo_go_xe || "",
-            d.dt_day || "",
-            d.dt_rong || "",
-            d.dt_cao || "",
-            Math.ceil(Number(d.tong_thanh) || 0),
-            kl,
-            isFirstOfPhieu ? (Number(p.tong_kl) || 0) : "",
-            p.MAKHO || "",
-            "Xẻ bán TQ",
-            thangNhap,
-            heSo,
-            quyDoi,
-            d.chu_rung || "",
-            "Am",
-            diaChi,
-            d.chung_chi_cr || "",
-            d.nhom_chung_chi || cfg.nhom_chung_chi || "",
+            cfg.ten || "",              // 0 xuong
+            p.SOPHIEU || "",            // 1 sophieu (Woodsland)
+            so_phieu_nk || "",          // 2 sopnk (01/06 format)
+            p.BIENSOXE || "",           // 3 bienso
+            this.fmtDate(p.CREATED_AT), // 4 ngay
+            d.lo_go_xe || "",           // 5 logo
+            d.dt_day || "",             // 6 day
+            d.dt_rong || "",            // 7 rong
+            d.dt_cao || "",             // 8 dai
+            Math.ceil(Number(d.tong_thanh) || 0), // 9 thanh
+            kl,                          // 10 kl
+            isFirstOfPhieu ? (Number(p.tong_kl) || 0) : "", // 11 kl_xe
+            p.MAKHO || "",              // 12 kho
+            "Xẻ bán TQ",                // 13 ghichu
+            thangNhap,                  // 14 thang
+            heSo,                        // 15 heso
+            quyDoi,                      // 16 quydoi
+            d.chu_rung || "",           // 17 nguon
+            "Am",                        // 18 loai
+            diaChi,                      // 19 diachi
+            d.chung_chi_cr || "",       // 20 scc
+            d.nhom_chung_chi || cfg.nhom_chung_chi || "", // 21 nhomcc
           ];
           values.forEach((v, i) => {
             const cell = row.getCell(i + 1);
             cell.value = v;
             cell.font = { name: "Times New Roman", size: 10 };
-            // Center: sophieu(1), bienso(2), day(5), rong(6), dai(7), thanh(8), kho(11), thang(13), loai(17)
-            // Right:  kl(9), kl_xe(10), heso(14), quydoi(15)
+            // Center: sophieu(1), sopnk(2), bienso(3), day(6), rong(7), dai(8),
+            //         thanh(9), kho(12), thang(14), loai(18)
+            // Right:  kl(10), kl_xe(11), heso(15), quydoi(16)
             cell.alignment = { vertical: "middle", wrapText: true,
-              horizontal: [1, 2, 5, 6, 7, 8, 11, 13, 17].includes(i) ? "center" :
-                ([9, 10, 14, 15].includes(i) ? "right" : "left") };
+              horizontal: [1, 2, 3, 6, 7, 8, 9, 12, 14, 18].includes(i) ? "center" :
+                ([10, 11, 15, 16].includes(i) ? "right" : "left") };
             cell.border = this.bThin();
-            // KL (9), KL xe (10), Gỗ tròn quy đổi (15): giữ 4 số. Hệ số (14): hiện đủ phần thập phân
-            if (i === 9 || i === 10 || i === 15) cell.numFmt = "#,##0.0000";
-            if (i === 14) cell.numFmt = "#,##0.##########";
-            if (i === 8) cell.numFmt = "#,##0";
+            // KL (10), KL xe (11), Quy đổi (16): 4 số. Hệ số (15): full precision. Thanh (9): số nguyên
+            if (i === 10 || i === 11 || i === 16) cell.numFmt = "#,##0.0000";
+            if (i === 15) cell.numFmt = "#,##0.##########";
+            if (i === 9) cell.numFmt = "#,##0";
           });
         row.height = 24;
         totalKL += kl;
@@ -1286,20 +1291,20 @@ export default {
         r++;
       }
 
-      // Total row (sau khi thêm 2 cột sophieu/bienso, số thanh ở cột 9, kl cột 10, quy đổi cột 16)
+      // Total row: sau khi thêm cột sopnk (index 2), thanh cột 10, kl cột 11, quy đổi cột 17
       const totalRow = ws.getRow(r);
       this.setCell(ws, `A${r}`, "TỔNG CỘNG",
-        { merge: `H${r}`, bold: true, center: true, border: true, fill: "FFFFF2CC" });
-      // Số thanh
-      const cT = totalRow.getCell(9);
+        { merge: `I${r}`, bold: true, center: true, border: true, fill: "FFFFF2CC" });
+      // Số thanh (cột 10)
+      const cT = totalRow.getCell(10);
       cT.value = totalThanh;
       cT.numFmt = "#,##0";
-      // KL
-      const cKL = totalRow.getCell(10);
+      // KL (cột 11)
+      const cKL = totalRow.getCell(11);
       cKL.value = Math.round(totalKL * 10000) / 10000;
       cKL.numFmt = "#,##0.0000";
-      // Gỗ tròn quy đổi — 4 chữ số sau dấu phẩy
-      const cQD = totalRow.getCell(16);
+      // Gỗ tròn quy đổi (cột 17)
+      const cQD = totalRow.getCell(17);
       cQD.value = totalQuyDoi;
       cQD.numFmt = "#,##0.0000";
 
@@ -1311,7 +1316,7 @@ export default {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } };
       }
       // Right-align for thanh/kl/quydoi
-      [9, 10, 16].forEach(c => { totalRow.getCell(c).alignment = { horizontal: "right", vertical: "middle" }; });
+      [10, 11, 17].forEach(c => { totalRow.getCell(c).alignment = { horizontal: "right", vertical: "middle" }; });
       totalRow.height = 24;
 
       // Auto-filter on header
