@@ -1213,16 +1213,32 @@ export default {
       let r = 4;
       let totalKL = 0, totalQuyDoi = 0, totalThanh = 0;
 
+      // Flatten tất cả chi_tiet + sort theo MÃ LÔ (numeric-aware), tiebreak SOPHIEU
+      const allRows = [];
       for (const p of this.phieuList) {
-        const chiTiet = p.chi_tiet || [];
-        let isFirstOfPhieu = true;
-        for (const d of chiTiet) {
-          const row = ws.getRow(r);
-          const kl = Number(d.kl_m3) || 0;
-          const heSo = Number(d.he_so) || 2;
-          // Ưu tiên _quy_doi đã điều chỉnh (dòng cuối lô hấp thụ sai số float)
-          const quyDoi = d._quy_doi != null ? d._quy_doi : kl * heSo;
-          const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
+        for (const d of (p.chi_tiet || [])) {
+          allRows.push({ p, d });
+        }
+      }
+      allRows.sort((a, b) => {
+        const la = String(a.d.lo_go_xe || "");
+        const lb = String(b.d.lo_go_xe || "");
+        const cmp = la.localeCompare(lb, "vi", { numeric: true, sensitivity: "base" });
+        if (cmp !== 0) return cmp;
+        return String(a.p.SOPHIEU || "").localeCompare(
+          String(b.p.SOPHIEU || ""), "vi", { numeric: true, sensitivity: "base" });
+      });
+
+      // Đánh dấu dòng đầu tiên xuất hiện của mỗi phiếu (để hiện KL xe)
+      const seenPhieu = new Set();
+      for (const { p, d } of allRows) {
+        const isFirstOfPhieu = !seenPhieu.has(p.SOPHIEU);
+        seenPhieu.add(p.SOPHIEU);
+        const row = ws.getRow(r);
+        const kl = Number(d.kl_m3) || 0;
+        const heSo = Number(d.he_so) || 2;
+        const quyDoi = d._quy_doi != null ? d._quy_doi : kl * heSo;
+        const diaChi = [d.thon, d.xa, d.huyen].filter(Boolean).join(", ");
 
           const values = [
             cfg.ten || "",
@@ -1262,14 +1278,12 @@ export default {
             if (i === 14) cell.numFmt = "#,##0.##########";
             if (i === 8) cell.numFmt = "#,##0";
           });
-          row.height = 24;
-          totalKL += kl;
-          totalQuyDoi += quyDoi;
-          // Tổng theo số thanh đã làm tròn lên (để khớp với hiển thị từng dòng)
-          totalThanh += Math.ceil(Number(d.tong_thanh) || 0);
-          isFirstOfPhieu = false;
-          r++;
-        }
+        row.height = 24;
+        totalKL += kl;
+        totalQuyDoi += quyDoi;
+        // Tổng theo số thanh đã làm tròn lên (để khớp với hiển thị từng dòng)
+        totalThanh += Math.ceil(Number(d.tong_thanh) || 0);
+        r++;
       }
 
       // Total row (sau khi thêm 2 cột sophieu/bienso, số thanh ở cột 9, kl cột 10, quy đổi cột 16)

@@ -211,6 +211,16 @@ router.get('/ghep', async (req, res) => {
                 }
             })
 
+        // Sort phiếu gỗ xẻ theo NGÀY (CREATED_AT) tăng dần, tiebreak SOPHIEU.
+        // → Phiếu ngày sớm ghép vào lô mã nhỏ trước → mã lô tăng dần theo ngày.
+        wsResult.recordset.sort((a, b) => {
+            const da = a.CREATED_AT ? new Date(a.CREATED_AT).getTime() : 0
+            const db = b.CREATED_AT ? new Date(b.CREATED_AT).getTime() : 0
+            if (da !== db) return da - db
+            return String(a.SOPHIEU || '').localeCompare(
+                String(b.SOPHIEU || ''), 'vi', { numeric: true, sensitivity: 'base' })
+        })
+
         // Ghép theo KL: khi QC vượt KL còn lại của lô → SPLIT QC ra theo
         // tỉ lệ, phần 1 lấp đầy lô hiện tại, phần dư chuyển sang lô kế tiếp
         // (lặp lại nếu QC dư vẫn còn lớn hơn 1 lô tiếp theo). Bảo đảm:
