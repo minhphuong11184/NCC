@@ -80,8 +80,19 @@ router.get('/list', async (req, res) => {
                     AND LTRIM(RTRIM(T.mancc)) = @mancc
                 WHERE G.thang = @thang AND G.nam = @nam
                     AND LTRIM(RTRIM(G.mancc)) = @mancc
-                ORDER BY G.CREATED_AT, G.SOPHIEU, G.id
+                ORDER BY G.CREATED_AT, G.id
             `)
+
+        // Re-sort JS numeric-aware theo (CREATED_AT, SOPHIEU) để KHỚP với thứ tự
+        // ghép trong ghep-lo-go.js. SQL ORDER BY SOPHIEU sort lexicographic sẽ đặt
+        // "2026.10/..." trước "2026.9/..." → lệch với logic ghép → sai thứ tự phiếu.
+        recordset.sort((a, b) => {
+            const da = a.CREATED_AT ? new Date(a.CREATED_AT).getTime() : 0
+            const db = b.CREATED_AT ? new Date(b.CREATED_AT).getTime() : 0
+            if (da !== db) return da - db
+            return String(a.SOPHIEU || '').localeCompare(
+                String(b.SOPHIEU || ''), 'vi', { numeric: true, sensitivity: 'base' })
+        })
 
         // Group thành phiếu theo SOPHIEU
         const phieuMap = {}
