@@ -578,7 +578,6 @@ router.post('/luu-ton', async (req, res) => {
         table.columns.add('thang', mssql.Int, { nullable: true })
         table.columns.add('nam', mssql.Int, { nullable: true })
         table.columns.add('xa', mssql.NVarChar(100), { nullable: true })
-        table.columns.add('huyen', mssql.NVarChar(255), { nullable: true })
         table.columns.add('ten_ho', mssql.NVarChar(200), { nullable: true })
         table.columns.add('thon', mssql.NVarChar(500), { nullable: true })
         table.columns.add('cccd', mssql.NVarChar(500), { nullable: true })
@@ -600,7 +599,7 @@ router.post('/luu-ton', async (req, res) => {
         table.columns.add('don_gia', mssql.Float, { nullable: true })
         table.columns.add('thanh_tien', mssql.Float, { nullable: true })
         table.columns.add('so_hop_dong', mssql.NVarChar(100), { nullable: true })
-        table.columns.add('ngay_hop_dong', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('ngay_hop_dong', mssql.NVarChar(200), { nullable: true })
         table.columns.add('source_sheet', mssql.NVarChar(100), { nullable: true })
         table.columns.add('source_file', mssql.NVarChar(500), { nullable: true })
         table.columns.add('chia_thang', mssql.Int, { nullable: true })
@@ -612,7 +611,6 @@ router.post('/luu-ton', async (req, res) => {
             thangMoi,
             nam,
             d.xa || null,
-            d.huyen || null,
             d.ten_ho || null,
             d.thon || null,
             d.cccd || null,
