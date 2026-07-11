@@ -333,9 +333,13 @@ export const getBBgiaogotron = async ({ commit }, payload) => {
     );
     return data;
 };
-export const getAllPhieuGoTron = async ({ commit }) => {
+export const getAllPhieuGoTron = async ({ commit }, payload) => {
+    const params = []
+    if (payload && payload.thang) params.push(`thang=${encodeURIComponent(payload.thang)}`)
+    if (payload && payload.nam) params.push(`nam=${encodeURIComponent(payload.nam)}`)
+    const qs = params.length ? `?${params.join('&')}` : ''
     const { data } = await getRequest(
-        `/api/v2/packages/all-phieu-go-tron`,
+        `/api/v2/packages/all-phieu-go-tron${qs}`,
     );
     return data;
 };

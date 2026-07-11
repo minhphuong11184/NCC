@@ -7,10 +7,12 @@
     <!-- ===== Toolbar: chọn phiếu + in ===== -->
     <div class="row q-col-gutter-md items-center q-mb-md no-print">
       <div class="col-auto">
-        <q-input v-model="fromDate" type="date" label="Từ ngày" filled dense style="width:160px" @input="loadCodes" />
+        <q-select v-model="thangLoc" :options="thangOptions" emit-value map-options
+          label="Tháng" filled dense style="width:120px" @input="loadCodes" />
       </div>
       <div class="col-auto">
-        <q-input v-model="toDate" type="date" label="Đến ngày" filled dense style="width:160px" @input="loadCodes" />
+        <q-select v-model="namLoc" :options="namOptions" emit-value map-options
+          label="Năm" filled dense style="width:120px" @input="loadCodes" />
       </div>
       <div class="col-auto">
         <q-select
@@ -359,8 +361,22 @@ export default {
   mixins: [xuongXeMixin],
   data() {
     return {
-      fromDate: "2025-08-01",
-      toDate: "2025-11-01",
+      thangLoc: new Date().getMonth() + 1,
+      namLoc: new Date().getFullYear(),
+      thangOptions: [
+        { label: "Tháng 1", value: 1 }, { label: "Tháng 2", value: 2 },
+        { label: "Tháng 3", value: 3 }, { label: "Tháng 4", value: 4 },
+        { label: "Tháng 5", value: 5 }, { label: "Tháng 6", value: 6 },
+        { label: "Tháng 7", value: 7 }, { label: "Tháng 8", value: 8 },
+        { label: "Tháng 9", value: 9 }, { label: "Tháng 10", value: 10 },
+        { label: "Tháng 11", value: 11 }, { label: "Tháng 12", value: 12 },
+      ],
+      namOptions: (() => {
+        const y = new Date().getFullYear()
+        const arr = []
+        for (let i = y - 3; i <= y + 1; i++) arr.push({ label: String(i), value: i })
+        return arr
+      })(),
       codes: [],
       selectedCode: null,
       phieu: null,
@@ -535,10 +551,14 @@ export default {
     },
 
     async loadCodes() {
-      if (!this.fromDate || !this.toDate) return;
+      if (!this.thangLoc || !this.namLoc) return;
+      const pad = n => String(n).padStart(2, "0");
+      const from = `${this.namLoc}-${pad(this.thangLoc)}-01 00:00:00`;
+      const lastDay = new Date(this.namLoc, this.thangLoc, 0).getDate();
+      const to = `${this.namLoc}-${pad(this.thangLoc)}-${pad(lastDay)} 23:59:59`;
       const data = await this.getCodebangiaogotron({
-        fromDate: this.fromDate + " 00:00:00",
-        toDate: this.toDate + " 00:00:00",
+        fromDate: from,
+        toDate: to,
       });
       this.codes = (data && data.data) || [];
       this.selectedCode = null;
@@ -609,7 +629,7 @@ export default {
     async exportAllExcel() {
       this.exporting = true;
       try {
-        const res = await this.getAllPhieuGoTron();
+        const res = await this.getAllPhieuGoTron({ thang: this.thangLoc, nam: this.namLoc });
         // Sort theo MÃ LÔ GỖ (Lo_go_tron / Lo_go), tiebreak So_phieu
         const allPhieu = ((res && res.data) || []).slice().sort((a, b) => {
           const la = String(a.Lo_go_tron || a.Lo_go || "");
@@ -1595,7 +1615,7 @@ export default {
     async exportAllWord() {
       this.exporting = true;
       try {
-        const res = await this.getAllPhieuGoTron();
+        const res = await this.getAllPhieuGoTron({ thang: this.thangLoc, nam: this.namLoc });
         // Sort theo MÃ LÔ GỖ (Lo_go_tron / Lo_go), tiebreak So_phieu
         const allPhieu = ((res && res.data) || []).slice().sort((a, b) => {
           const la = String(a.Lo_go_tron || a.Lo_go || "");

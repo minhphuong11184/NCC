@@ -56,11 +56,18 @@ router.get('/bien-ban-gio-go-tron', (req, res) => {
 })
 
 /**
- * GET /all-phieu-go-tron
- * Trả về tất cả phiếu có Khoi_luong > 0 (đầy đủ cột)
+ * GET /all-phieu-go-tron?thang=&nam=
+ * Trả về phiếu gỗ tròn có Khoi_luong > 0 trong tháng/năm (nếu truyền).
+ * Nếu không truyền thang/nam → trả tất cả (giữ backward compat).
  */
 router.get('/all-phieu-go-tron', (req, res) => {
-    new mssql.Request()
+    const thang = parseInt(req.query.thang) || null
+    const nam = parseInt(req.query.nam) || null
+    const request = new mssql.Request()
+    let dateFilter = ''
+    if (thang) { request.input('thang', thang); dateFilter += ' AND MONTH(N.Ngay_nhap) = @thang' }
+    if (nam) { request.input('nam', nam); dateFilter += ' AND YEAR(N.Ngay_nhap) = @nam' }
+    request
         .query(
             `WITH ranked AS (
                 SELECT id,
@@ -76,8 +83,8 @@ router.get('/all-phieu-go-tron', (req, res) => {
              SELECT N.*, CAST(N.[Ngay_nhap] AS DATE) AS NGAY, R.stt_chu_rung
              FROM [prod].[NHAP_GO_TRON] N
              JOIN ranked R ON R.id = N.id
-             WHERE N.Khoi_luong IS NOT NULL AND N.Khoi_luong > 0
-             ORDER BY N.Lo_go, N.So_phieu`,
+             WHERE N.Khoi_luong IS NOT NULL AND N.Khoi_luong > 0${dateFilter}
+             ORDER BY N.Lo_go_tron, N.TT, N.id`,
             (err, record) => {
                 if (err) return res.api.sendFail(getErrorMessage(4907))
                 res.api.sendData(record.recordset)

@@ -475,7 +475,7 @@ export default {
             const key = p.ten_ho || "";
             if (!tonMap[key]) {
               tonMap[key] = {
-                ten_ho: p.ten_ho, xa: p.xa, thon: p.thon,
+                ten_ho: p.ten_ho, xa: p.xa, huyen: p.huyen, thon: p.thon,
                 kl_kh: 0, kl_da_chia: 0, kl_ton: 0,
                 khoanh: p.khoanh, lo: p.lo,
                 dien_tich: p.dien_tich, loai_cay: p.loai_cay,
@@ -483,10 +483,12 @@ export default {
                 chung_chi: p.chung_chi, so_bkls: p.so_bkls,
                 ngay_bkls: p.ngay_bkls, thang_goc: p.thang || this.thang,
                 lo_go_tron: p.lo_go_tron, lo_go_xe: p.lo_go_xe,
-                dia_chi_cccd: p.dia_chi_cccd, don_gia: p.don_gia,
+                dia_chi_cccd: p.dia_chi_cccd, don_gia: p.don_gia, thanh_tien: p.thanh_tien,
                 KD: p.KD, VD: p.VD,
                 xuong_xe: p.xuong_xe || this.xuongXe || null,
                 nhom_chung_chi: p.nhom_chung_chi,
+                so_hop_dong: p.so_hop_dong,
+                ngay_hop_dong: p.ngay_hop_dong,
               };
             }
             tonMap[key].kl_ton += (Number(p.khoi_luong) || 0);
@@ -665,30 +667,6 @@ export default {
       const K = Math.max(1, xeList.length);
       if (W === 0) return null;
 
-      // Capacity mỗi ngày
-      const perDayCap = new Array(W).fill(0);
-      if (N <= K * W) {
-        let remaining = N;
-        for (let i = 0; i < W && remaining > 0; i++) {
-          perDayCap[i] = Math.min(K, remaining);
-          remaining -= K;
-        }
-      } else if (N <= 2 * K * W) {
-        const extra = N - K * W;
-        const days2K = Math.ceil(extra / K);
-        for (let i = 0; i < W; i++) perDayCap[i] = K;
-        for (let i = W - days2K; i < W; i++) perDayCap[i] = 2 * K;
-      } else {
-        const base = Math.floor(N / W);
-        const rem = N % W;
-        for (let i = 0; i < W; i++) perDayCap[i] = base + (i < rem ? 1 : 0);
-        this.$q.notify({
-          type: "warning",
-          message: `${N} chuyến / ${W} ngày làm việc với ${K} xe — vượt 2 chuyến/xe/ngày`,
-          timeout: 7000,
-        });
-      }
-
       const parseHD = s => {
         if (!s) return null;
         const m1 = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -700,26 +678,29 @@ export default {
       };
       const wdDates = workdays.map(s => new Date(s));
 
-      // Gán theo thứ tự số phiếu (input = lô gỗ ASC). Ràng buộc: ngày xe >= ngày HĐ.
-      // Vì HĐ đã tăng dần theo lô → workday cũng tự nhiên tăng dần.
-      const usedPerDay = new Array(W).fill(0);
+      // Chia TUẦN TỰ theo thứ tự lô gỗ: K chuyến/ngày, hết ngày → sang ngày kế tiếp.
+      // Ràng buộc: ngày chia >= ngày HĐ. Nếu vướng → nhảy sang ngày kế tiếp ≥ HĐ.
+      // Nếu số chuyến quá lớn → cho phép chuyến thứ K+1 dùng ngày kế tiếp (2K/ngày dồn cuối).
       const result = new Array(N).fill(null);
       let cantFit = 0;
+      let dayIdx = 0;
+      let chuyenTrongNgay = 0;
       for (let i = 0; i < N; i++) {
         const hd = parseHD(phieuList[i].ngay_hop_dong);
-        let w = -1;
-        for (let j = 0; j < W; j++) {
-          if (hd && wdDates[j] < hd) continue;
-          if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
+        // Nhảy dayIdx nếu ngày hiện tại < HĐ
+        if (hd) {
+          while (dayIdx < W && wdDates[dayIdx] < hd) {
+            dayIdx++;
+            chuyenTrongNgay = 0;
+          }
         }
-        if (w === -1) {
-          // Không có workday >= HĐ còn slot → KHÔNG gán ngày (thành TỒN)
-          cantFit++;
-          result[i] = null;
-          continue;
+        if (dayIdx >= W) { cantFit++; result[i] = null; continue; }
+        result[i] = `${workdays[dayIdx]}T09:00:00`;
+        chuyenTrongNgay++;
+        if (chuyenTrongNgay >= K) {
+          dayIdx++;
+          chuyenTrongNgay = 0;
         }
-        usedPerDay[w]++;
-        result[i] = `${workdays[w]}T09:00:00`;
       }
 
       if (cantFit > 0) {

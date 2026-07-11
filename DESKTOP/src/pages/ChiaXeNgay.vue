@@ -428,25 +428,6 @@ export default {
       const K = Math.max(1, this.danhSachXe.filter(x => x.bien_so).length);
       if (W === 0) return null;
 
-      const perDayCap = new Array(W).fill(0);
-      if (N <= K * W) {
-        let remaining = N;
-        for (let i = 0; i < W && remaining > 0; i++) {
-          perDayCap[i] = Math.min(K, remaining);
-          remaining -= K;
-        }
-      } else if (N <= 2 * K * W) {
-        const extra = N - K * W;
-        const days2K = Math.ceil(extra / K);
-        for (let i = 0; i < W; i++) perDayCap[i] = K;
-        for (let i = W - days2K; i < W; i++) perDayCap[i] = 2 * K;
-      } else {
-        const base = Math.floor(N / W);
-        const rem = N % W;
-        for (let i = 0; i < W; i++) perDayCap[i] = base + (i < rem ? 1 : 0);
-        this.$q.notify({ type: "warning", message: `Vượt 2 chuyến/xe/ngày, chia dồn.`, timeout: 6000 });
-      }
-
       const parseHD = s => {
         if (!s) return null;
         const m1 = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -458,24 +439,27 @@ export default {
       };
       const wdDates = workdays.map(s => new Date(s));
 
-      const usedPerDay = new Array(W).fill(0);
+      // Chia TUẦN TỰ theo thứ tự lô gỗ: K chuyến/ngày, hết ngày → sang ngày kế tiếp.
+      // Ràng buộc: ngày chia >= ngày HĐ. Nếu vướng → nhảy sang ngày kế tiếp ≥ HĐ.
       const result = new Array(N).fill(null);
       let cantFit = 0;
+      let dayIdx = 0;
+      let chuyenTrongNgay = 0;
       for (let i = 0; i < N; i++) {
         const hd = parseHD(phieuList[i].ngay_hop_dong);
-        let w = -1;
-        for (let j = 0; j < W; j++) {
-          if (hd && wdDates[j] < hd) continue;
-          if (usedPerDay[j] < perDayCap[j]) { w = j; break; }
+        if (hd) {
+          while (dayIdx < W && wdDates[dayIdx] < hd) {
+            dayIdx++;
+            chuyenTrongNgay = 0;
+          }
         }
-        if (w === -1) {
-          // Không đủ ngày làm việc / vướng HĐ → thành TỒN
-          cantFit++;
-          result[i] = null;
-          continue;
+        if (dayIdx >= W) { cantFit++; result[i] = null; continue; }
+        result[i] = `${workdays[dayIdx]}T09:00:00`;
+        chuyenTrongNgay++;
+        if (chuyenTrongNgay >= K) {
+          dayIdx++;
+          chuyenTrongNgay = 0;
         }
-        usedPerDay[w]++;
-        result[i] = `${workdays[w]}T09:00:00`;
       }
 
       if (cantFit > 0) {

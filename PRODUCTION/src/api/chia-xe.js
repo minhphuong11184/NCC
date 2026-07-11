@@ -92,17 +92,19 @@ router.post('/phan-bo', async (req, res) => {
 
             if (daDuChuyen) {
                 ton.push({
-                    ten_ho: ho.ten_ho, xa: ho.xa, thon: ho.thon,
+                    ten_ho: ho.ten_ho, xa: ho.xa, huyen: ho.huyen, thon: ho.thon,
                     kl_kh: klTong, kl_da_chia: 0, kl_ton: klTong,
                     khoanh: ho.khoanh, lo: ho.lo, dien_tich: ho.dien_tich,
                     loai_cay: ho.loai_cay, nam_trong: ho.nam_trong,
                     cccd: ho.cccd, chung_chi: ho.chung_chi, so_bkls: ho.so_bkls,
                     ngay_bkls: ho.ngay_bkls, thang_goc: ho.thang, nam: ho.nam,
                     lo_go_tron: ho.lo_go_tron, lo_go_xe: ho.lo_go_xe,
-                    dia_chi_cccd: ho.dia_chi_cccd, don_gia: ho.don_gia,
+                    dia_chi_cccd: ho.dia_chi_cccd, don_gia: ho.don_gia, thanh_tien: ho.thanh_tien,
                     KD: ho.KD, VD: ho.VD,
                     xuong_xe: ho.xuong_xe,
                     nhom_chung_chi: ho.nhom_chung_chi,
+                    so_hop_dong: ho.so_hop_dong,
+                    ngay_hop_dong: ho.ngay_hop_dong,
                 })
                 continue
             }
@@ -229,17 +231,19 @@ router.post('/phan-bo', async (req, res) => {
             const klTon = Math.round((klTong - klDaChia) * 100) / 100
             if (klTon > 0.01) {
                 ton.push({
-                    ten_ho: ho.ten_ho, xa: ho.xa, thon: ho.thon,
+                    ten_ho: ho.ten_ho, xa: ho.xa, huyen: ho.huyen, thon: ho.thon,
                     kl_kh: klTong, kl_da_chia: Math.round(klDaChia * 100) / 100, kl_ton: klTon,
                     khoanh: ho.khoanh, lo: ho.lo, dien_tich: ho.dien_tich,
                     loai_cay: ho.loai_cay, nam_trong: ho.nam_trong,
                     cccd: ho.cccd, chung_chi: ho.chung_chi, so_bkls: ho.so_bkls,
                     ngay_bkls: ho.ngay_bkls, thang_goc: ho.thang, nam: ho.nam,
                     lo_go_tron: ho.lo_go_tron, lo_go_xe: ho.lo_go_xe,
-                    dia_chi_cccd: ho.dia_chi_cccd, don_gia: ho.don_gia,
+                    dia_chi_cccd: ho.dia_chi_cccd, don_gia: ho.don_gia, thanh_tien: ho.thanh_tien,
                     KD: ho.KD, VD: ho.VD,
                     xuong_xe: ho.xuong_xe,
                     nhom_chung_chi: ho.nhom_chung_chi,
+                    so_hop_dong: ho.so_hop_dong,
+                    ngay_hop_dong: ho.ngay_hop_dong,
                 })
             }
         }
@@ -546,11 +550,35 @@ router.post('/luu-ton', async (req, res) => {
             number: 4900, message: 'Thiếu tháng/năm chia (chia_thang, chia_nam)'
         })
 
+        // 1. Xóa tồn cũ của (thang_moi, nam, chia_thang, chia_nam, xuong_xe)
+        //    tránh insert 2 lần khi user bấm "Lưu" nhiều lần cho cùng đợt chia.
+        //    Xuong_xe lấy từ distinct tonRows[*].xuong_xe (thường chỉ 1 xưởng /
+        //    call, nhưng defensive check phòng trường hợp gộp nhiều xưởng).
+        const xuongs = [...new Set(tonRows.map(r => (r.xuong_xe || '').toString().trim()))]
+        const delReq = new mssql.Request()
+            .input('thang', thangMoi).input('nam', nam)
+            .input('chia_thang', chiaThang).input('chia_nam', chiaNam)
+        let delWhere = `thang = @thang AND nam = @nam
+            AND chia_thang = @chia_thang AND chia_nam = @chia_nam
+            AND source_sheet = 'TON'`
+        // Nếu có xuong_xe cụ thể (không phải rỗng) → chỉ xóa tồn của các xưởng đó,
+        // giữ nguyên tồn của xưởng khác cùng đợt chia.
+        const xuongsNonEmpty = xuongs.filter(x => x)
+        if (xuongsNonEmpty.length) {
+            const phs = xuongsNonEmpty.map((_, i) => `@xuong${i}`).join(',')
+            xuongsNonEmpty.forEach((x, i) => delReq.input(`xuong${i}`, x))
+            delWhere += ` AND LTRIM(RTRIM(ISNULL(xuong_xe, ''))) IN (${phs})`
+        }
+        const delResult = await delReq.query(`
+            DELETE FROM [prod].[KH_KHAI_THAC] WHERE ${delWhere}
+        `)
+
         const table = new mssql.Table('[prod].[KH_KHAI_THAC]')
         table.create = false
         table.columns.add('thang', mssql.Int, { nullable: true })
         table.columns.add('nam', mssql.Int, { nullable: true })
         table.columns.add('xa', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('huyen', mssql.NVarChar(255), { nullable: true })
         table.columns.add('ten_ho', mssql.NVarChar(200), { nullable: true })
         table.columns.add('thon', mssql.NVarChar(500), { nullable: true })
         table.columns.add('cccd', mssql.NVarChar(500), { nullable: true })
@@ -563,6 +591,16 @@ router.post('/luu-ton', async (req, res) => {
         table.columns.add('kl_bang_ke', mssql.Float, { nullable: true })
         table.columns.add('kl_go', mssql.Float, { nullable: true })
         table.columns.add('so_bkls', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('ngay_bkls', mssql.NVarChar(200), { nullable: true })
+        table.columns.add('KD', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('VD', mssql.NVarChar(50), { nullable: true })
+        table.columns.add('lo_go_tron', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('lo_go_xe', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('dia_chi_cccd', mssql.NVarChar(500), { nullable: true })
+        table.columns.add('don_gia', mssql.Float, { nullable: true })
+        table.columns.add('thanh_tien', mssql.Float, { nullable: true })
+        table.columns.add('so_hop_dong', mssql.NVarChar(100), { nullable: true })
+        table.columns.add('ngay_hop_dong', mssql.NVarChar(50), { nullable: true })
         table.columns.add('source_sheet', mssql.NVarChar(100), { nullable: true })
         table.columns.add('source_file', mssql.NVarChar(500), { nullable: true })
         table.columns.add('chia_thang', mssql.Int, { nullable: true })
@@ -574,6 +612,7 @@ router.post('/luu-ton', async (req, res) => {
             thangMoi,
             nam,
             d.xa || null,
+            d.huyen || null,
             d.ten_ho || null,
             d.thon || null,
             d.cccd || null,
@@ -586,6 +625,16 @@ router.post('/luu-ton', async (req, res) => {
             d.kl_ton || null,  // kl_bang_ke = kl tồn
             d.kl_ton || null,  // kl_go = kl tồn
             d.so_bkls || null,
+            d.ngay_bkls || null,
+            d.KD || null,
+            d.VD || null,
+            d.lo_go_tron || null,
+            d.lo_go_xe || null,
+            d.dia_chi_cccd || null,
+            d.don_gia || null,
+            d.thanh_tien || null,
+            d.so_hop_dong || null,
+            d.ngay_hop_dong || null,
             'TON',             // đánh dấu đây là tồn
             'Tồn từ chia ' + chiaThang + '/' + chiaNam,
             chiaThang,
@@ -597,6 +646,7 @@ router.post('/luu-ton', async (req, res) => {
         const result = await new mssql.Request().bulk(table)
         res.api.sendData({
             inserted: result.rowsAffected,
+            deleted: delResult.rowsAffected[0] || 0,
             thang_moi: thangMoi, nam,
             chia_thang: chiaThang, chia_nam: chiaNam,
         })
@@ -816,10 +866,19 @@ router.post('/phan-bo-dot', async (req, res) => {
             const klTon = Math.round((klTong - klDaChia) * 100) / 100
             if (klTon > 0.01) {
                 ton.push({
-                    ten_ho: ho.ten_ho, xa: ho.xa, thon: ho.thon,
+                    ten_ho: ho.ten_ho, xa: ho.xa, huyen: ho.huyen, thon: ho.thon,
                     kl_kh: klTong, kl_da_chia: Math.round(klDaChia * 100) / 100, kl_ton: klTon,
                     khoanh: ho.khoanh, lo: ho.lo, dien_tich: ho.dien_tich,
-                    thang_goc: ho.thang, nam: ho.nam,
+                    loai_cay: ho.loai_cay, nam_trong: ho.nam_trong,
+                    cccd: ho.cccd, chung_chi: ho.chung_chi, so_bkls: ho.so_bkls,
+                    ngay_bkls: ho.ngay_bkls, thang_goc: ho.thang, nam: ho.nam,
+                    lo_go_tron: ho.lo_go_tron, lo_go_xe: ho.lo_go_xe,
+                    dia_chi_cccd: ho.dia_chi_cccd, don_gia: ho.don_gia, thanh_tien: ho.thanh_tien,
+                    KD: ho.KD, VD: ho.VD,
+                    xuong_xe: ho.xuong_xe,
+                    nhom_chung_chi: ho.nhom_chung_chi,
+                    so_hop_dong: ho.so_hop_dong,
+                    ngay_hop_dong: ho.ngay_hop_dong,
                 })
             }
         }
