@@ -444,27 +444,29 @@ export default {
       };
       const wdDates = workdays.map(s => new Date(s));
 
-      // Chia TUẦN TỰ theo thứ tự lô gỗ: K chuyến/ngày, hết ngày → sang ngày kế tiếp.
-      // Ràng buộc: ngày chia >= ngày HĐ. Nếu vướng → nhảy sang ngày kế tiếp ≥ HĐ.
+      // Tìm NGÀY SỚM NHẤT còn slot thoả HĐ cho từng chuyến (không dùng con trỏ chung).
+      const usedPerDay = new Array(W).fill(0);
+      let perDayLimit = N > K * W ? 2 * K : K;
+      if (N > 2 * K * W) perDayLimit = Math.ceil(N / W);
       const result = new Array(N).fill(null);
       let cantFit = 0;
-      let dayIdx = 0;
-      let chuyenTrongNgay = 0;
       for (let i = 0; i < N; i++) {
         const hd = parseHD(phieuList[i].ngay_hop_dong);
-        if (hd) {
-          while (dayIdx < W && wdDates[dayIdx] < hd) {
-            dayIdx++;
-            chuyenTrongNgay = 0;
-          }
+        let w = -1;
+        for (let j = 0; j < W; j++) {
+          if (hd && wdDates[j] < hd) continue;
+          if (usedPerDay[j] < perDayLimit) { w = j; break; }
         }
-        if (dayIdx >= W) { cantFit++; result[i] = null; continue; }
-        result[i] = `${workdays[dayIdx]}T09:00:00`;
-        chuyenTrongNgay++;
-        if (chuyenTrongNgay >= K) {
-          dayIdx++;
-          chuyenTrongNgay = 0;
-        }
+        if (w === -1) { cantFit++; result[i] = null; continue; }
+        usedPerDay[w]++;
+        result[i] = `${workdays[w]}T09:00:00`;
+      }
+      if (perDayLimit > K) {
+        this.$q.notify({
+          type: "info",
+          message: `${N} chuyến / ${W} ngày × ${K} xe — chia ${perDayLimit} chuyến/ngày.`,
+          timeout: 6000,
+        });
       }
 
       if (cantFit > 0) {

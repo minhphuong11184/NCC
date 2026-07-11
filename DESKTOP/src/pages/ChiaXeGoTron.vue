@@ -685,24 +685,29 @@ export default {
       };
       const wdDates = workdays.map(s => new Date(s));
 
-      // Chia TUẦN TỰ theo thứ tự lô gỗ: K chuyến/ngày, hết ngày → sang ngày kế tiếp.
-      // Ràng buộc: ngày chia >= ngày HĐ. Nếu vướng → nhảy sang ngày kế tiếp ≥ HĐ.
-      // Nếu số chuyến quá lớn → cho phép chuyến thứ K+1 dùng ngày kế tiếp (2K/ngày dồn cuối).
+      // Chia TUẦN TỰ theo lô. Mỗi chuyến: tìm NGÀY SỚM NHẤT còn slot thỏa
+      //   1. wdDates[j] >= ngay_hop_dong (nếu HĐ có giá trị)
+      //   2. usedPerDay[j] < perDayLimit
+      // perDayLimit tăng dần khi capacity không đủ.
+      // Không dùng con trỏ dayIdx duy nhất → nếu 1 lô có HĐ muộn, các lô sau vẫn
+      // có thể dùng các ngày SỚM HƠN (miễn thỏa HĐ riêng).
+      const usedPerDay = new Array(W).fill(0);
+      // Bắt đầu 1 chuyến/xe/ngày. Nếu tổng > K*W → 2 chuyến/xe/ngày. Vượt → 3, 4.
+      let perDayLimit = N > K * W ? 2 * K : K;
+      if (N > 2 * K * W) perDayLimit = Math.ceil(N / W);
+
       const result = new Array(N).fill(null);
-      const failedHD = [];  // log chuyến vướng HĐ
+      const failedHD = [];
       let cantFit = 0;
-      let dayIdx = 0;
-      let chuyenTrongNgay = 0;
       for (let i = 0; i < N; i++) {
         const p = phieuList[i];
         const hd = parseHD(p.ngay_hop_dong);
-        if (hd) {
-          while (dayIdx < W && wdDates[dayIdx] < hd) {
-            dayIdx++;
-            chuyenTrongNgay = 0;
-          }
+        let w = -1;
+        for (let j = 0; j < W; j++) {
+          if (hd && wdDates[j] < hd) continue;
+          if (usedPerDay[j] < perDayLimit) { w = j; break; }
         }
-        if (dayIdx >= W) {
+        if (w === -1) {
           cantFit++;
           failedHD.push({
             stt: p.stt, lo: p.lo_go_tron,
@@ -714,22 +719,34 @@ export default {
           result[i] = null;
           continue;
         }
-        result[i] = `${workdays[dayIdx]}T09:00:00`;
-        chuyenTrongNgay++;
-        if (chuyenTrongNgay >= K) {
-          dayIdx++;
-          chuyenTrongNgay = 0;
-        }
+        usedPerDay[w]++;
+        result[i] = `${workdays[w]}T09:00:00`;
+      }
+      if (perDayLimit > K) {
+        this.$q.notify({
+          type: "info",
+          message: `${N} chuyến / ${W} ngày × ${K} xe — chia ${perDayLimit} chuyến/ngày (${(perDayLimit / K).toFixed(1)} chuyến/xe/ngày).`,
+          timeout: 6000,
+        });
       }
       if (failedHD.length) {
         console.warn("[phanBoNgayNhap] chuyến vướng HĐ:", failedHD);
       }
 
       if (cantFit > 0) {
+        // Detailed message — 3 chuyến đầu bị vướng để user check được lỗi
+        const sample = failedHD.slice(0, 3).map(f =>
+          `Lô ${f.lo || '?'} ${f.ten_ho || ''} (HĐ raw: "${f.ngay_hop_dong_raw}"` +
+          `${f.hd_parsed ? ` → ${new Date(f.hd_parsed).toLocaleDateString('vi-VN')}` : ' → KHÔNG parse được'})`
+        ).join('; ');
+        const lastDay = workdays[W - 1]
+          ? new Date(workdays[W - 1]).toLocaleDateString('vi-VN')
+          : '?';
         this.$q.notify({
           type: "warning",
-          message: `${cantFit} chuyến không đủ ngày làm việc / vướng ràng buộc HĐ — sẽ chuyển thành TỒN sang KH tháng sau.`,
-          timeout: 9000,
+          message: `${cantFit} chuyến TỒN — vướng HĐ hoặc hết ngày làm việc (ngày cuối = ${lastDay}). Ví dụ: ${sample}. Xem đầy đủ trong Console (F12).`,
+          timeout: 15000,
+          multiLine: true,
         });
       }
       return result;
