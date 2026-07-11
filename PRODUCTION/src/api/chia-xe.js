@@ -69,7 +69,7 @@ router.post('/phan-bo', async (req, res) => {
         if (nam) where.push('nam = @nam')
         where.push('(kl_go > 0 OR kl_bang_ke > 0)')
         where.push('LTRIM(RTRIM(ISNULL(xuong_xe, \'\'))) = @xuong')
-        const q = `SELECT * FROM [prod].[KH_KHAI_THAC] WHERE ${where.join(' AND ')} ORDER BY thang, ten_ho`
+        const q = `SELECT * FROM [prod].[KH_KHAI_THAC] WHERE ${where.join(' AND ')}`
         const { recordset } = await request.query(q)
         if (!recordset.length) {
             return res.api.sendFail({
@@ -77,6 +77,20 @@ router.post('/phan-bo', async (req, res) => {
                 message: `Không có KH nào của xưởng "${xuongXe}" trong tháng ${thang || '*'}/${nam || '*'}.`,
             })
         }
+
+        // Sort theo LÔ GỖ TRÒN tăng dần (numeric-aware). Không có lô → xuống cuối.
+        // Đảm bảo lô nhỏ chia trước lô lớn; nếu chạm soChuyenMax → hộ lô lớn tồn,
+        // không phải hộ lô nhỏ.
+        recordset.sort((a, b) => {
+            const la = (a.lo_go_tron || '').toString().trim()
+            const lb = (b.lo_go_tron || '').toString().trim()
+            if (la && lb) {
+                const cmp = la.localeCompare(lb, 'vi', { numeric: true, sensitivity: 'base' })
+                if (cmp !== 0) return cmp
+            } else if (la && !lb) return -1
+            else if (!la && lb) return 1
+            return (a.ten_ho || '').localeCompare(b.ten_ho || '', 'vi', { sensitivity: 'base' })
+        })
 
         const result = []
         const ton = []
@@ -759,7 +773,6 @@ router.post('/phan-bo-dot', async (req, res) => {
               AND da_chia = 0
               AND ten_ho IN (${placeholders})
               AND (kl_go > 0 OR kl_bang_ke > 0)
-            ORDER BY ten_ho
         `)
         if (!recordset.length) {
             return res.api.sendFail({
@@ -767,6 +780,18 @@ router.post('/phan-bo-dot', async (req, res) => {
                 message: 'Không tìm thấy KH chưa chia cho các hộ đã chọn',
             })
         }
+
+        // Sort theo lô gỗ tròn (numeric-aware) — trùng logic /phan-bo
+        recordset.sort((a, b) => {
+            const la = (a.lo_go_tron || '').toString().trim()
+            const lb = (b.lo_go_tron || '').toString().trim()
+            if (la && lb) {
+                const cmp = la.localeCompare(lb, 'vi', { numeric: true, sensitivity: 'base' })
+                if (cmp !== 0) return cmp
+            } else if (la && !lb) return -1
+            else if (!la && lb) return 1
+            return (a.ten_ho || '').localeCompare(b.ten_ho || '', 'vi', { sensitivity: 'base' })
+        })
 
         // Chia phiếu (logic giống /phan-bo, không có soChuyenMax)
         const result = []

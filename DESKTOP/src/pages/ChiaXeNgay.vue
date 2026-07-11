@@ -430,11 +430,16 @@ export default {
 
       const parseHD = s => {
         if (!s) return null;
-        const m1 = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-        if (m1) return new Date(+m1[3], +m1[2] - 1, +m1[1]);
-        const m2 = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        const str = String(s).trim();
+        const m1 = str.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+        if (m1) {
+          let y = +m1[3];
+          if (y < 100) y += 2000;
+          return new Date(y, +m1[2] - 1, +m1[1]);
+        }
+        const m2 = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
         if (m2) return new Date(+m2[1], +m2[2] - 1, +m2[3]);
-        const d = new Date(s);
+        const d = new Date(str);
         return isNaN(d) ? null : d;
       };
       const wdDates = workdays.map(s => new Date(s));

@@ -669,11 +669,18 @@ export default {
 
       const parseHD = s => {
         if (!s) return null;
-        const m1 = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-        if (m1) return new Date(+m1[3], +m1[2] - 1, +m1[1]);
-        const m2 = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        const str = String(s).trim();
+        // "DD/MM/YYYY" or "DD-MM-YYYY" or "DD.MM.YYYY" — có thể kèm time phía sau
+        const m1 = str.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+        if (m1) {
+          let y = +m1[3];
+          if (y < 100) y += 2000;
+          return new Date(y, +m1[2] - 1, +m1[1]);
+        }
+        // "YYYY-MM-DD" ISO
+        const m2 = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
         if (m2) return new Date(+m2[1], +m2[2] - 1, +m2[3]);
-        const d = new Date(s);
+        const d = new Date(str);
         return isNaN(d) ? null : d;
       };
       const wdDates = workdays.map(s => new Date(s));
@@ -682,25 +689,40 @@ export default {
       // Ràng buộc: ngày chia >= ngày HĐ. Nếu vướng → nhảy sang ngày kế tiếp ≥ HĐ.
       // Nếu số chuyến quá lớn → cho phép chuyến thứ K+1 dùng ngày kế tiếp (2K/ngày dồn cuối).
       const result = new Array(N).fill(null);
+      const failedHD = [];  // log chuyến vướng HĐ
       let cantFit = 0;
       let dayIdx = 0;
       let chuyenTrongNgay = 0;
       for (let i = 0; i < N; i++) {
-        const hd = parseHD(phieuList[i].ngay_hop_dong);
-        // Nhảy dayIdx nếu ngày hiện tại < HĐ
+        const p = phieuList[i];
+        const hd = parseHD(p.ngay_hop_dong);
         if (hd) {
           while (dayIdx < W && wdDates[dayIdx] < hd) {
             dayIdx++;
             chuyenTrongNgay = 0;
           }
         }
-        if (dayIdx >= W) { cantFit++; result[i] = null; continue; }
+        if (dayIdx >= W) {
+          cantFit++;
+          failedHD.push({
+            stt: p.stt, lo: p.lo_go_tron,
+            ten_ho: p.ten_ho,
+            ngay_hop_dong_raw: p.ngay_hop_dong,
+            hd_parsed: hd ? hd.toISOString() : null,
+            last_workday: workdays[W - 1],
+          });
+          result[i] = null;
+          continue;
+        }
         result[i] = `${workdays[dayIdx]}T09:00:00`;
         chuyenTrongNgay++;
         if (chuyenTrongNgay >= K) {
           dayIdx++;
           chuyenTrongNgay = 0;
         }
+      }
+      if (failedHD.length) {
+        console.warn("[phanBoNgayNhap] chuyến vướng HĐ:", failedHD);
       }
 
       if (cantFit > 0) {
