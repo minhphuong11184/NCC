@@ -3,10 +3,11 @@
  * Dùng chung cho GhepLoGo, ImportPNKWoodsland, v.v.
  */
 const KHO_MAP = {
-  YS:  { ten: "Kho Yên Sơn",   dia_chi: "Cụm CN Thắng Quân, Xã Yên Sơn, Tỉnh Tuyên Quang" },
   YS1: { ten: "Kho Yên Sơn",   dia_chi: "Cụm CN Thắng Quân, Xã Yên Sơn, Tỉnh Tuyên Quang" },
   TB:  { ten: "Kho Thái Bình", dia_chi: "Thôn Chanh 1, Phường Nông Tiến, Tỉnh Tuyên Quang" },
 };
+// YS là alias của YS1 (cùng địa chỉ Cụm CN Thắng Quân, Yên Sơn, Tuyên Quang)
+KHO_MAP.YS = KHO_MAP.YS1;
 
 export default {
   computed: {
@@ -16,7 +17,8 @@ export default {
     /** Lookup kho theo MAKHO. Trả về object {ten, dia_chi} hoặc {}. */
     getKhoConfig(code) {
       if (!code) return {};
-      return KHO_MAP[String(code).trim()] || {};
+      const c = String(code).trim().toUpperCase();
+      return KHO_MAP[c] || {};
     },
     /** Tên kho từ MAKHO (fallback = MAKHO thô). */
     khoTenFromCode(code) {

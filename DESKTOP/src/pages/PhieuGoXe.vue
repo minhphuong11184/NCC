@@ -327,7 +327,7 @@
         <table class="sign-2col">
           <tr>
             <td class="right italic">……, ngày … tháng …… năm 20……</td>
-            <td class="right italic"><b>{{ diaDanhXuong }}, ngày {{ ngayInfo.d }} tháng {{ pad2(ngayInfo.m) }} năm {{ ngayInfo.y }}</b></td>
+            <td class="right italic"><b>{{ diaDanhXuong }}, Ngày {{ ngayInfo.d }} tháng {{ pad2(ngayInfo.m) }} năm {{ ngayInfo.y }}</b></td>
           </tr>
           <tr>
             <td class="sign-title">XÁC NHẬN CỦA CƠ QUAN CÓ THẨM QUYỀN (9)</td>
@@ -896,7 +896,7 @@ export default {
       const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
       const diaDanhRaw = parts.find(s => /tỉnh|TP|thành phố/i.test(s)) || (parts[parts.length - 1] || "");
       const diaDanh = diaDanhRaw.replace(/^(tỉnh|TP\.?|thành phố)\s+/i, "").trim();
-      const ngayChu = `${diaDanh}, ngày ${String(dt.getDate()).padStart(2, "0")} tháng ${String(dt.getMonth() + 1).padStart(2, "0")} năm ${dt.getFullYear()}`;
+      const ngayChu = `${diaDanh}, Ngày ${String(dt.getDate()).padStart(2, "0")} tháng ${String(dt.getMonth() + 1).padStart(2, "0")} năm ${dt.getFullYear()}`;
 
       const ngRows = nguonGoc.map(g => `
         <tr>
@@ -1752,7 +1752,7 @@ export default {
       // Date + ký
       this.setCell(ws, `A${r}`, "……, ngày … tháng …… năm 20……", { merge: `C${r}`, right: true, italic: true });
       this.setCell(ws, `D${r}`,
-        `${diaDanh}, ngày ${String(dt.getDate()).padStart(2, "0")} tháng ${String(dt.getMonth() + 1).padStart(2, "0")} năm ${dt.getFullYear()}`,
+        `${diaDanh}, Ngày ${String(dt.getDate()).padStart(2, "0")} tháng ${String(dt.getMonth() + 1).padStart(2, "0")} năm ${dt.getFullYear()}`,
         { merge: `G${r}`, right: true, italic: true, bold: true });
       r++;
       this.setCell(ws, `A${r}`, "XÁC NHẬN CỦA CƠ QUAN CÓ THẨM QUYỀN (9)", { merge: `C${r}`, center: true, bold: true });
