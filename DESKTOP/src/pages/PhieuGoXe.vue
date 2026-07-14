@@ -96,7 +96,7 @@
             <td class="right">☑ FSC 100%   ☐ Mix   ☐ Non FSC   ☐ CW   ☐ KLS</td>
           </tr>
           <tr>
-            <td class="lbl">Nhập tại kho:</td><td class="val" colspan="2">{{ cfg.ten }}</td>
+            <td class="lbl">Nhập tại kho:</td><td class="val" colspan="2">{{ khoNhapText(currentPhieu) }}</td>
           </tr>
           <tr>
             <td class="lbl">Loài gỗ:</td><td class="val" colspan="2">Keo tai tượng (Acacia mangium)</td>
@@ -503,17 +503,30 @@ export default {
     },
     /** Địa danh từ địa chỉ xưởng — lấy phần cuối (vd "tỉnh Phú Thọ") */
     diaDanhXuong() {
-      const dc = this.cfg.dia_chi || "";
-      const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
-      if (!parts.length) return "";
-      const tinh = parts.find(p => /tỉnh|TP|thành phố/i.test(p));
-      const raw = tinh || parts[parts.length - 1];
-      // Bỏ tiền tố "tỉnh" / "TP" / "thành phố" → chỉ giữ tên địa danh
-      return raw.replace(/^(tỉnh|TP\.?|thành phố)\s+/i, "").trim();
+      return "Tuyên Quang";
     },
   },
   methods: {
     host() { return window.location.hostname || "127.0.0.1"; },
+
+    /**
+     * Kho nhập text: "Kho Yên Sơn - địa chỉ" — không dùng tên xưởng/công ty.
+     * Ưu tiên MAKHO khớp KHO_MAP (YS/YS1/TB), fallback theo địa chỉ xưởng chứa
+     * "Yên Sơn"/"Thắng Quân" → YS1; "Thái Bình"/"Nông Tiến"/"Chanh 1" → TB;
+     * default → YS1 (Tân Trào).
+     */
+    khoNhapText(p) {
+      const k = this.getKhoConfig(p && p.MAKHO);
+      if (k && k.ten) return `${k.ten} - ${k.dia_chi || ""}`;
+      const dc = (this.cfg && this.cfg.dia_chi) || "";
+      if (/thái bình|nông tiến|chanh 1/i.test(dc)) {
+        const t = this.khoMap.TB;
+        return `${t.ten} - ${t.dia_chi}`;
+      }
+      // Default: Kho Yên Sơn (YS1) — Tân Trào có kho tại Yên Sơn
+      const y = this.khoMap.YS1;
+      return `${y.ten} - ${y.dia_chi}`;
+    },
 
     /** Tự set bklsStart mặc định theo mã NCC (Trần Vũ=107, khác=1). User vẫn chỉnh tay được. */
     applyBklsStart() {
@@ -748,7 +761,7 @@ export default {
             <td class="lbl">Tên thành phẩm:</td><td>Gỗ keo xẻ FSC 100%</td>
             <td class="right">☑ FSC 100% &nbsp; ☐ Mix &nbsp; ☐ Non FSC &nbsp; ☐ CW &nbsp; ☐ KLS</td>
           </tr>
-          <tr><td class="lbl">Nhập tại kho:</td><td colspan="2">${e(cfg.ten || "")}</td></tr>
+          <tr><td class="lbl">Nhập tại kho:</td><td colspan="2">${e(this.khoNhapText(p))}</td></tr>
           <tr><td class="lbl">Loài gỗ:</td><td colspan="2">Keo tai tượng (Acacia mangium)</td></tr>
         </table>
         <table class="tbl">
@@ -891,12 +904,7 @@ export default {
         }
       });
 
-      // Địa danh xưởng
-      const dc = cfg.dia_chi || "";
-      const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
-      const diaDanhRaw = parts.find(s => /tỉnh|TP|thành phố/i.test(s)) || (parts[parts.length - 1] || "");
-      const diaDanh = diaDanhRaw.replace(/^(tỉnh|TP\.?|thành phố)\s+/i, "").trim();
-      const ngayChu = `${diaDanh}, Ngày ${String(dt.getDate()).padStart(2, "0")} tháng ${String(dt.getMonth() + 1).padStart(2, "0")} năm ${dt.getFullYear()}`;
+      const ngayChu = `Tuyên Quang, Ngày ${String(dt.getDate()).padStart(2, "0")} tháng ${String(dt.getMonth() + 1).padStart(2, "0")} năm ${dt.getFullYear()}`;
 
       const ngRows = nguonGoc.map(g => `
         <tr>
@@ -1354,12 +1362,8 @@ export default {
       this.setCell(ws, `A${r}`, `Địa chỉ: ${cfg.dia_chi || ""}`, { merge: `F${r}` });
       this.setCell(ws, `G${r}`, `Biển số xe: ${p.BIENSOXE || ""}`, { merge: `I${r}` });
       r++;
-      // Kho nhập | Ngày nhập (kho lookup theo MAKHO Woodsland)
-      const khoCfg = this.getKhoConfig(p.MAKHO);
-      const khoStr = khoCfg.ten
-        ? `${khoCfg.ten}${khoCfg.dia_chi ? " - " + khoCfg.dia_chi : ""}`
-        : (p.MAKHO || "");
-      this.setCell(ws, `A${r}`, `Kho nhập: ${khoStr}`, { merge: `F${r}` });
+      // Kho nhập | Ngày nhập (dùng khoNhapText — không hiện tên xưởng/công ty)
+      this.setCell(ws, `A${r}`, `Kho nhập: ${this.khoNhapText(p)}`, { merge: `F${r}` });
       this.setCell(ws, `G${r}`, `Ngày nhập: ${this.fmtDate(p.CREATED_AT)}`, { merge: `I${r}` });
       r++;
       // Trạng thái MT | Nhóm SP | Mã lô gỗ nhập (lô đầu tiên)
@@ -1479,7 +1483,7 @@ export default {
       this.setCell(ws, `E${r}`, "☑ FSC 100%   ☐ Mix   ☐ Non FSC   ☐ CW   ☐ KLS",
         { merge: `K${r}`, right: true });
       r++;
-      this.setCell(ws, `A${r}`, `Nhập tại kho: ${cfg.ten || ""}`, { merge: `K${r}` });
+      this.setCell(ws, `A${r}`, `Nhập tại kho: ${this.khoNhapText(p)}`, { merge: `K${r}` });
       r++;
       this.setCell(ws, `A${r}`, "Loài gỗ: Keo tai tượng (Acacia mangium)", { merge: `K${r}` });
       r += 2;
@@ -1621,10 +1625,7 @@ export default {
         }
         if (d.lo_go_xe && !seenLX.has(d.lo_go_xe)) { seenLX.add(d.lo_go_xe); loGoXe.push(d.lo_go_xe); }
       });
-      const dc = cfg.dia_chi || "";
-      const parts = dc.split(/[,\-]/).map(s => s.trim()).filter(Boolean);
-      const diaDanhRaw = parts.find(s => /tỉnh|TP|thành phố/i.test(s)) || (parts[parts.length - 1] || "");
-      const diaDanh = diaDanhRaw.replace(/^(tỉnh|TP\.?|thành phố)\s+/i, "").trim();
+      const diaDanh = "Tuyên Quang";
 
       // === Header 2 cột ===
       this.setCell(ws, `A${r}`, cfg.ten || "", { merge: `C${r}`, bold: true, center: true });

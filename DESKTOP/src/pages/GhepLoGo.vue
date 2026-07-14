@@ -409,13 +409,26 @@ export default {
       if (!p || !p.chi_tiet) return 0;
       return p.chi_tiet.reduce((s, d) => s + (Number(d.tong_thanh) || 0), 0);
     },
-    /** Tên kho + địa chỉ (vd "Kho Yên Sơn - Xã Yên Sơn - Tỉnh Tuyên Quang"). */
+    /** Tên kho + địa chỉ (vd "Kho Yên Sơn - Cụm CN Thắng Quân, Xã Yên Sơn, Tỉnh Tuyên Quang").
+     *  KHÔNG hiển thị tên xưởng/công ty — kho nhập luôn là kho vật lý (YS1 hoặc TB). */
     khoNhapFull(p) {
+      // Ưu tiên MAKHO match KHO_MAP (YS/YS1/TB)
       const k = this.khoOf(p);
-      if (k && k.ten) return k.dia_chi ? `${k.ten} - ${k.dia_chi}` : k.ten;
+      if (k && k.ten) return `${k.ten} - ${k.dia_chi}`;
+      // Fallback theo địa chỉ xưởng: chứa "Yên Sơn"/"Thắng Quân" → Kho Yên Sơn
       const x = this.xuongOf(p);
-      if (x && x.ten) return x.dia_chi ? `${x.ten} - ${x.dia_chi}` : x.ten;
-      return p && p.MAKHO ? String(p.MAKHO).trim() : "";
+      const xdc = (x && x.dia_chi) || "";
+      if (/yên sơn|thắng quân/i.test(xdc)) {
+        const y = this.khoMap.YS1;
+        return `${y.ten} - ${y.dia_chi}`;
+      }
+      if (/thái bình|nông tiến|chanh 1/i.test(xdc)) {
+        const t = this.khoMap.TB;
+        return `${t.ten} - ${t.dia_chi}`;
+      }
+      // Fallback cuối: default Kho Yên Sơn (Tân Trào có kho tại Yên Sơn)
+      const y = this.khoMap.YS1;
+      return `${y.ten} - ${y.dia_chi}`;
     },
     /** Build danh sách NCC từ XUONG_XE local (chỉ xưởng có mancc_woodsland). */
     loadNcc() {
