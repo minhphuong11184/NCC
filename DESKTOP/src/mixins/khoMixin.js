@@ -6,8 +6,10 @@ const KHO_MAP = {
   YS1: { ten: "Kho Yên Sơn",   dia_chi: "Cụm CN Thắng Quân, Xã Yên Sơn, Tỉnh Tuyên Quang" },
   TB:  { ten: "Kho Thái Bình", dia_chi: "Thôn Chanh 1, Phường Nông Tiến, Tỉnh Tuyên Quang" },
 };
-// YS là alias của YS1 (cùng địa chỉ Cụm CN Thắng Quân, Yên Sơn, Tuyên Quang)
-KHO_MAP.YS = KHO_MAP.YS1;
+// Alias các mã kho Woodsland tương đương
+KHO_MAP.YS         = KHO_MAP.YS1;
+KHO_MAP["WY1.NL01"] = KHO_MAP.YS1;   // Woodsland Yên Sơn kho NL01 → YS1
+KHO_MAP["WTB.NL01"] = KHO_MAP.TB;    // Woodsland Thái Bình kho NL01 → TB
 
 export default {
   computed: {
