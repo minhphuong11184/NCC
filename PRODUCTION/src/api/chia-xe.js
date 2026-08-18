@@ -152,17 +152,17 @@ router.post('/phan-bo', async (req, res) => {
             }
 
             // === Cân chuyến: chia max trước; nếu BẤT KỲ chuyến nào < min thì redistribute ===
-            // Quy tắc:
-            //   1. Stage A (đã làm trong vòng while ở trên): mỗi chuyến random trong
-            //      [xeMin, xeMax] — gần xeMax (chia max).
-            //   2. Stage B: nếu CÓ chuyến nào < minKlChuyen → tổng hợp lại, tìm N tối ưu
-            //      (smallest N s.t. avg ≤ xeMax) rồi gen KL ngẫu nhiên trong [min, xeMax]
-            //      sao cho sum = tổng KL — các chuyến KHÁC NHAU (không giống hệt).
+            //   Stage A (vòng while trên): mỗi chuyến random trong [xeMin, xeMax] — chia max.
+            //   Stage B: nếu có chuyến < minKlChuyen → tìm N tối ưu (avg ≤ xeMax) rồi sinh KL
+            //   ngẫu nhiên có VARIANCE LỚN — không cluster quanh avg. Kỹ thuật:
+            //     1. Sinh N giá trị "raw" uniform trong [effMin, maxes[i]].
+            //     2. Scale để sum = tongHoChia.
+            //     3. Clamp mỗi chuyến trong [effMin, maxes[i]].
+            //     4. Absorb sai số vào chuyến cuối.
             const hasUnderMin = klCacChuyen.some(k => k < minKlChuyen - 0.01)
             if (klCacChuyen.length > 1 && hasUnderMin) {
                 const tongHoChia = klCacChuyen.reduce((s, k) => s + k, 0)
                 const N_orig = klCacChuyen.length
-                // Smallest N: avg = tongHoChia/N ≤ xeMax mọi xe[0..N-1]
                 let n_opt = N_orig
                 for (let n = 1; n <= N_orig; n++) {
                     const avg = tongHoChia / n
@@ -173,30 +173,35 @@ router.post('/phan-bo', async (req, res) => {
                 }
                 const xeArr = xeCacChuyen.slice(0, n_opt)
                 const maxes = xeArr.map(x => x.m3 * (1 + phanTram / 100))
-                // effMin: nếu tổng quá nhỏ, ko ép được min (avg < min)
+                const mins = xeArr.map(x => x.m3 * (1 - phanTram / 100))
                 const effMin = Math.min(minKlChuyen, tongHoChia / n_opt - 0.01)
 
-                // Sinh KL ngẫu nhiên trong [effMin, maxes[i]], tổng = tongHoChia
-                const newKl = []
-                let remaining = tongHoChia
-                for (let i = 0; i < n_opt - 1; i++) {
-                    const remN = n_opt - i - 1
-                    const remMin = effMin * remN
-                    const remMax = maxes.slice(i + 1).reduce((s, m) => s + m, 0)
-                    const lower = Math.max(effMin, remaining - remMax)
-                    const upper = Math.min(maxes[i], remaining - remMin)
-                    let kl
-                    if (upper - lower < 0.01) {
-                        kl = (lower + upper) / 2
-                    } else {
-                        kl = lower + Math.random() * (upper - lower)
-                    }
-                    kl = Math.round(kl * 100) / 100
-                    newKl.push(kl)
-                    remaining = Math.round((remaining - kl) * 100) / 100
-                }
-                newKl.push(Math.round(remaining * 100) / 100)
-                klCacChuyen = newKl
+                // 1. Sinh raw uniform trong [max(effMin, mins[i]), maxes[i]]
+                const raw = xeArr.map((_, i) => {
+                    const lo = Math.max(effMin, mins[i])
+                    const hi = maxes[i]
+                    return lo + Math.random() * Math.max(0, hi - lo)
+                })
+                // 2. Scale để sum = tongHoChia
+                const rawSum = raw.reduce((s, k) => s + k, 0)
+                const scale = rawSum > 0 ? tongHoChia / rawSum : 1
+                const scaled = raw.map(k => k * scale)
+                // 3. Clamp trong [effMin, maxes[i]]
+                const clamped = scaled.map((k, i) => Math.max(effMin, Math.min(maxes[i], k)))
+                // 4. Absorb sai số vào chuyến cuối
+                const clampedSum = clamped.reduce((s, k) => s + k, 0)
+                const diff = tongHoChia - clampedSum
+                clamped[clamped.length - 1] = Math.max(
+                    effMin,
+                    Math.min(maxes[n_opt - 1], clamped[clamped.length - 1] + diff)
+                )
+                klCacChuyen = clamped.map(k => Math.round(k * 100) / 100)
+                // Chuyến cuối absorb thêm sai số làm tròn để đảm bảo sum chính xác
+                const roundedSum = klCacChuyen.reduce((s, k) => s + k, 0)
+                const round100 = v => Math.round(v * 100) / 100
+                klCacChuyen[klCacChuyen.length - 1] = round100(
+                    klCacChuyen[klCacChuyen.length - 1] + (tongHoChia - roundedSum)
+                )
                 xeCacChuyen = xeArr
             }
 
@@ -825,7 +830,7 @@ router.post('/phan-bo-dot', async (req, res) => {
                 }
             }
 
-            // Cân chuyến cuối < min (cùng logic /phan-bo)
+            // Cân chuyến: sinh KL raw uniform → scale → clamp → absorb sai số (cùng logic /phan-bo)
             const hasUnderMin2 = klCacChuyen.some(k => k < minKlChuyen - 0.01)
             if (klCacChuyen.length > 1 && hasUnderMin2) {
                 const tongHoChia = klCacChuyen.reduce((s, k) => s + k, 0)
@@ -840,24 +845,30 @@ router.post('/phan-bo-dot', async (req, res) => {
                 }
                 const xeArr = xeCacChuyen.slice(0, n_opt)
                 const maxes = xeArr.map(x => x.m3 * (1 + phanTram / 100))
+                const mins = xeArr.map(x => x.m3 * (1 - phanTram / 100))
                 const effMin = Math.min(minKlChuyen, tongHoChia / n_opt - 0.01)
-                const newKl = []
-                let remaining = tongHoChia
-                for (let i = 0; i < n_opt - 1; i++) {
-                    const remN = n_opt - i - 1
-                    const remMin = effMin * remN
-                    const remMax = maxes.slice(i + 1).reduce((s, m) => s + m, 0)
-                    const lower = Math.max(effMin, remaining - remMax)
-                    const upper = Math.min(maxes[i], remaining - remMin)
-                    let kl
-                    if (upper - lower < 0.01) kl = (lower + upper) / 2
-                    else kl = lower + Math.random() * (upper - lower)
-                    kl = Math.round(kl * 100) / 100
-                    newKl.push(kl)
-                    remaining = Math.round((remaining - kl) * 100) / 100
-                }
-                newKl.push(Math.round(remaining * 100) / 100)
-                klCacChuyen = newKl
+
+                const raw = xeArr.map((_, i) => {
+                    const lo = Math.max(effMin, mins[i])
+                    const hi = maxes[i]
+                    return lo + Math.random() * Math.max(0, hi - lo)
+                })
+                const rawSum = raw.reduce((s, k) => s + k, 0)
+                const scale = rawSum > 0 ? tongHoChia / rawSum : 1
+                const scaled = raw.map(k => k * scale)
+                const clamped = scaled.map((k, i) => Math.max(effMin, Math.min(maxes[i], k)))
+                const clampedSum = clamped.reduce((s, k) => s + k, 0)
+                const diff = tongHoChia - clampedSum
+                clamped[clamped.length - 1] = Math.max(
+                    effMin,
+                    Math.min(maxes[n_opt - 1], clamped[clamped.length - 1] + diff)
+                )
+                klCacChuyen = clamped.map(k => Math.round(k * 100) / 100)
+                const round100 = v => Math.round(v * 100) / 100
+                const roundedSum = klCacChuyen.reduce((s, k) => s + k, 0)
+                klCacChuyen[klCacChuyen.length - 1] = round100(
+                    klCacChuyen[klCacChuyen.length - 1] + (tongHoChia - roundedSum)
+                )
                 xeCacChuyen = xeArr
             }
 

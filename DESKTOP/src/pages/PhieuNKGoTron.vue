@@ -272,7 +272,7 @@
               <tr>
                 <td>{{ formatDate(phieu.Ngay_nhap) }}</td>
                 <td>{{ phieu.Chu_rung }}</td>
-                <td class="small-text">{{ diaChiChuRung }}</td>
+                <td class="small-text">{{ phieu.dia_chi_cccd || diaChiChuRung }}</td>
                 <td class="small-text">{{ phieu.cccd }}</td>
                 <td></td>
                 <td>Gỗ tròn keo tai tượng (Acacia Mangium) FSC 100%</td>
@@ -1210,7 +1210,7 @@ export default {
       // Data row — height generous để chứa 3 dòng wrap (tên, địa chỉ, tên hàng hóa)
       this.setCell(ws, `A${cur}`, this.formatDate(p.Ngay_nhap), { center: true, border: true });
       this.setCell(ws, `B${cur}`, p.Chu_rung || "", { center: true, border: true, wrap: true });
-      this.setCell(ws, `C${cur}`, diaChiCR, { center: true, border: true, wrap: true });
+      this.setCell(ws, `C${cur}`, p.dia_chi_cccd || diaChiCR, { center: true, border: true, wrap: true });
       this.setCell(ws, `D${cur}`, p.cccd || "", { center: true, border: true, wrap: true });
       this.setCell(ws, `E${cur}`, "", { center: true, border: true });
       this.setCell(ws, `F${cur}`, "Gỗ tròn keo tai tượng (Acacia Mangium) FSC 100%",
@@ -1532,7 +1532,7 @@ export default {
           <tr>
             <td class="center">${e(this.formatDate(p.Ngay_nhap))}</td>
             <td>${e(p.Chu_rung)}</td>
-            <td>${e(diaChiCR)}</td>
+            <td>${e(p.dia_chi_cccd || diaChiCR)}</td>
             <td class="center">${e(p.cccd)}</td>
             <td></td>
             <td>Gỗ tròn keo tai tượng (Acacia Mangium) FSC 100%</td>
